@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    uses: ./.github/workflows/_reusable-platform-build.yml
+    with:
+      os: macos-latest
+      platform-arg: --mac
+      artifact-name: macos-build
+      # Extract version from tag ref (e.g., refs/tags/v1.2.3 -> 1.2.3)
+      version: ${{ github.ref_name }}
+    secrets: inherit
+
+  build-windows:
+    uses: ./.github/workflows/_reusable-platform-build.yml
+    with:
+      os: windows-latest
+      platform-arg: --win
+      artifact-name: windows-build
+      version: ${{ github.ref_name }}
+    secrets: inherit
+
+  build-linux:
+    uses: ./.github/workflows/_reusable-platform-build.yml
+    with:
+      os: ubuntu-latest
+      platform-arg: --linux
+      artifact-name: linux-build
+      version: ${{ github.ref_name }}
+    secrets: inherit
+
+  publish:
+    name: Publish Release
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-build
+          path: release-artifacts/macos
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: release-artifacts/windows
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+          path: release-artifacts/linux
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-artifacts/macos/**/*.dmg
+            release-artifacts/macos/**/*.zip
+            release-artifacts/macos/**/*.blockmap
+            release-artifacts/macos/**/latest-mac.yml
+            release-artifacts/windows/**/*.exe
+            release-artifacts/windows/**/*.blockmap
+            release-artifacts/windows/**/latest.yml
+            release-artifacts/linux/**/*.AppImage
+            release-artifacts/linux/**/latest-linux.yml
+          generate_release_notes: true
+          draft: false
+          prerelease: false

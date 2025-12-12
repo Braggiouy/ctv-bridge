@@ -1,0 +1,61 @@
+name: Reusable Platform Build
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      platform-arg:
+        required: true
+        type: string
+      artifact-name:
+        required: true
+        type: string
+      version:
+        required: false
+        type: string
+
+jobs:
+  build:
+    name: Build ${{ inputs.os }}
+    runs-on: ${{ inputs.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Set Version
+        if: ${{ inputs.version != '' }}
+        run: npm pkg set version=${{ inputs.version }}
+
+      - name: Build
+        env:
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bunx vite build && bunx electron-builder ${{ inputs.platform-arg }} -p never
+
+      - name: Optional macOS code signing
+        if: ${{ startsWith(inputs.os, 'macos') }}
+        run: |
+          echo "Skipping macOS code signing – no certificate configured"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: |
+            release/**/*.exe
+            release/**/*.dmg
+            release/**/*.AppImage
+            release/**/*.zip
+            release/**/*.yml
+            release/**/*.blockmap
+          retention-days: 1

@@ -1,0 +1,463 @@
+import { ipcMain } from "electron";
+import { exec, spawn } from "child_process";
+import { promisify } from "util";
+import fs from "fs/promises";
+import path from "path";
+import { store } from "../../store";
+
+const execAsync = promisify(exec);
+
+// Helper to get command with SDK path
+function getSdkCommand(command: "sdb" | "tizen"): string {
+  const paths = store.getAll();
+  if (command === "sdb" && paths.sdbPath) {
+    return paths.sdbPath;
+  }
+  if (command === "tizen" && paths.tizenPath) {
+    return paths.tizenPath;
+  }
+  // Fallback to system PATH
+  return command;
+}
+
+export function registerTizenHandlers() {
+  // List connected Tizen devices
+  ipcMain.handle("list-tizen-devices", async () => {
+    try {
+      const sdbCmd = getSdkCommand("sdb");
+      const { stdout } = await execAsync(`"${sdbCmd}" devices`);
+      const lines = stdout.split(/\r?\n/).filter(Boolean);
+      const devices: any[] = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.includes("List of devices") || !line) continue;
+
+        const parts = line.split(/\s+/);
+        if (parts.length >= 2) {
+          const deviceInfo = parts[0];
+          const status = parts[1];
+          const ip = deviceInfo.split(":")[0];
+
+          if (status === "device") {
+            devices.push({ ip, status });
+          }
+        }
+      }
+
+      return { success: true, devices };
+    } catch (error: any) {
+      console.error("Error listing Tizen devices:", error);
+      return {
+        success: false,
+        message: `Failed to list devices: ${error.message}. Ensure Tizen Studio is installed and 'sdb' is in your PATH.`,
+        devices: [],
+      };
+    }
+  });
+
+  // Connect to a Tizen device
+  ipcMain.handle("add-tizen-device", async (_event, ip: string) => {
+    try {
+      const sdbCmd = getSdkCommand("sdb");
+      const { stdout, stderr } = await execAsync(
+        `"${sdbCmd}" connect ${ip}:26101`
+      );
+
+      if (stderr && stderr.toLowerCase().includes("error")) {
+        throw new Error(stderr);
+      }
+
+      const { stdout: devicesOutput } = await execAsync(`"${sdbCmd}" devices`);
+
+      if (devicesOutput.includes(ip)) {
+        return {
+          success: true,
+          message: `Successfully connected to Tizen TV at ${ip}`,
+        };
+      } else {
+        throw new Error(
+          "Connection command executed but device not found in device list"
+        );
+      }
+    } catch (error: any) {
+      console.error(`Error connecting to Tizen device ${ip}:`, error);
+      let message = error.message || "Failed to connect to device";
+
+      if (message.includes("Connection refused")) {
+        message =
+          "Connection refused. Ensure Developer Mode is enabled on the TV and it is connected to the network.";
+      } else if (message.includes("No route to host")) {
+        message =
+          "Device unreachable. Check if TV is on and connected to the same network.";
+      }
+
+      return {
+        success: false,
+        message,
+      };
+    }
+  });
+
+  // Disconnect from a Tizen device
+  ipcMain.handle("remove-tizen-device", async (_event, ip: string) => {
+    try {
+      const sdbCmd = getSdkCommand("sdb");
+      const { stdout } = await execAsync(`"${sdbCmd}" disconnect ${ip}`);
+      return {
+        success: true,
+        message: `Disconnected from ${ip}`,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.message || "Failed to disconnect from device",
+      };
+    }
+  });
+}
+
+// Exported platform-specific functions for use by main handler
+
+export async function testTizenConnection(tvIp: string) {
+  try {
+    const sdbCmd = getSdkCommand("sdb");
+    await execAsync(`"${sdbCmd}" disconnect`);
+    const { stderr } = await execAsync(`"${sdbCmd}" connect ${tvIp}`);
+    if (stderr && stderr.includes("error")) throw new Error(stderr);
+
+    try {
+      await execAsync(`"${sdbCmd}" -s ${tvIp}:26101 shell ls /`);
+    } catch {
+      throw new Error(
+        "Device did not respond to shell command. TV may be off or unreachable."
+      );
+    }
+
+    return {
+      success: true,
+      message: `Successfully connected to Tizen TV at ${tvIp}`,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.message || "Connection failed",
+    };
+  }
+}
+
+export async function buildTizenPackage(projectPath: string) {
+  const os = await import("os");
+
+  try {
+    const tempDir = path.join(os.tmpdir(), `tizen-build-${Date.now()}`);
+    await fs.mkdir(tempDir, { recursive: true });
+
+    try {
+      const files = await fs.readdir(projectPath);
+      const excludePatterns = [
+        ".project",
+        ".settings",
+        ".sign",
+        ".tproject",
+        ".buildResult",
+        ".wgt",
+        ".manifest.tmp",
+        "author-signature.xml",
+        "signature1.xml",
+      ];
+
+      for (const file of files) {
+        if (excludePatterns.some((p) => file.startsWith(p) || file.endsWith(p)))
+          continue;
+
+        const srcPath = path.join(projectPath, file);
+        const destPath = path.join(tempDir, file);
+        const stat = await fs.stat(srcPath);
+
+        if (stat.isDirectory()) {
+          await execAsync(`cp -r "${srcPath}" "${destPath}"`);
+        } else {
+          await fs.copyFile(srcPath, destPath);
+        }
+      }
+
+      const tizenCmd = getSdkCommand("tizen");
+      await execAsync(`"${tizenCmd}" package -t wgt`, { cwd: tempDir });
+      const tempFiles = await fs.readdir(tempDir);
+      const wgtFile = tempFiles.find((f) => f.endsWith(".wgt"));
+
+      if (!wgtFile) throw new Error("WGT file not found after build");
+
+      await fs.copyFile(
+        path.join(tempDir, wgtFile),
+        path.join(projectPath, wgtFile)
+      );
+      await execAsync(`rm -rf "${tempDir}"`);
+
+      return {
+        success: true,
+        message: `WGT package generated successfully`,
+        packagePath: path.join(projectPath, wgtFile),
+        packageName: wgtFile,
+      };
+    } catch (error) {
+      try {
+        await execAsync(`rm -rf "${tempDir}"`);
+      } catch {}
+      throw error;
+    }
+  } catch (error: any) {
+    console.error("Error building Tizen package:", error);
+    return {
+      success: false,
+      message: `Build failed: ${error.message}. Check if 'tizen' CLI is in your PATH and project has valid config.xml.`,
+    };
+  }
+}
+
+export async function deployTizenApp(
+  tvIp: string,
+  projectPath: string,
+  mode: "debug" | "run",
+  sendLog: (message: string) => void
+) {
+  try {
+    const sdbCmd = getSdkCommand("sdb");
+    const tizenCmd = getSdkCommand("tizen");
+    sendLog(
+      `[${new Date().toLocaleTimeString()}] Connecting to TV at ${tvIp}...`
+    );
+    await execAsync(`"${sdbCmd}" connect ${tvIp}`);
+    sendLog(`[${new Date().toLocaleTimeString()}] Connected successfully`);
+
+    const files = await fs.readdir(projectPath);
+    let wgtFile = files.find((f) => f.endsWith(".wgt"));
+    if (!wgtFile)
+      throw new Error("WGT file not found. Please build the package first.");
+
+    let wgtPath = path.join(projectPath, wgtFile);
+    const wgtFileNoSpaces = wgtFile.replace(/\s+/g, "");
+    if (wgtFile !== wgtFileNoSpaces) {
+      const newWgtPath = path.join(projectPath, wgtFileNoSpaces);
+      sendLog(
+        `[${new Date().toLocaleTimeString()}] Renaming WGT file from "${wgtFile}" to "${wgtFileNoSpaces}"`
+      );
+      await fs.rename(wgtPath, newWgtPath);
+      wgtFile = wgtFileNoSpaces;
+      wgtPath = newWgtPath;
+    }
+
+    sendLog(`[${new Date().toLocaleTimeString()}] Installing ${wgtFile}...`);
+    const deviceSerial = `${tvIp}:26101`;
+    await execAsync(`"${tizenCmd}" install -n "${wgtPath}" -s ${deviceSerial}`);
+    sendLog(`[${new Date().toLocaleTimeString()}] Installation complete`);
+
+    const configPath = path.join(projectPath, "config.xml");
+    const configContent = await fs.readFile(configPath, "utf-8");
+    const appIdMatch = configContent.match(
+      /<tizen:application[^>]*id="([^"]+)"/
+    );
+    if (!appIdMatch)
+      throw new Error("Could not find tizen:application id in config.xml");
+
+    let appId = appIdMatch[1];
+    if (/^https?:\/\//.test(appId)) {
+      throw new Error(
+        `Invalid Tizen app ID extracted from config.xml: ${appId}.\\nThe <tizen:application id> must be a valid Tizen app ID, not a URL.`
+      );
+    }
+
+    // Add device as Tizen target if not already added
+    try {
+      const targetName = tvIp.replace(/\./g, "-");
+      await execAsync(
+        `"${tizenCmd}" add remote-device -n ${targetName} -t TV -i ${tvIp}`
+      );
+      sendLog(
+        `[${new Date().toLocaleTimeString()}] Registered TV as target: ${targetName}`
+      );
+    } catch (error: any) {
+      // Target may already exist, which is fine - this step is optional
+      // Silently continue without logging errors
+    }
+
+    if (mode === "debug") {
+      sendLog(
+        `[${new Date().toLocaleTimeString()}] Starting app in debug mode...`
+      );
+
+      // Tizen debugging uses sdb shell debug command which outputs a dynamic port
+      const { spawn } = await import("child_process");
+
+      return await new Promise((resolve) => {
+        const debugProcess = spawn(
+          sdbCmd,
+          ["-s", deviceSerial, "shell", "0", "debug", appId],
+          { shell: true }
+        );
+
+        let urlFound = false;
+        let outputBuffer = "";
+        let timeoutHandle: NodeJS.Timeout;
+
+        const checkForDebugPort = (text: string) => {
+          if (urlFound) return;
+
+          outputBuffer += text;
+
+          // Tizen outputs debug port in format like:
+          // "... port: 7011" or "debug port is 7011" or just the port number
+          const portMatch = outputBuffer.match(
+            /(?:port[:\s]+|:)(\d{4,5})|^(\d{4,5})$/m
+          );
+
+          if (portMatch) {
+            const debugPort = portMatch[1] || portMatch[2];
+            urlFound = true;
+
+            sendLog(
+              `[${new Date().toLocaleTimeString()}] Debug port detected: ${debugPort}`
+            );
+
+            // Forward the port
+            execAsync(
+              `"${sdbCmd}" -s ${deviceSerial} forward tcp:${debugPort} tcp:${debugPort}`
+            )
+              .then(() => {
+                const inspectorUrl = `chrome://inspect/#devices`;
+                const localUrl = `localhost:${debugPort}`;
+
+                sendLog(
+                  `[${new Date().toLocaleTimeString()}] ✓ Port forwarded successfully`
+                );
+                sendLog(
+                  `[${new Date().toLocaleTimeString()}] ✓ Inspector URL:`
+                );
+                sendLog(`  1. Open Chrome and navigate to: ${inspectorUrl}`);
+                sendLog(`  2. Click "Configure..." and add: ${localUrl}`);
+                sendLog(
+                  `  3. Your app should appear - click "inspect" to debug`
+                );
+                sendLog(
+                  `[${new Date().toLocaleTimeString()}] 🔍 Chrome DevTools connection ready!`
+                );
+
+                if (timeoutHandle) {
+                  clearTimeout(timeoutHandle);
+                }
+
+                resolve({
+                  success: true,
+                  message: "Deployment completed successfully",
+                });
+              })
+              .catch((err) => {
+                sendLog(
+                  `[${new Date().toLocaleTimeString()}] Warning: Port forwarding failed: ${
+                    err.message
+                  }`
+                );
+                sendLog(
+                  `[${new Date().toLocaleTimeString()}] You may need to manually run: sdb forward tcp:${debugPort} tcp:${debugPort}`
+                );
+
+                if (timeoutHandle) {
+                  clearTimeout(timeoutHandle);
+                }
+
+                resolve({
+                  success: true,
+                  message:
+                    "Deployment completed (manual port forwarding needed)",
+                });
+              });
+          }
+        };
+
+        debugProcess.stdout.on("data", (data) => {
+          const text = data.toString();
+          console.log(`sdb debug stdout: ${text}`);
+
+          // Send raw output to logs
+          if (text.trim()) {
+            sendLog(`[${new Date().toLocaleTimeString()}] ${text.trim()}`);
+          }
+
+          checkForDebugPort(text);
+        });
+
+        debugProcess.stderr.on("data", (data) => {
+          const text = data.toString();
+          console.log(`sdb debug stderr: ${text}`);
+
+          if (text.trim()) {
+            sendLog(`[${new Date().toLocaleTimeString()}] ${text.trim()}`);
+          }
+
+          checkForDebugPort(text);
+        });
+
+        debugProcess.on("error", (err) => {
+          console.error("sdb debug process error:", err);
+          sendLog(`[${new Date().toLocaleTimeString()}] Error: ${err.message}`);
+
+          if (timeoutHandle) {
+            clearTimeout(timeoutHandle);
+          }
+
+          resolve({
+            success: false,
+            message: "Failed to start debug session: " + err.message,
+          });
+        });
+
+        // Timeout after 15 seconds if no port is found
+        timeoutHandle = setTimeout(() => {
+          if (!urlFound) {
+            console.warn(
+              "Debug port timeout: Port not detected within 15 seconds"
+            );
+            console.log("Output buffer:", outputBuffer);
+            sendLog(
+              `[${new Date().toLocaleTimeString()}] ⚠️ Application launched in debug mode`
+            );
+            sendLog(
+              `[${new Date().toLocaleTimeString()}] Debug port not detected automatically.`
+            );
+            sendLog(
+              `[${new Date().toLocaleTimeString()}] Check the logs above for port information.`
+            );
+
+            resolve({
+              success: true,
+              message: "Deployment completed (debug port not detected)",
+            });
+          }
+        }, 15000);
+      });
+    } else {
+      sendLog(`[${new Date().toLocaleTimeString()}] Launching application...`);
+      await execAsync(`"${tizenCmd}" run -p ${appId} -s ${deviceSerial}`);
+      sendLog(
+        `[${new Date().toLocaleTimeString()}] Application launched successfully`
+      );
+    }
+
+    return { success: true, message: "Deployment completed successfully" };
+  } catch (error: any) {
+    console.error("Error deploying Tizen app:", error);
+    const message = error.message || "Deployment failed";
+    sendLog(`[${new Date().toLocaleTimeString()}] Error: ${message}`);
+
+    let userMessage = message;
+    if (message.includes("install failed")) {
+      userMessage = `Installation failed: ${message}. Check if TV has enough storage and Developer Mode is active.`;
+    } else if (message.includes("closed")) {
+      userMessage =
+        "Connection lost during deployment. Please check network connection.";
+    }
+
+    return { success: false, message: userMessage };
+  }
+}
