@@ -88,6 +88,26 @@ function createWindow() {
     win?.webContents.send("main-process-message", new Date().toLocaleString());
   });
 
+  // Configure Content Security Policy
+  win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        "Content-Security-Policy": [
+          "default-src 'self';" +
+            "script-src 'self';" +
+            "style-src 'self' 'unsafe-inline';" + // unsafe-inline needed for React inline styles
+            "img-src 'self' data:;" +
+            "font-src 'self';" +
+            "connect-src 'self' https://github.com;" + // for auto-updater
+            "frame-src 'none';" +
+            "object-src 'none';" +
+            "base-uri 'self';",
+        ],
+      },
+    });
+  });
+
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
     win.webContents.openDevTools();
