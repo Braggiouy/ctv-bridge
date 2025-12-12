@@ -6,7 +6,7 @@ export const Footer = () => {
     <footer className="border-t bg-card/30 mt-auto">
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/60">
-          <span>v{packageJson.version}</span>
+          <span>{packageJson.version}</span>
           <span>•</span>
           <span>
             by{" "}

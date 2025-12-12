@@ -29,6 +29,14 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
       - name: Install dependencies
         run: bun install
 
@@ -41,11 +49,6 @@ jobs:
           ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bunx vite build && bunx electron-builder ${{ inputs.platform-arg }} -p never
-
-      - name: Optional macOS code signing
-        if: ${{ startsWith(inputs.os, 'macos') }}
-        run: |
-          echo "Skipping macOS code signing – no certificate configured"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

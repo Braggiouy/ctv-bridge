@@ -1,8 +1,10 @@
 # CTV Bridge
 
 ![License](https://img.shields.io/github/license/Braggiouy/ctv-bridge?style=flat-square)
-![Version](https://img.shields.io/github/package-json/v/Braggiouy/ctv-bridge?branch=main&style=flat-square)
+![Release](https://img.shields.io/github/v/release/Braggiouy/ctv-bridge?style=flat-square)
+![Downloads](https://img.shields.io/github/downloads/Braggiouy/ctv-bridge/total?style=flat-square)
 ![Build Status](https://img.shields.io/github/actions/workflow/status/Braggiouy/ctv-bridge/release.yml?branch=main&style=flat-square)
+![GitHub Stars](https://img.shields.io/github/stars/Braggiouy/ctv-bridge?style=flat-square)
 ![Electron](https://img.shields.io/badge/Electron-39.0.0-47848F?style=flat-square&logo=electron&logoColor=white)
 ![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=flat-square&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7.2-3178C6?style=flat-square&logo=typescript&logoColor=white)
@@ -235,8 +237,20 @@ Contributions are welcome! Please:
 
 ---
 
+## ⭐ Support the Project
+
+If CTV Bridge has saved you time and made your development workflow easier, consider giving it a star on GitHub! ⭐
+
+It helps the project reach more developers and motivates continued development.
+
+[**⭐ Star on GitHub**](https://github.com/Braggiouy/ctv-bridge)
+
+---
+
 ## 🤝 Community & Support
 
+- **[GitHub Issues](https://github.com/Braggiouy/ctv-bridge/issues)**: Report bugs and request features.
+- **[GitHub Discussions](https://github.com/Braggiouy/ctv-bridge/discussions)**: Ask questions and share ideas.
 - **[Contributing Guide](CONTRIBUTING.md)**: Learn how to contribute to the project.
 - **[Security Policy](SECURITY.md)**: How to report security vulnerabilities.
 - **[Code of Conduct](CODE_OF_CONDUCT.md)**: Our community standards.
