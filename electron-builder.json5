@@ -12,25 +12,41 @@
   "artifactName": "${name}-${version}-${arch}.${ext}",
   "files": [
     "dist",
-    "dist-electron"
+    "dist-electron",
+    "!dist/**/*.map",  // Exclude source maps
+    "!dist-electron/**/*.map"
   ],
+  // Exclude unnecessary files from all builds
+  "asarUnpack": [],
+  "extraResources": [],
+  "compression": "maximum",  // Enable maximum compression
   "mac": {
-    "target": ["dmg", "zip"],
+    "target": ["dmg"],  // Only DMG (most common for Mac)
     "category": "public.app-category.developer-tools",
     "icon": "public/icon.icns",
-    "identity": null
+    "identity": null,
+    "artifactName": "${name}-${version}-${arch}.${ext}"
+  },
+  "dmg": {
+    "writeUpdateInfo": true
   },
   "win": {
-    "target": ["nsis", "portable"],
-    "icon": "public/icon.ico"
-  },
-  "linux": {
-    "target": ["AppImage", "deb"],
-    "category": "Development",
-    "icon": "public/icon.png"
+    "target": ["nsis"],  // Only NSIS installer (most common for Windows)
+    "icon": "public/icon.ico",
+    "artifactName": "${name}-${version}.${ext}"
   },
   "nsis": {
     "oneClick": false,
-    "allowToChangeInstallationDirectory": true
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "artifactName": "${name}-${version}-setup.${ext}"
+  },
+  "linux": {
+    "target": ["AppImage"],  // Only AppImage (most portable for Linux)
+    "category": "Development",
+    "icon": "public/icon.png",
+    "artifactName": "${name}-${version}-${arch}.${ext}"
   }
 }
+
