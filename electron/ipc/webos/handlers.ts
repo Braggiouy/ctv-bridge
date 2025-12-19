@@ -2,6 +2,9 @@ import { ipcMain, dialog } from "electron";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { store } from "../../store";
+import { logger } from "../../utils/logger";
+import { getErrorMessage } from "../../utils/errors";
+import { WEBOS_CONSTANTS, DEPLOY_CONSTANTS } from "../../utils/constants";
 
 const execAsync = promisify(exec);
 
@@ -28,7 +31,12 @@ export function registerWebOsHandlers() {
       );
       // Parse tabular output
       const lines = stdout.split(/\r?\n/).filter(Boolean);
-      const devices: any[] = [];
+      const devices: Array<{
+        name: string;
+        ip: string;
+        port: string;
+        username: string;
+      }> = [];
       // Find header line and start parsing after it
       let startIdx = 0;
       for (let i = 0; i < lines.length; i++) {
@@ -47,8 +55,8 @@ export function registerWebOsHandlers() {
         const parts = line.split(/\s{2,}/);
         if (parts.length < 2) continue;
         // name, deviceinfo, connection, profile
-        let name = parts[0].replace(/ \(default\)/, "").trim();
-        let deviceinfo = parts[1];
+        const name = parts[0].replace(/ \(default\)/, "").trim();
+        const deviceinfo = parts[1];
         // deviceinfo format: user@ip:port
         let username = "",
           ip = "",
@@ -62,8 +70,8 @@ export function registerWebOsHandlers() {
         devices.push({ name, ip, port, username });
       }
       return { success: true, devices };
-    } catch (error: any) {
-      return { success: false, message: error.message };
+    } catch (error) {
+      return { success: false, message: getErrorMessage(error) };
     }
   });
 
@@ -106,7 +114,12 @@ export function registerWebOsHandlers() {
       );
       // Parse tabular output
       const lines = listOut.split(/\r?\n/).filter(Boolean);
-      const devices: any[] = [];
+      const devices: Array<{
+        name: string;
+        ip: string;
+        port: string;
+        username: string;
+      }> = [];
       let startIdx = 0;
       for (let i = 0; i < lines.length; i++) {
         if (
@@ -122,8 +135,8 @@ export function registerWebOsHandlers() {
         if (!line) continue;
         const parts = line.split(/\s{2,}/);
         if (parts.length < 2) continue;
-        let name = parts[0].replace(/ \(default\)/, "").trim();
-        let deviceinfo = parts[1];
+        const name = parts[0].replace(/ \(default\)/, "").trim();
+        const deviceinfo = parts[1];
         let username = "",
           ip = "",
           port = "";
@@ -136,14 +149,19 @@ export function registerWebOsHandlers() {
         devices.push({ name, ip, port, username });
       }
       return { success: true, message: stdout, devices };
-    } catch (error: any) {
+    } catch (error) {
       if (error.message && error.message.includes("already exists")) {
         // Still return updated device list
         const { stdout: listOut } = await execAsync(
           `${getAresCommand("-setup-device")} --list`
         );
         const lines = listOut.split(/\r?\n/).filter(Boolean);
-        const devices: any[] = [];
+        const devices: Array<{
+          name: string;
+          ip: string;
+          port: string;
+          username: string;
+        }> = [];
         let startIdx = 0;
         for (let i = 0; i < lines.length; i++) {
           if (
@@ -159,8 +177,8 @@ export function registerWebOsHandlers() {
           if (!line) continue;
           const parts = line.split(/\s{2,}/);
           if (parts.length < 2) continue;
-          let name = parts[0].replace(/ \(default\)/, "").trim();
-          let deviceinfo = parts[1];
+          const name = parts[0].replace(/ \(default\)/, "").trim();
+          const deviceinfo = parts[1];
           let username = "",
             ip = "",
             port = "";
@@ -174,14 +192,14 @@ export function registerWebOsHandlers() {
         }
         return { success: true, message: error.message, devices };
       }
-      return { success: false, message: error.message };
+      return { success: false, message: getErrorMessage(error) };
     }
   });
 
   // Update a webOS device
   ipcMain.handle("update-device", async (_event, device) => {
     try {
-      console.log("Updating device:", device);
+      logger.info("Updating device", { name: device.name });
       // Validate device name
       if (!device.name) {
         return { success: false, message: "Device name is required." };
@@ -204,10 +222,7 @@ export function registerWebOsHandlers() {
         );
       } catch (err) {
         // Ignore error if device does not exist
-        console.log(
-          `Device ${device.name} removal error (may not exist):`,
-          err.message
-        );
+        logger.debug(`Device removal (may not exist)`, { name: device.name });
       }
       // Add device with updated info
       const cmd = `${getAresCommand("-setup-device")} -a ${
@@ -217,8 +232,8 @@ export function registerWebOsHandlers() {
       }"`;
       const { stdout } = await execAsync(cmd);
       return { success: true, message: stdout };
-    } catch (error: any) {
-      return { success: false, message: error.message };
+    } catch (error) {
+      return { success: false, message: getErrorMessage(error) };
     }
   });
 
@@ -228,8 +243,8 @@ export function registerWebOsHandlers() {
       const cmd = `${getAresCommand("-setup-device")} --remove ${name}`;
       const { stdout } = await execAsync(cmd);
       return { success: true, message: stdout };
-    } catch (error: any) {
-      return { success: false, message: error.message };
+    } catch (error) {
+      return { success: false, message: getErrorMessage(error) };
     }
   });
 }
@@ -255,7 +270,7 @@ export async function testWebOsConnection(
       success: true,
       message: `Successfully connected to webOS device: ${deviceName}`,
     };
-  } catch (error: any) {
+  } catch (error) {
     // Check for SSH authentication failure - try to set up SSH keys automatically
     if (
       error.message.includes("All configured authentication methods failed") ||
@@ -264,8 +279,9 @@ export async function testWebOsConnection(
       // If we have a passphrase, try to set up SSH keys automatically
       if (passphrase) {
         try {
-          console.log(
-            `SSH authentication failed, attempting to set up SSH keys for ${deviceName}...`
+          logger.info(
+            `SSH authentication failed, attempting to set up SSH keys`,
+            { deviceName }
           );
 
           // Run ares-novacom --getkey with the passphrase
@@ -285,14 +301,14 @@ export async function testWebOsConnection(
             proc.stdout.on("data", (data) => {
               const text = data.toString();
               output += text;
-              console.log(`ares-novacom stdout: ${text}`);
+              logger.debug(`ares-novacom stdout: ${text}`);
 
               // Check if it's asking for passphrase
               if (
                 (text.includes("passphrase") || text.includes("Passphrase")) &&
                 !passphraseEntered
               ) {
-                console.log(`Sending passphrase...`);
+                logger.debug("Sending passphrase to ares-novacom");
                 proc.stdin.write(`${passphrase}\n`);
                 passphraseEntered = true;
               }
@@ -301,11 +317,11 @@ export async function testWebOsConnection(
             proc.stderr.on("data", (data) => {
               const text = data.toString();
               errorOutput += text;
-              console.log(`ares-novacom stderr: ${text}`);
+              logger.debug(`ares-novacom stderr: ${text}`);
             });
 
             proc.on("close", async (code) => {
-              console.log(`ares-novacom exited with code ${code}`);
+              logger.debug(`ares-novacom exited with code ${code}`);
 
               if (
                 code === 0 ||
@@ -344,10 +360,12 @@ export async function testWebOsConnection(
               });
             });
           });
-        } catch (setupError: any) {
+        } catch (setupError) {
           return {
             success: false,
-            message: `Failed to set up SSH keys: ${setupError.message}`,
+            message: `Failed to set up SSH keys: ${getErrorMessage(
+              setupError
+            )}`,
           };
         }
       } else {
@@ -377,14 +395,14 @@ export async function testWebOsConnection(
 
     return {
       success: false,
-      message: error.message || "Connection failed",
+      message: getErrorMessage(error) || "Connection failed",
     };
   }
 }
 
 export async function buildWebOsPackage(projectPath: string) {
   try {
-    console.log(`Building webOS package from: ${projectPath}`);
+    logger.info("Building webOS package", { projectPath });
 
     const path = await import("path");
     const fs = await import("fs/promises");
@@ -403,7 +421,7 @@ export async function buildWebOsPackage(projectPath: string) {
     );
 
     if (stderr) {
-      console.log(`ares-package stderr:`, stderr);
+      logger.debug("ares-package stderr", stderr);
     }
 
     // The IPK file is created in the parent directory
@@ -433,12 +451,10 @@ export async function buildWebOsPackage(projectPath: string) {
     const ipkInParent = path.join(parentDir, newestIpk);
     const ipkInProject = path.join(projectPath, newestIpk);
 
-    console.log(
-      `Found IPK file: ${newestIpk} (modified: ${new Date(
-        newestTime
-      ).toISOString()})`
-    );
-    console.log(`Moving IPK from ${ipkInParent} to ${ipkInProject}`);
+    logger.info(`Found IPK file: ${newestIpk}`, {
+      modifiedTime: new Date(newestTime).toISOString(),
+    });
+    logger.debug(`Moving IPK from ${ipkInParent} to ${ipkInProject}`);
 
     // Move the IPK file into the project directory
     await fs.rename(ipkInParent, ipkInProject);
@@ -449,8 +465,8 @@ export async function buildWebOsPackage(projectPath: string) {
       packagePath: ipkInProject,
       packageName: newestIpk,
     };
-  } catch (error: any) {
-    console.error(`Build error:`, error);
+  } catch (error) {
+    logger.error("Build error", error);
 
     // Check for common errors
     if (error.message.includes("command not found")) {
@@ -471,7 +487,7 @@ export async function buildWebOsPackage(projectPath: string) {
 
     return {
       success: false,
-      message: error.message || "Build failed",
+      message: getErrorMessage(error) || "Build failed",
     };
   }
 }
@@ -512,7 +528,7 @@ export async function deployWebOsApp(
     }
 
     sendLog("Installation complete");
-    console.log("Install output:", installOut);
+    logger.debug("Install output", installOut);
 
     // Extract app ID from appinfo.json
     const appinfoPath = path.join(projectPath, "appinfo.json");
@@ -566,7 +582,7 @@ export async function deployWebOsApp(
             if (urlMatch) {
               urlFound = true;
               const inspectorUrl = urlMatch[1];
-              console.log(`Debug URL found in ${source}: ${inspectorUrl}`);
+              logger.debug(`Debug URL found in ${source}: ${inspectorUrl}`);
               sendLog("✓ Inspector URL captured:");
               sendLog(inspectorUrl);
               sendLog("Copy and paste the URL above into Chrome to debug");
@@ -589,7 +605,7 @@ export async function deployWebOsApp(
 
         proc.stdout.on("data", (data) => {
           const text = data.toString();
-          console.log(`ares-inspect stdout: ${text}`);
+          logger.debug(`ares-inspect stdout: ${text}`);
 
           // Check for URL in stdout first
           const hasUrl =
@@ -609,7 +625,7 @@ export async function deployWebOsApp(
 
         proc.stderr.on("data", (data) => {
           const text = data.toString();
-          console.log(`ares-inspect stderr: ${text}`);
+          logger.debug(`ares-inspect stderr: ${text}`);
 
           // Check for URL in stderr first
           const hasUrl =
@@ -632,7 +648,7 @@ export async function deployWebOsApp(
         });
 
         proc.on("error", (err) => {
-          console.error("ares-inspect process error:", err);
+          logger.error("ares-inspect process error", err);
           sendLog("Error starting inspector: " + err.message);
           if (timeoutHandle) {
             clearTimeout(timeoutHandle);
@@ -646,10 +662,8 @@ export async function deployWebOsApp(
         // Timeout after 15 seconds if no URL is found (increased from 10s)
         timeoutHandle = setTimeout(() => {
           if (!urlFound) {
-            console.warn(
-              "Debug URL timeout: URL not captured within 15 seconds"
-            );
-            console.log("Output buffer content:", outputBuffer);
+            logger.warn("Debug URL timeout: URL not captured within timeout");
+            logger.debug("Output buffer content:", outputBuffer);
             sendLog("⚠️ Application launched in debug mode");
             sendLog(
               "Debug URL not captured automatically. This can happen if:"
@@ -664,7 +678,7 @@ export async function deployWebOsApp(
               message: "Deployment completed (debug URL not captured)",
             });
           }
-        }, 15000);
+        }, DEPLOY_CONSTANTS.DEBUG_PORT_TIMEOUT_MS);
       });
     } else {
       // For run mode, just launch normally
@@ -676,7 +690,7 @@ export async function deployWebOsApp(
         throw new Error(launchErr);
       }
 
-      console.log("Launch output:", launchOut);
+      logger.debug("Launch output", launchOut);
       sendLog("Application launched successfully");
     }
 
@@ -684,11 +698,11 @@ export async function deployWebOsApp(
       success: true,
       message: "Deployment completed successfully",
     };
-  } catch (error: any) {
-    console.error("Deployment error:", error);
+  } catch (error) {
+    logger.error("Deployment error", error);
     return {
       success: false,
-      message: error.message || "Deployment failed",
+      message: getErrorMessage(error) || "Deployment failed",
     };
   }
 }

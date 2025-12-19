@@ -6,6 +6,8 @@ import { registerIpcHandlers } from "./ipc/handlers";
 import { registerSdkCheckHandlers } from "./common/sdk-check";
 import { registerUpdaterHandlers } from "./ipc/updater/handlers";
 import { store } from "./store";
+import { WINDOW_CONSTANTS, DEPLOY_CONSTANTS } from "./utils/constants";
+import { logger } from "./utils/logger";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -19,10 +21,10 @@ const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 800,
-    minHeight: 600,
+    width: WINDOW_CONSTANTS.DEFAULT_WIDTH,
+    height: WINDOW_CONSTANTS.DEFAULT_HEIGHT,
+    minWidth: WINDOW_CONSTANTS.MIN_WIDTH,
+    minHeight: WINDOW_CONSTANTS.MIN_HEIGHT,
     title: "CTV Bridge",
     icon: process.env.VITE_PUBLIC
       ? path.join(process.env.VITE_PUBLIC, "logo.png")
@@ -69,7 +71,7 @@ function createWindow() {
   });
 
   autoUpdater.on("error", (err) => {
-    console.error("Auto-updater error:", err);
+    logger.error("Auto-updater error", err);
     let message = err.message;
     // Handle macOS code signing errors
     if (
@@ -90,19 +92,30 @@ function createWindow() {
 
   // Configure Content Security Policy
   win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    // In development mode, we need to allow inline scripts for Vite HMR
+    const isDevMode = !!VITE_DEV_SERVER_URL;
+
+    const scriptSrc = isDevMode
+      ? "'self' 'unsafe-inline' 'unsafe-eval'" // Vite needs these for HMR
+      : "'self'"; // Strict for production
+
+    const connectSrc = isDevMode
+      ? "'self' https://github.com ws://localhost:*" // Allow websocket for HMR
+      : "'self' https://github.com"; // Only GitHub for auto-updater in production
+
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         "Content-Security-Policy": [
-          "default-src 'self';" +
-            "script-src 'self';" +
-            "style-src 'self' 'unsafe-inline';" + // unsafe-inline needed for React inline styles
-            "img-src 'self' data:;" +
-            "font-src 'self';" +
-            "connect-src 'self' https://github.com;" + // for auto-updater
-            "frame-src 'none';" +
-            "object-src 'none';" +
-            "base-uri 'self';",
+          `default-src 'self';` +
+            `script-src ${scriptSrc};` +
+            `style-src 'self' 'unsafe-inline';` + // unsafe-inline needed for React inline styles
+            `img-src 'self' data:;` +
+            `font-src 'self';` +
+            `connect-src ${connectSrc};` +
+            `frame-src 'none';` +
+            `object-src 'none';` +
+            `base-uri 'self';`,
         ],
       },
     });
@@ -140,8 +153,8 @@ app.whenReady().then(() => {
   if (!VITE_DEV_SERVER_URL) {
     setTimeout(() => {
       autoUpdater.checkForUpdates().catch((err) => {
-        console.error("Failed to check for updates:", err);
+        logger.error("Failed to check for updates", err);
       });
-    }, 3000);
+    }, DEPLOY_CONSTANTS.UPDATE_CHECK_DELAY_MS);
   }
 });

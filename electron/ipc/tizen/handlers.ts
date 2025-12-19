@@ -4,6 +4,13 @@ import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
 import { store } from "../../store";
+import { logger } from "../../utils/logger";
+import { getErrorMessage } from "../../utils/errors";
+import {
+  TIZEN_CONSTANTS,
+  BUILD_CONSTANTS,
+  DEPLOY_CONSTANTS,
+} from "../../utils/constants";
 
 const execAsync = promisify(exec);
 
@@ -27,7 +34,7 @@ export function registerTizenHandlers() {
       const sdbCmd = getSdkCommand("sdb");
       const { stdout } = await execAsync(`"${sdbCmd}" devices`);
       const lines = stdout.split(/\r?\n/).filter(Boolean);
-      const devices: any[] = [];
+      const devices: Array<{ ip: string; status: string }> = [];
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -46,11 +53,13 @@ export function registerTizenHandlers() {
       }
 
       return { success: true, devices };
-    } catch (error: any) {
-      console.error("Error listing Tizen devices:", error);
+    } catch (error) {
+      logger.error("Error listing Tizen devices", error);
       return {
         success: false,
-        message: `Failed to list devices: ${error.message}. Ensure Tizen Studio is installed and 'sdb' is in your PATH.`,
+        message: `Failed to list devices: ${getErrorMessage(
+          error
+        )}. Ensure Tizen Studio is installed and 'sdb' is in your PATH.`,
         devices: [],
       };
     }
@@ -61,7 +70,7 @@ export function registerTizenHandlers() {
     try {
       const sdbCmd = getSdkCommand("sdb");
       const { stdout, stderr } = await execAsync(
-        `"${sdbCmd}" connect ${ip}:26101`
+        `"${sdbCmd}" connect ${ip}:${TIZEN_CONSTANTS.DEFAULT_PORT}`
       );
 
       if (stderr && stderr.toLowerCase().includes("error")) {
@@ -80,9 +89,9 @@ export function registerTizenHandlers() {
           "Connection command executed but device not found in device list"
         );
       }
-    } catch (error: any) {
-      console.error(`Error connecting to Tizen device ${ip}:`, error);
-      let message = error.message || "Failed to connect to device";
+    } catch (error) {
+      logger.error(`Error connecting to Tizen device ${ip}`, error);
+      let message = getErrorMessage(error) || "Failed to connect to device";
 
       if (message.includes("Connection refused")) {
         message =
@@ -108,10 +117,10 @@ export function registerTizenHandlers() {
         success: true,
         message: `Disconnected from ${ip}`,
       };
-    } catch (error: any) {
+    } catch (error) {
       return {
         success: false,
-        message: error.message || "Failed to disconnect from device",
+        message: getErrorMessage(error) || "Failed to disconnect from device",
       };
     }
   });
@@ -138,10 +147,10 @@ export async function testTizenConnection(tvIp: string) {
       success: true,
       message: `Successfully connected to Tizen TV at ${tvIp}`,
     };
-  } catch (error: any) {
+  } catch (error) {
     return {
       success: false,
-      message: error.message || "Connection failed",
+      message: getErrorMessage(error) || "Connection failed",
     };
   }
 }
@@ -155,17 +164,7 @@ export async function buildTizenPackage(projectPath: string) {
 
     try {
       const files = await fs.readdir(projectPath);
-      const excludePatterns = [
-        ".project",
-        ".settings",
-        ".sign",
-        ".tproject",
-        ".buildResult",
-        ".wgt",
-        ".manifest.tmp",
-        "author-signature.xml",
-        "signature1.xml",
-      ];
+      const excludePatterns = BUILD_CONSTANTS.EXCLUDE_PATTERNS;
 
       for (const file of files) {
         if (excludePatterns.some((p) => file.startsWith(p) || file.endsWith(p)))
@@ -204,14 +203,18 @@ export async function buildTizenPackage(projectPath: string) {
     } catch (error) {
       try {
         await execAsync(`rm -rf "${tempDir}"`);
-      } catch {}
+      } catch (cleanupError) {
+        logger.warn("Failed to cleanup temp directory", cleanupError);
+      }
       throw error;
     }
-  } catch (error: any) {
-    console.error("Error building Tizen package:", error);
+  } catch (error) {
+    logger.error("Error building Tizen package", error);
     return {
       success: false,
-      message: `Build failed: ${error.message}. Check if 'tizen' CLI is in your PATH and project has valid config.xml.`,
+      message: `Build failed: ${getErrorMessage(
+        error
+      )}. Check if 'tizen' CLI is in your PATH and project has valid config.xml.`,
     };
   }
 }
@@ -253,15 +256,15 @@ export async function deployTizenApp(
     await execAsync(`"${tizenCmd}" install -n "${wgtPath}" -s ${deviceSerial}`);
     sendLog(`[${new Date().toLocaleTimeString()}] Installation complete`);
 
-    const configPath = path.join(projectPath, "config.xml");
+    const configPath = path.join(projectPath, TIZEN_CONSTANTS.CONFIG_FILE);
     const configContent = await fs.readFile(configPath, "utf-8");
-    const appIdMatch = configContent.match(
-      /<tizen:application[^>]*id="([^"]+)"/
-    );
+    const appIdMatch = configContent.match(TIZEN_CONSTANTS.APP_ID_PATTERN);
     if (!appIdMatch)
-      throw new Error("Could not find tizen:application id in config.xml");
+      throw new Error(
+        `Could not find tizen:application id in ${TIZEN_CONSTANTS.CONFIG_FILE}`
+      );
 
-    let appId = appIdMatch[1];
+    const appId = appIdMatch[1];
     if (/^https?:\/\//.test(appId)) {
       throw new Error(
         `Invalid Tizen app ID extracted from config.xml: ${appId}.\\nThe <tizen:application id> must be a valid Tizen app ID, not a URL.`
@@ -277,7 +280,7 @@ export async function deployTizenApp(
       sendLog(
         `[${new Date().toLocaleTimeString()}] Registered TV as target: ${targetName}`
       );
-    } catch (error: any) {
+    } catch (error) {
       // Target may already exist, which is fine - this step is optional
       // Silently continue without logging errors
     }
@@ -299,7 +302,6 @@ export async function deployTizenApp(
 
         let urlFound = false;
         let outputBuffer = "";
-        let timeoutHandle: NodeJS.Timeout;
 
         const checkForDebugPort = (text: string) => {
           if (urlFound) return;
@@ -377,7 +379,7 @@ export async function deployTizenApp(
 
         debugProcess.stdout.on("data", (data) => {
           const text = data.toString();
-          console.log(`sdb debug stdout: ${text}`);
+          logger.debug(`sdb debug stdout: ${text}`);
 
           // Send raw output to logs
           if (text.trim()) {
@@ -389,7 +391,7 @@ export async function deployTizenApp(
 
         debugProcess.stderr.on("data", (data) => {
           const text = data.toString();
-          console.log(`sdb debug stderr: ${text}`);
+          logger.debug(`sdb debug stderr: ${text}`);
 
           if (text.trim()) {
             sendLog(`[${new Date().toLocaleTimeString()}] ${text.trim()}`);
@@ -399,7 +401,7 @@ export async function deployTizenApp(
         });
 
         debugProcess.on("error", (err) => {
-          console.error("sdb debug process error:", err);
+          logger.error("sdb debug process error", err);
           sendLog(`[${new Date().toLocaleTimeString()}] Error: ${err.message}`);
 
           if (timeoutHandle) {
@@ -413,12 +415,12 @@ export async function deployTizenApp(
         });
 
         // Timeout after 15 seconds if no port is found
-        timeoutHandle = setTimeout(() => {
+        const timeoutHandle = setTimeout(() => {
           if (!urlFound) {
-            console.warn(
+            logger.warn(
               "Debug port timeout: Port not detected within 15 seconds"
             );
-            console.log("Output buffer:", outputBuffer);
+            logger.debug("Output buffer:", outputBuffer);
             sendLog(
               `[${new Date().toLocaleTimeString()}] ⚠️ Application launched in debug mode`
             );
@@ -434,7 +436,7 @@ export async function deployTizenApp(
               message: "Deployment completed (debug port not detected)",
             });
           }
-        }, 15000);
+        }, DEPLOY_CONSTANTS.DEBUG_PORT_TIMEOUT_MS);
       });
     } else {
       sendLog(`[${new Date().toLocaleTimeString()}] Launching application...`);
@@ -445,9 +447,9 @@ export async function deployTizenApp(
     }
 
     return { success: true, message: "Deployment completed successfully" };
-  } catch (error: any) {
-    console.error("Error deploying Tizen app:", error);
-    const message = error.message || "Deployment failed";
+  } catch (error) {
+    logger.error("Error deploying Tizen app", error);
+    const message = getErrorMessage(error) || "Deployment failed";
     sendLog(`[${new Date().toLocaleTimeString()}] Error: ${message}`);
 
     let userMessage = message;

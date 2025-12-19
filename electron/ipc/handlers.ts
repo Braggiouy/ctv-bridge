@@ -13,6 +13,7 @@ import {
   deployWebOsApp,
 } from "./webos/handlers";
 import * as secureStorage from "../common/secure-storage";
+import { getErrorMessage } from "../utils/errors";
 
 export function registerIpcHandlers() {
   registerTizenHandlers();
@@ -41,10 +42,10 @@ export function registerIpcHandlers() {
           return await testWebOsConnection(identifier, passphrase);
         }
         return { success: false, message: "Unknown platform" };
-      } catch (error: any) {
+      } catch (error) {
         return {
           success: false,
-          message: error.message || "Connection failed",
+          message: getErrorMessage(error) || "Connection failed",
         };
       }
     }
@@ -61,8 +62,11 @@ export function registerIpcHandlers() {
           return await buildWebOsPackage(projectPath);
         }
         return { success: false, message: "Unknown platform" };
-      } catch (error: any) {
-        return { success: false, message: error.message || "Build failed" };
+      } catch (error) {
+        return {
+          success: false,
+          message: getErrorMessage(error) || "Build failed",
+        };
       }
     }
   );
@@ -88,8 +92,8 @@ export function registerIpcHandlers() {
           return await deployWebOsApp(identifier, projectPath, mode, sendLog);
         }
         return { success: false, message: "Unknown platform" };
-      } catch (error: any) {
-        const errorMessage = error.message || "Deployment failed";
+      } catch (error) {
+        const errorMessage = getErrorMessage(error) || "Deployment failed";
         sendLog(`[${new Date().toLocaleTimeString()}] ERROR: ${errorMessage}`);
         return { success: false, message: errorMessage };
       }
@@ -103,8 +107,8 @@ export function registerIpcHandlers() {
       try {
         await secureStorage.savePassphrase(deviceName, passphrase);
         return { success: true };
-      } catch (error: any) {
-        return { success: false, message: error.message };
+      } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
       }
     }
   );
@@ -113,8 +117,12 @@ export function registerIpcHandlers() {
     try {
       const passphrase = await secureStorage.getPassphrase(deviceName);
       return { success: true, passphrase };
-    } catch (error: any) {
-      return { success: false, message: error.message, passphrase: null };
+    } catch (error) {
+      return {
+        success: false,
+        message: getErrorMessage(error),
+        passphrase: null,
+      };
     }
   });
 
@@ -122,8 +130,8 @@ export function registerIpcHandlers() {
     try {
       await secureStorage.deletePassphrase(deviceName);
       return { success: true };
-    } catch (error: any) {
-      return { success: false, message: error.message };
+    } catch (error) {
+      return { success: false, message: getErrorMessage(error) };
     }
   });
 
@@ -131,8 +139,12 @@ export function registerIpcHandlers() {
     try {
       const deviceNames = await secureStorage.getAllDeviceNames();
       return { success: true, deviceNames };
-    } catch (error: any) {
-      return { success: false, message: error.message, deviceNames: [] };
+    } catch (error) {
+      return {
+        success: false,
+        message: getErrorMessage(error),
+        deviceNames: [],
+      };
     }
   });
 

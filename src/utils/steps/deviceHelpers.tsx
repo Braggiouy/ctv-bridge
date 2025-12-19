@@ -82,7 +82,11 @@ export function formatDeviceDisplayName(
 ): string {
   if (platform === "webos") {
     const webosDevice = device as WebOSDevice;
-    return `${webosDevice.username}@${webosDevice.ip}:${webosDevice.port}`;
+    // Show device name if available, otherwise fall back to connection string
+    return (
+      webosDevice.name ||
+      `${webosDevice.username}@${webosDevice.ip}:${webosDevice.port}`
+    );
   }
   return device.name || device.ip;
 }

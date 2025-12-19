@@ -190,7 +190,7 @@ To use CTV Bridge, you'll need to download and install the respective SDKs:
 A: CTV Bridge works with any Samsung Tizen TV or LG webOS TV that supports Developer Mode. This typically includes models from 2015 onwards.
 
 **Q: Can I deploy to multiple TVs at once?**  
-A: Currently, CTV Bridge deploys to one TV at a time. Batch deployment is planned for a future release.
+A: Currently, CTV Bridge deploys to one TV at a time.
 
 **Q: Do I need to pay for anything?**  
 A: No! CTV Bridge is completely free and open-source. However, you may need Samsung/LG developer accounts to publish apps to their stores.
@@ -239,11 +239,24 @@ Contributions are welcome! Please:
 
 ## ⭐ Support the Project
 
-If CTV Bridge has saved you time and made your development workflow easier, consider giving it a star on GitHub! ⭐
+If CTV Bridge has made your development workflow easier, here are some ways to show your support:
 
-It helps the project reach more developers and motivates continued development.
+### Free Ways to Help
+
+- **⭐ Star this repository** – Helps other developers discover the project
+- **🐛 Report bugs & suggest features** – Your feedback drives improvements
+- **🔄 Share with colleagues** – Help fellow CTV developers save time
+- **💬 Join discussions** – Share your experience and help others
 
 [**⭐ Star on GitHub**](https://github.com/Braggiouy/ctv-bridge)
+
+### Optional Financial Support
+
+If this tool has saved you valuable time, consider buying me a coffee! ☕ Your support helps cover development costs and motivates new features.
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/braggio)
+
+> **Note**: CTV Bridge will always be free and open-source under the MIT license.
 
 ---
 

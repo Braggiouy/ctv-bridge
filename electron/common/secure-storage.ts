@@ -1,6 +1,8 @@
 import { safeStorage, app } from "electron";
 import fs from "fs/promises";
 import path from "path";
+import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/errors";
 
 interface PassphraseStore {
   [deviceName: string]: string; // Encrypted passphrase (base64)
@@ -23,12 +25,13 @@ async function loadStore(): Promise<PassphraseStore> {
     const storePath = getStorePath();
     const data = await fs.readFile(storePath, "utf-8");
     return JSON.parse(data);
-  } catch (error: any) {
+  } catch (error) {
     // File doesn't exist or is corrupted - return empty store
-    if (error.code === "ENOENT") {
+    const errorObj = error as NodeJS.ErrnoException;
+    if (errorObj.code === "ENOENT") {
       return {};
     }
-    console.error("Error loading secure store:", error);
+    logger.error("Error loading secure store", error);
     return {};
   }
 }
@@ -101,7 +104,7 @@ export async function getPassphrase(
   }
 
   if (!isSecureStorageAvailable()) {
-    console.error("Secure storage not available - cannot decrypt passphrase");
+    logger.warn("Secure storage not available - cannot decrypt passphrase");
     return null;
   }
 
@@ -111,7 +114,7 @@ export async function getPassphrase(
     const decryptedPassphrase = safeStorage.decryptString(encryptedBuffer);
     return decryptedPassphrase;
   } catch (error) {
-    console.error("Error decrypting passphrase:", error);
+    logger.error("Error decrypting passphrase", error);
     return null;
   }
 }
