@@ -24,7 +24,6 @@ export function UpdateButton() {
   const [checking, setChecking] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<any>(null);
-  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     // Get current version
@@ -42,23 +41,13 @@ export function UpdateButton() {
         setChecking(false);
       });
 
-      const unsubDownloaded = window.electron.onUpdateDownloaded(() => {
-        setDownloading(false);
-        toast.success("Update ready! Restarting app...");
-        setTimeout(() => {
-          window.electron.installUpdate();
-        }, 1000);
-      });
-
       const unsubError = window.electron.onUpdateError((err) => {
-        toast.error(`Update failed: ${err}`);
+        toast.error(`Update check failed: ${err}`);
         setChecking(false);
-        setDownloading(false);
       });
 
       return () => {
         unsubAvailable();
-        unsubDownloaded();
         unsubError();
       };
     }
@@ -79,11 +68,13 @@ export function UpdateButton() {
     }
   };
 
-  const handleDownloadUpdate = async () => {
-    setDownloading(true);
+  const handleDownloadUpdate = () => {
+    // Open GitHub releases page instead of auto-downloading
+    // (auto-update doesn't work without code signing on macOS)
+    const repoUrl = "https://github.com/Braggiouy/ctv-bridge/releases/latest";
+    window.open(repoUrl, "_blank");
     setUpdateAvailable(false);
-    toast.info("Downloading update...");
-    await window.electron.downloadUpdate();
+    toast.info("Opening releases page in browser...");
   };
 
   const getButtonContent = () => {
@@ -160,31 +151,16 @@ export function UpdateButton() {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                Download and install the latest version to get new features and
-                improvements.
+                Click "Update Now" to open the releases page and download the
+                latest version.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="sm:space-x-2">
-            <AlertDialogCancel disabled={downloading}>
-              Maybe Later
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDownloadUpdate}
-              disabled={downloading}
-              className="gap-2"
-            >
-              {downloading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Downloading...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4" />
-                  Update Now
-                </>
-              )}
+            <AlertDialogCancel>Maybe Later</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDownloadUpdate} className="gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              Update Now
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
