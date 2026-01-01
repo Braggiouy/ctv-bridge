@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.7](https://github.com/Braggiouy/ctv-bridge/compare/v1.3.6...v1.3.7) (2026-01-01)
+
+
+### Features
+
+* add tizen certificate setup instructions to UI ([48c661f](https://github.com/Braggiouy/ctv-bridge/commit/48c661fc35c89e67f48ad27c9a83ef5fd499e7bb))
+
 ### [1.3.6](https://github.com/Braggiouy/ctv-bridge/compare/v1.3.5...v1.3.6) (2026-01-01)
 
 ### [1.3.5](https://github.com/Braggiouy/ctv-bridge/compare/v1.3.4...v1.3.5) (2026-01-01)
