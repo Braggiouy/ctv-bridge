@@ -29,17 +29,40 @@ export const TizenSetup = ({
             <li>Download Tizen Studio from Samsung Developer</li>
             <li>Install and note the installation directory</li>
             <li>Locate the tools in the installation folder</li>
+            <li>
+              Create a <strong>Samsung Certificate</strong> with your TV's DUID
+            </li>
           </ol>
-          <Button variant="link" className="h-auto p-0 text-sm" asChild>
-            <a
-              href="https://developer.samsung.com/smarttv/develop/getting-started/setting-up-sdk/installing-tv-sdk.html"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Download Tizen Studio{" "}
-              <ExternalLink className="ml-1 h-3 w-3 inline" />
-            </a>
-          </Button>
+          <div className="flex gap-4">
+            <Button variant="link" className="h-auto p-0 text-sm" asChild>
+              <a
+                href="https://developer.samsung.com/smarttv/develop/getting-started/setting-up-sdk/installing-tv-sdk.html"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Download Tizen Studio{" "}
+                <ExternalLink className="ml-1 h-3 w-3 inline" />
+              </a>
+            </Button>
+            <Button variant="link" className="h-auto p-0 text-sm" asChild>
+              <a
+                href="https://developer.samsung.com/smarttv/develop/getting-started/setting-up-sdk/creating-certificates.html"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Certificate Guide{" "}
+                <ExternalLink className="ml-1 h-3 w-3 inline" />
+              </a>
+            </Button>
+          </div>
+        </AlertDescription>
+      </Alert>
+
+      <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100">
+        <AlertDescription className="text-sm">
+          <strong>Samsung TV Tip:</strong> Deployment will fail unless your app
+          is signed with a Samsung Distributor Certificate that includes your
+          TV's unique DUID.
         </AlertDescription>
       </Alert>
 
