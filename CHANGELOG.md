@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.9](https://github.com/Braggiouy/ctv-bridge/compare/v1.3.7...v1.3.9) (2026-01-01)
+
+
+### Features
+
+* automate tizen certificate selection and fix external link handling ([96e3805](https://github.com/Braggiouy/ctv-bridge/commit/96e3805de1b7c569497c6a06d91f33ff0b7cc166))
+
 ### [1.3.7](https://github.com/Braggiouy/ctv-bridge/compare/v1.3.6...v1.3.7) (2026-01-01)
 
 
