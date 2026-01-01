@@ -27,7 +27,7 @@ export function registerWebOsHandlers() {
   ipcMain.handle("list-devices", async () => {
     try {
       const { stdout } = await execAsync(
-        `${getAresCommand("-setup-device")} --list`,
+        `${getAresCommand("-setup-device")} --list`
       );
       // Parse tabular output
       const lines = stdout.split(/\r?\n/).filter(Boolean);
@@ -96,7 +96,7 @@ export function registerWebOsHandlers() {
       // Always remove any existing device with the same name before adding
       try {
         await execAsync(
-          `${getAresCommand("-setup-device")} --remove ${device.name}`,
+          `${getAresCommand("-setup-device")} --remove ${device.name}`
         );
       } catch (err) {
         // Ignore error if device does not exist
@@ -110,7 +110,7 @@ export function registerWebOsHandlers() {
       const { stdout } = await execAsync(cmd);
       // After adding, list devices and return updated list
       const { stdout: listOut } = await execAsync(
-        `${getAresCommand("-setup-device")} --list`,
+        `${getAresCommand("-setup-device")} --list`
       );
       // Parse tabular output
       const lines = listOut.split(/\r?\n/).filter(Boolean);
@@ -153,7 +153,7 @@ export function registerWebOsHandlers() {
       if (error.message && error.message.includes("already exists")) {
         // Still return updated device list
         const { stdout: listOut } = await execAsync(
-          `${getAresCommand("-setup-device")} --list`,
+          `${getAresCommand("-setup-device")} --list`
         );
         const lines = listOut.split(/\r?\n/).filter(Boolean);
         const devices: Array<{
@@ -218,7 +218,7 @@ export function registerWebOsHandlers() {
       // Remove existing device
       try {
         await execAsync(
-          `${getAresCommand("-setup-device")} --remove ${device.name}`,
+          `${getAresCommand("-setup-device")} --remove ${device.name}`
         );
       } catch (err) {
         // Ignore error if device does not exist
@@ -253,12 +253,12 @@ export function registerWebOsHandlers() {
 
 export async function testWebOsConnection(
   deviceName: string,
-  passphrase?: string,
+  passphrase?: string
 ) {
   try {
     // Test connection using ares-device-info
     const { stdout, stderr } = await execAsync(
-      `${getAresCommand("-device-info")} -d ${deviceName}`,
+      `${getAresCommand("-device-info")} -d ${deviceName}`
     );
 
     if (stderr && stderr.toLowerCase().includes("error")) {
@@ -281,7 +281,7 @@ export async function testWebOsConnection(
         try {
           logger.info(
             `SSH authentication failed, attempting to set up SSH keys`,
-            { deviceName },
+            { deviceName }
           );
 
           // Run ares-novacom --getkey with the passphrase
@@ -331,7 +331,7 @@ export async function testWebOsConnection(
                 // SSH keys set up successfully, test connection again
                 try {
                   await execAsync(
-                    `${getAresCommand("-device-info")} -d ${deviceName}`,
+                    `${getAresCommand("-device-info")} -d ${deviceName}`
                   );
                   resolve({
                     success: true,
@@ -364,7 +364,7 @@ export async function testWebOsConnection(
           return {
             success: false,
             message: `Failed to set up SSH keys: ${getErrorMessage(
-              setupError,
+              setupError
             )}`,
           };
         }
@@ -417,7 +417,7 @@ export async function buildWebOsPackage(projectPath: string) {
       `${getAresCommand("-package")} "${folderName}"`,
       {
         cwd: parentDir,
-      },
+      }
     );
 
     if (stderr) {
@@ -431,7 +431,7 @@ export async function buildWebOsPackage(projectPath: string) {
 
     if (ipkFiles.length === 0) {
       throw new Error(
-        "IPK file not found after build. The build may have failed silently or output to an unexpected location.",
+        "IPK file not found after build. The build may have failed silently or output to an unexpected location."
       );
     }
 
@@ -496,7 +496,7 @@ export async function deployWebOsApp(
   deviceName: string,
   projectPath: string,
   mode: "debug" | "run",
-  sendLog: (message: string) => void,
+  sendLog: (message: string) => void
 ) {
   try {
     const fs = await import("fs/promises");
@@ -510,7 +510,7 @@ export async function deployWebOsApp(
 
     if (!ipkFile) {
       throw new Error(
-        "IPK file not found in project directory. Please build the package first.",
+        "IPK file not found in project directory. Please build the package first."
       );
     }
 
@@ -520,7 +520,7 @@ export async function deployWebOsApp(
     // Install the IPK using ares-install
     sendLog("Installing " + ipkFile + "...");
     const { stdout: installOut, stderr: installErr } = await execAsync(
-      `${getAresCommand("-install")} -d ${deviceName} "${ipkPath}"`,
+      `${getAresCommand("-install")} -d ${deviceName} "${ipkPath}"`
     );
 
     if (installErr && installErr.toLowerCase().includes("error")) {
@@ -610,7 +610,7 @@ export async function deployWebOsApp(
           // Check for URL in stdout first
           const hasUrl =
             /(https?:\/\/localhost:\d+\/|chrome-devtools:\/\/|ws:\/\/localhost:\d+\/)/.test(
-              text,
+              text
             );
 
           // Send the raw output to logs only if it doesn't contain a URL
@@ -630,7 +630,7 @@ export async function deployWebOsApp(
           // Check for URL in stderr first
           const hasUrl =
             /(https?:\/\/localhost:\d+\/|chrome-devtools:\/\/|ws:\/\/localhost:\d+\/)/.test(
-              text,
+              text
             );
 
           // Also send stderr to logs as it might contain important info
@@ -666,10 +666,10 @@ export async function deployWebOsApp(
             logger.debug("Output buffer content:", outputBuffer);
             sendLog("⚠️ Application launched in debug mode");
             sendLog(
-              "Debug URL not captured automatically. This can happen if:",
+              "Debug URL not captured automatically. This can happen if:"
             );
             sendLog(
-              "  • The app launched but ares-inspect didn't output the URL",
+              "  • The app launched but ares-inspect didn't output the URL"
             );
             sendLog("  • The URL format changed in your webOS SDK version");
             sendLog("  • Check the logs above for any URLs or error messages");
@@ -683,7 +683,7 @@ export async function deployWebOsApp(
     } else {
       // For run mode, just launch normally
       const { stdout: launchOut, stderr: launchErr } = await execAsync(
-        `${getAresCommand("-launch")} -d ${deviceName} ${appId}`,
+        `${getAresCommand("-launch")} -d ${deviceName} ${appId}`
       );
 
       if (launchErr && launchErr.toLowerCase().includes("error")) {

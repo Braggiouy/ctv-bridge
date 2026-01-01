@@ -34,7 +34,7 @@ export function registerIpcHandlers() {
       _event,
       platform: string,
       identifier: string,
-      passphrase?: string,
+      passphrase?: string
     ) => {
       try {
         if (platform === "tizen") {
@@ -49,7 +49,7 @@ export function registerIpcHandlers() {
           message: getErrorMessage(error) || "Connection failed",
         };
       }
-    },
+    }
   );
 
   ipcMain.handle(
@@ -69,7 +69,7 @@ export function registerIpcHandlers() {
           message: getErrorMessage(error) || "Build failed",
         };
       }
-    },
+    }
   );
 
   ipcMain.handle(
@@ -79,7 +79,7 @@ export function registerIpcHandlers() {
       platform: string,
       identifier: string,
       projectPath: string,
-      mode: "debug" | "run",
+      mode: "debug" | "run"
     ) => {
       const mainWindow = BrowserWindow.getAllWindows()[0];
       const sendLog = (message: string) => {
@@ -98,7 +98,7 @@ export function registerIpcHandlers() {
         sendLog(`[${new Date().toLocaleTimeString()}] ERROR: ${errorMessage}`);
         return { success: false, message: errorMessage };
       }
-    },
+    }
   );
 
   // Secure storage handlers
@@ -111,7 +111,7 @@ export function registerIpcHandlers() {
       } catch (error) {
         return { success: false, message: getErrorMessage(error) };
       }
-    },
+    }
   );
 
   ipcMain.handle("get-passphrase", async (_event, deviceName: string) => {
