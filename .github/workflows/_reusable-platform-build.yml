@@ -55,7 +55,7 @@ jobs:
         with:
           name: ${{ inputs.artifact-name }}
           path: |
-            release/**/*.exe
+            release/**/*-setup.exe
             release/**/*.dmg
             release/**/*.AppImage
             release/**/*.zip

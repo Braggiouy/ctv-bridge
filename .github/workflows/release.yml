@@ -68,7 +68,7 @@ jobs:
             release-artifacts/macos/**/*.zip
             release-artifacts/macos/**/*.blockmap
             release-artifacts/macos/**/latest-mac.yml
-            release-artifacts/windows/**/*.exe
+            release-artifacts/windows/**/*-setup.exe
             release-artifacts/windows/**/*.blockmap
             release-artifacts/windows/**/latest.yml
             release-artifacts/linux/**/*.AppImage
