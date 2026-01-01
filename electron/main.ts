@@ -57,7 +57,7 @@ function createWindow() {
 
   // Disable code signing validation on macOS (since we don't have a paid cert)
   if (process.platform === "darwin") {
-    // @ts-ignore - Property exists at runtime but might be missing in types
+    // @ts-expect-error - Property exists at runtime but might be missing in types
     autoUpdater.forceCodeSigning = false;
   }
 

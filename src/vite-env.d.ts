@@ -10,20 +10,28 @@ interface Device {
 
 interface ElectronAPI {
   selectDirectory: () => Promise<string | null>;
-  checkTizenSdk: () => Promise<any>;
-  checkWebOsSdk: () => Promise<any>;
+  checkTizenSdk: () => Promise<{ success: boolean; message: string }>;
+  checkWebOsSdk: () => Promise<{ success: boolean; message: string }>;
   testConnection: (
     platform: string,
     identifier: string,
     passphrase?: string
-  ) => Promise<any>;
-  buildPackage: (platform: string, projectPath: string) => Promise<any>;
+  ) => Promise<{ success: boolean; message: string }>;
+  buildPackage: (
+    platform: string,
+    projectPath: string
+  ) => Promise<{
+    success: boolean;
+    message: string;
+    packagePath?: string;
+    packageName?: string;
+  }>;
   deployApp: (
     platform: string,
     tvIp: string,
     projectPath: string,
     mode: "debug" | "run"
-  ) => Promise<any>;
+  ) => Promise<{ success: boolean; message: string }>;
   onDeployLog: (callback: (log: string) => void) => () => void;
   listDevices: () => Promise<{
     success: boolean;
@@ -36,12 +44,16 @@ interface ElectronAPI {
   ) => Promise<{ success: boolean; message: string }>;
 
   // Auto-updater
-  checkForUpdates: () => Promise<any>;
+  checkForUpdates: () => Promise<{ version: string } | null>;
   downloadUpdate: () => Promise<{ success: boolean; error?: string }>;
   installUpdate: () => void;
   getAppVersion: () => Promise<string>;
-  onUpdateAvailable: (callback: (info: any) => void) => () => void;
-  onUpdateDownloaded: (callback: (info: any) => void) => () => void;
+  onUpdateAvailable: (
+    callback: (info: { version: string }) => void
+  ) => () => void;
+  onUpdateDownloaded: (
+    callback: (info: { version: string }) => void
+  ) => () => void;
   onUpdateError: (callback: (error: string) => void) => () => void;
 }
 

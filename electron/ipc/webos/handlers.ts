@@ -558,7 +558,7 @@ export async function deployWebOsApp(
 
         let urlFound = false;
         let outputBuffer = "";
-        let timeoutHandle: NodeJS.Timeout;
+        let timeoutHandle: NodeJS.Timeout | undefined = undefined;
 
         // Helper function to check for URL in text
         const checkForUrl = (text: string, source: string) => {
@@ -572,9 +572,9 @@ export async function deployWebOsApp(
           // Pattern 2: chrome-devtools://devtools/bundled/inspector.html?ws=...
           // Pattern 3: Any URL starting with http://localhost: followed by devtools
           const urlPatterns = [
-            /(https?:\/\/localhost:\d+\/[^\s\"'<>]+)/,
-            /(chrome-devtools:\/\/[^\s\"'<>]+)/,
-            /(ws:\/\/localhost:\d+\/[^\s\"'<>]+)/,
+            /(https?:\/\/localhost:\d+\/[^\s"'<>]+)/,
+            /(chrome-devtools:\/\/[^\s"'<>]+)/,
+            /(ws:\/\/localhost:\d+\/[^\s"'<>]+)/,
           ];
 
           for (const pattern of urlPatterns) {

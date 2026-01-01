@@ -1,17 +1,31 @@
 // Add the updateDevice method to the ElectronAPI interface
 interface ElectronAPI {
   // webOS device management
-  listDevices: () => Promise<any>;
-  addDevice: (device: any) => Promise<any>;
-  removeDevice: (name: string) => Promise<any>;
+  listDevices: () => Promise<{
+    success: boolean;
+    devices: Device[];
+    message?: string;
+  }>;
+  addDevice: (device: Device) => Promise<{ success: boolean; message: string }>;
+  removeDevice: (
+    name: string
+  ) => Promise<{ success: boolean; message: string }>;
   // Tizen device management
-  listTizenDevices: () => Promise<any>;
-  addTizenDevice: (ip: string) => Promise<any>;
-  removeTizenDevice: (ip: string) => Promise<any>;
+  listTizenDevices: () => Promise<{
+    success: boolean;
+    devices: { ip: string; status: string }[];
+    message?: string;
+  }>;
+  addTizenDevice: (
+    ip: string
+  ) => Promise<{ success: boolean; message: string }>;
+  removeTizenDevice: (
+    ip: string
+  ) => Promise<{ success: boolean; message: string }>;
   // Other methods
   selectDirectory: () => Promise<string | null>;
-  checkTizenSdk: () => Promise<any>;
-  checkWebOsSdk: () => Promise<any>;
+  checkTizenSdk: () => Promise<{ success: boolean; message: string }>;
+  checkWebOsSdk: () => Promise<{ success: boolean; message: string }>;
   updateDevice: (
     device: Device
   ) => Promise<{ success: boolean; message?: string }>;
@@ -38,7 +52,7 @@ interface ElectronAPI {
     available: boolean;
   }>;
   // Generic invoke method for any IPC handler
-  invoke: <T = any>(channel: string, ...args: any[]) => Promise<T>;
+  invoke: <T = unknown>(channel: string, ...args: unknown[]) => Promise<T>;
   // SDK paths management
   saveSdkPaths: (paths: {
     sdbPath?: string;

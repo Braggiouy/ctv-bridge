@@ -101,13 +101,17 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
         setProjectPath(selectedPath);
         addLog("step", `Project directory selected: ${selectedPath}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       const msg = `Error selecting directory: ${
-        error.message || "Failed to select directory"
+        error instanceof Error
+          ? error.message
+          : "An error occurred during the build process"
       }`;
       toast({
         title: "Error",
-        description: error.message || "Failed to select directory",
+        description:
+          (error as Error).message || "An error occurred during deployment",
         variant: "destructive",
         duration: TOAST_DURATION,
       });

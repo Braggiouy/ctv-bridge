@@ -5,8 +5,18 @@ import { contextBridge, ipcRenderer } from "electron";
 contextBridge.exposeInMainWorld("electron", {
   // Device management (webOS)
   listDevices: () => ipcRenderer.invoke("list-devices"),
-  addDevice: (device: any) => ipcRenderer.invoke("add-device", device),
-  updateDevice: (device: any) => ipcRenderer.invoke("update-device", device),
+  addDevice: (device: {
+    name: string;
+    ip: string;
+    port: string;
+    username: string;
+  }) => ipcRenderer.invoke("add-device", device),
+  updateDevice: (device: {
+    name: string;
+    ip: string;
+    port: string;
+    username: string;
+  }) => ipcRenderer.invoke("update-device", device),
   removeDevice: (name: string) => ipcRenderer.invoke("remove-device", name),
 
   // Device management (Tizen)
@@ -37,7 +47,7 @@ contextBridge.exposeInMainWorld("electron", {
 
   // Log streaming
   onDeployLog: (callback: (log: string) => void) => {
-    const subscription = (_event: any, log: string) => callback(log);
+    const subscription = (_event: unknown, log: string) => callback(log);
     ipcRenderer.on("deploy-log", subscription);
     return () => {
       ipcRenderer.removeListener("deploy-log", subscription);
@@ -49,22 +59,24 @@ contextBridge.exposeInMainWorld("electron", {
   downloadUpdate: () => ipcRenderer.invoke("download-update"),
   installUpdate: () => ipcRenderer.invoke("install-update"),
   getAppVersion: () => ipcRenderer.invoke("get-app-version"),
-  onUpdateAvailable: (callback: (info: any) => void) => {
-    const subscription = (_event: any, info: any) => callback(info);
+  onUpdateAvailable: (callback: (info: { version: string }) => void) => {
+    const subscription = (_event: unknown, info: { version: string }) =>
+      callback(info);
     ipcRenderer.on("update-available", subscription);
     return () => {
       ipcRenderer.removeListener("update-available", subscription);
     };
   },
-  onUpdateDownloaded: (callback: (info: any) => void) => {
-    const subscription = (_event: any, info: any) => callback(info);
+  onUpdateDownloaded: (callback: (info: { version: string }) => void) => {
+    const subscription = (_event: unknown, info: { version: string }) =>
+      callback(info);
     ipcRenderer.on("update-downloaded", subscription);
     return () => {
       ipcRenderer.removeListener("update-downloaded", subscription);
     };
   },
   onUpdateError: (callback: (error: string) => void) => {
-    const subscription = (_event: any, error: string) => callback(error);
+    const subscription = (_event: unknown, error: string) => callback(error);
     ipcRenderer.on("update-error", subscription);
     return () => {
       ipcRenderer.removeListener("update-error", subscription);
@@ -83,10 +95,14 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("is-secure-storage-available"),
 
   // Generic invoke method
-  invoke: <T = any>(channel: string, ...args: any[]): Promise<T> =>
+  invoke: <T = unknown>(channel: string, ...args: unknown[]): Promise<T> =>
     ipcRenderer.invoke(channel, ...args),
 
   // SDK paths management
-  saveSdkPaths: (paths: any) => ipcRenderer.invoke("save-sdk-paths", paths),
+  saveSdkPaths: (paths: {
+    sdbPath?: string;
+    tizenPath?: string;
+    aresPath?: string;
+  }) => ipcRenderer.invoke("save-sdk-paths", paths),
   getSdkPaths: () => ipcRenderer.invoke("get-sdk-paths"),
 });

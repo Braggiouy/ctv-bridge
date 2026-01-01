@@ -44,20 +44,23 @@ export function useDevices(platform: "tizen" | "webos") {
           const storedNames = JSON.parse(
             localStorage.getItem("tizen-device-names") || "{}"
           );
-          const devicesWithNames = (res.devices || []).map((device: any) => ({
-            name: storedNames[device.ip] || device.ip,
-            ip: device.ip,
-            sdbStatus: device.status,
-            connectionStatus: "idle" as const,
-          }));
+          const devicesWithNames = (res.devices || []).map(
+            (device: { ip: string; status: string }) => ({
+              name: storedNames[device.ip] || device.ip,
+              ip: device.ip,
+              sdbStatus: device.status,
+              connectionStatus: "idle" as const,
+            })
+          );
           setDevices(devicesWithNames);
           addLog("log", `Loaded ${res.devices?.length || 0} Tizen devices.`);
         } else {
           addLog("error", `Failed to load Tizen devices: ${res.message}`);
         }
       }
-    } catch (error: any) {
-      addLog("error", `Error loading devices: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      addLog("error", `Error loading devices: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -194,10 +197,11 @@ export function useDevices(platform: "tizen" | "webos") {
           });
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       toast({
         title: "Error",
-        description: error.message,
+        description: err.message,
         variant: "destructive",
         duration: TOAST_DURATION,
       });

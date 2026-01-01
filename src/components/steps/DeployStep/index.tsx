@@ -85,15 +85,17 @@ export const DeployStep = (props: DeployStepProps) => {
         });
         addLog("error", `Deployment failed: ${result.message}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       setDeploying(false);
       setDeployMode(null);
       const msg = `Deployment failed: ${
-        error.message || "An error occurred during deployment"
+        err.message || "An error occurred during deployment"
       }`;
       toast({
         title: "Deployment Failed",
-        description: error.message || "An error occurred during deployment",
+        description:
+          (error as Error).message || "An error occurred during deployment",
         variant: "destructive",
         duration: TOAST_DURATION,
       });

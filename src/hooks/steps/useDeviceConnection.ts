@@ -48,14 +48,15 @@ export function useDeviceConnection(platform: "tizen" | "webos") {
         addLog("error", `Connection failed: ${result.message}`);
         return false;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       toast({
         title: "Connection Error",
-        description: error.message,
+        description: err.message,
         variant: "destructive",
         duration: TOAST_DURATION,
       });
-      addLog("error", `Connection error: ${error.message}`);
+      addLog("error", `Connection error: ${err.message}`);
       return false;
     } finally {
       setTestingDeviceId(null);

@@ -4,7 +4,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Download, RefreshCw, X } from "lucide-react";
 
 export function UpdateNotification() {
-  const [updateInfo, setUpdateInfo] = useState<any>(null);
+  const [updateInfo, setUpdateInfo] = useState<{ version: string } | null>(
+    null
+  );
   const [downloading, setDownloading] = useState(false);
   const [readyToInstall, setReadyToInstall] = useState(false);
   const [error, setError] = useState<string | null>(null);

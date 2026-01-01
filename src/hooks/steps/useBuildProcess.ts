@@ -78,15 +78,17 @@ export function useBuildProcess(platform: "tizen" | "webos") {
         });
         addLog("error", `Build failed: ${result.message}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       setBuilding(false);
       const msg = `Build failed: ${
-        error.message || "An error occurred during the build process"
+        err.message || "An error occurred during the build process"
       }`;
       toast({
         title: "Build Failed",
         description:
-          error.message || "An error occurred during the build process",
+          (error as Error).message ||
+          "An error occurred during the build process",
         variant: "destructive",
         duration: TOAST_DURATION,
       });

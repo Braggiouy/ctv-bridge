@@ -23,7 +23,9 @@ export function UpdateButton() {
   const [currentVersion, setCurrentVersion] = useState<string>("");
   const [checking, setChecking] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [updateInfo, setUpdateInfo] = useState<any>(null);
+  const [updateInfo, setUpdateInfo] = useState<{ version: string } | null>(
+    null
+  );
 
   useEffect(() => {
     // Get current version
@@ -41,8 +43,9 @@ export function UpdateButton() {
         setChecking(false);
       });
 
-      const unsubError = window.electron.onUpdateError((err) => {
-        toast.error(`Update check failed: ${err}`);
+      const unsubError = window.electron.onUpdateError((error: unknown) => {
+        const err = error as Error; // Assuming the error object has a message property
+        toast.error(`Update check failed: ${err.message || err}`); // Use err.message if available, otherwise the error itself
         setChecking(false);
       });
 
