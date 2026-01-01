@@ -45,8 +45,8 @@ export const StepIndicator = ({ steps, currentStep }: StepIndicatorProps) => {
                       isCompleted
                         ? "text-primary"
                         : isActive
-                        ? "text-primary"
-                        : "text-muted-foreground"
+                          ? "text-primary"
+                          : "text-muted-foreground"
                     )}
                   >
                     {step.id}. {step.name}
@@ -57,8 +57,8 @@ export const StepIndicator = ({ steps, currentStep }: StepIndicatorProps) => {
                       isCompleted
                         ? "text-primary/70"
                         : isActive
-                        ? "text-foreground"
-                        : "text-muted-foreground"
+                          ? "text-foreground"
+                          : "text-muted-foreground"
                     )}
                   >
                     {step.description}

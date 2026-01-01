@@ -1,52 +1,51 @@
 {
-  "appId": "com.ctv.bridge",
-  "productName": "CTV Bridge",
-  "publish": {
-    "provider": "github",
-    "owner": "Braggiouy",
-    "repo": "ctv-bridge"
+  appId: "com.ctv.bridge",
+  productName: "CTV Bridge",
+  publish: {
+    provider: "github",
+    owner: "Braggiouy",
+    repo: "ctv-bridge",
   },
-  "directories": {
-    "output": "release/${version}"
+  directories: {
+    output: "release/${version}",
   },
-  "artifactName": "${name}-${version}-${arch}.${ext}",
-  "files": [
+  artifactName: "${name}-${version}-${arch}.${ext}",
+  files: [
     "dist",
     "dist-electron",
-    "!dist/**/*.map",  // Exclude source maps
-    "!dist-electron/**/*.map"
+    "!dist/**/*.map", // Exclude source maps
+    "!dist-electron/**/*.map",
   ],
   // Exclude unnecessary files from all builds
-  "asarUnpack": [],
-  "extraResources": [],
-  "compression": "maximum",  // Enable maximum compression
-  "mac": {
-    "target": ["dmg"],  // Only DMG (most common for Mac)
-    "category": "public.app-category.developer-tools",
-    "icon": "public/icon.icns",
-    "identity": null,
-    "artifactName": "${name}-${version}-${arch}.${ext}"
+  asarUnpack: [],
+  extraResources: [],
+  compression: "maximum", // Enable maximum compression
+  mac: {
+    target: ["dmg"], // Only DMG (most common for Mac)
+    category: "public.app-category.developer-tools",
+    icon: "public/icon.icns",
+    identity: null,
+    artifactName: "${name}-${version}-${arch}.${ext}",
   },
-  "dmg": {
-    "writeUpdateInfo": true
+  dmg: {
+    writeUpdateInfo: true,
   },
-  "win": {
-    "target": ["nsis"],  // Only NSIS installer (most common for Windows)
-    "icon": "public/icon.ico",
-    "artifactName": "${name}-${version}.${ext}"
+  win: {
+    target: ["nsis"], // Only NSIS installer (most common for Windows)
+    icon: "public/icon.ico",
+    artifactName: "${name}-${version}.${ext}",
   },
-  "nsis": {
-    "oneClick": false,
-    "allowToChangeInstallationDirectory": true,
-    "createDesktopShortcut": true,
-    "createStartMenuShortcut": true,
-    "artifactName": "${name}-${version}-setup.${ext}"
+  nsis: {
+    oneClick: false,
+    allowToChangeInstallationDirectory: true,
+    createDesktopShortcut: true,
+    createStartMenuShortcut: true,
+    artifactName: "${name}-${version}-setup.${ext}",
   },
-  "linux": {
-    "target": ["AppImage"],  // Only AppImage (most portable for Linux)
-    "category": "Development",
-    "icon": "public/icon.png",
-    "artifactName": "${name}-${version}-${arch}.${ext}"
-  }
+  linux: {
+    target: ["AppImage"], // Only AppImage (most portable for Linux)
+    category: "Development",
+    icon: "public/icon.png",
+    artifactName: "${name}-${version}-${arch}.${ext}",
+  },
 }
-

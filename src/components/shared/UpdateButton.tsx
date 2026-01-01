@@ -63,7 +63,7 @@ export function UpdateButton() {
     const result = await window.electron.checkForUpdates();
     setChecking(false);
 
-    if (!result) {
+    if (result && result.version === currentVersion) {
       toast.success("You're already on the latest version! 🎉");
     }
   };

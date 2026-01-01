@@ -10,21 +10,30 @@ export class CTVBridgeError extends Error {
 }
 
 export class SDKError extends CTVBridgeError {
-  constructor(message: string, public readonly sdkType: "tizen" | "webos") {
+  constructor(
+    message: string,
+    public readonly sdkType: "tizen" | "webos"
+  ) {
     super(message);
     this.name = "SDKError";
   }
 }
 
 export class ConnectionError extends CTVBridgeError {
-  constructor(message: string, public readonly deviceIp: string) {
+  constructor(
+    message: string,
+    public readonly deviceIp: string
+  ) {
     super(message);
     this.name = "ConnectionError";
   }
 }
 
 export class BuildError extends CTVBridgeError {
-  constructor(message: string, public readonly projectPath: string) {
+  constructor(
+    message: string,
+    public readonly projectPath: string
+  ) {
     super(message);
     this.name = "BuildError";
   }
@@ -42,7 +51,10 @@ export class DeploymentError extends CTVBridgeError {
 }
 
 export class ValidationError extends CTVBridgeError {
-  constructor(message: string, public readonly field: string) {
+  constructor(
+    message: string,
+    public readonly field: string
+  ) {
     super(message);
     this.name = "ValidationError";
   }

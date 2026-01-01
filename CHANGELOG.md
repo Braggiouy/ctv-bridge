@@ -4,10 +4,9 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### [1.1.4](https://github.com/Braggiouy/ctv-bridge/compare/v1.1.3...v1.1.4) (2025-12-19)
 
-
 ### Bug Fixes
 
-* change update flow to open GitHub releases instead of auto-update ([051a5d1](https://github.com/Braggiouy/ctv-bridge/commit/051a5d1a7b9302ca4882c3f876d09dbc41eae0c1))
+- change update flow to open GitHub releases instead of auto-update ([051a5d1](https://github.com/Braggiouy/ctv-bridge/commit/051a5d1a7b9302ca4882c3f876d09dbc41eae0c1))
 
 ### [1.1.3](https://github.com/Braggiouy/ctv-bridge/compare/v1.1.2...v1.1.3) (2025-12-19)
 
@@ -17,10 +16,9 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [1.1.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.0.0...v1.1.0) (2025-12-12)
 
-
 ### Features
 
-* enhance project for open source and optimize CI ([f84b256](https://github.com/Braggiouy/ctv-bridge/commit/f84b256437fe04521c7aa1af4a3f006322dca427))
+- enhance project for open source and optimize CI ([f84b256](https://github.com/Braggiouy/ctv-bridge/commit/f84b256437fe04521c7aa1af4a3f006322dca427))
 
 # Changelog
 

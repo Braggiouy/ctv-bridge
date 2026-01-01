@@ -161,8 +161,8 @@ export const AddDeviceForm = ({
           {submitting
             ? "Adding..."
             : platform === "webos"
-            ? "Register Device"
-            : "Connect"}
+              ? "Register Device"
+              : "Connect"}
         </Button>
         <Button variant="outline" onClick={onCancel} disabled={submitting}>
           Cancel

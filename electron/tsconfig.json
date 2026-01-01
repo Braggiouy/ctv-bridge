@@ -3,17 +3,11 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": [
-      "ESNext"
-    ],
-    "types": [
-      "node"
-    ],
+    "lib": ["ESNext"],
+    "types": ["node"],
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "skipLibCheck": true
   },
-  "include": [
-    "*.ts"
-  ]
+  "include": ["*.ts"]
 }
