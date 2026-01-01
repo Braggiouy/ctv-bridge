@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.2.6](https://github.com/Braggiouy/ctv-bridge/compare/v1.1.4...v1.2.6) (2026-01-01)
+
+
+### Features
+
+* add CI, prettier and fix update button ([8a83f5d](https://github.com/Braggiouy/ctv-bridge/commit/8a83f5d9af4713da5767a148c39db5704ceccc3e))
+
 ### [1.1.4](https://github.com/Braggiouy/ctv-bridge/compare/v1.1.3...v1.1.4) (2025-12-19)
 
 ### Bug Fixes
