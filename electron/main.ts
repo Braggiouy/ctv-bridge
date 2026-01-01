@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, session } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { autoUpdater } from "electron-updater";
@@ -16,26 +16,10 @@ process.env.VITE_PUBLIC = app.isPackaged
   ? process.env.DIST
   : path.join(process.env.DIST, "../public");
 
-let win: BrowserWindow | null;
+let win: BrowserWindow | null = null;
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 
-function createWindow() {
-  win = new BrowserWindow({
-    width: WINDOW_CONSTANTS.DEFAULT_WIDTH,
-    height: WINDOW_CONSTANTS.DEFAULT_HEIGHT,
-    minWidth: WINDOW_CONSTANTS.MIN_WIDTH,
-    minHeight: WINDOW_CONSTANTS.MIN_HEIGHT,
-    title: "CTV Bridge",
-    icon: process.env.VITE_PUBLIC
-      ? path.join(process.env.VITE_PUBLIC, "logo.png")
-      : undefined,
-    webPreferences: {
-      preload: path.join(__dirname, "../dist-electron/preload.mjs"),
-      nodeIntegration: false,
-      contextIsolation: true,
-    },
-  });
-
+function setupIpcHandlers() {
   // Register IPC handlers
   registerIpcHandlers();
   registerSdkCheckHandlers();
@@ -50,7 +34,9 @@ function createWindow() {
   ipcMain.handle("get-sdk-paths", async () => {
     return store.getAll();
   });
+}
 
+function setupAutoUpdater() {
   // Configure auto-updater
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
@@ -84,14 +70,11 @@ function createWindow() {
     }
     win?.webContents.send("update-error", message);
   });
+}
 
-  // Test active push message to Renderer-process.
-  win.webContents.on("did-finish-load", () => {
-    win?.webContents.send("main-process-message", new Date().toLocaleString());
-  });
-
-  // Configure Content Security Policy
-  win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+function setupCsp() {
+  // Configure Content Security Policy on the default session
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     // In development mode, we need to allow inline scripts for Vite HMR
     const isDevMode = !!VITE_DEV_SERVER_URL;
 
@@ -120,12 +103,34 @@ function createWindow() {
       },
     });
   });
+}
+
+function createWindow() {
+  win = new BrowserWindow({
+    width: WINDOW_CONSTANTS.DEFAULT_WIDTH,
+    height: WINDOW_CONSTANTS.DEFAULT_HEIGHT,
+    minWidth: WINDOW_CONSTANTS.MIN_WIDTH,
+    minHeight: WINDOW_CONSTANTS.MIN_HEIGHT,
+    title: "CTV Bridge",
+    icon: process.env.VITE_PUBLIC
+      ? path.join(process.env.VITE_PUBLIC, "logo.png")
+      : undefined,
+    webPreferences: {
+      preload: path.join(__dirname, "../dist-electron/preload.mjs"),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  // Test active push message to Renderer-process.
+  win.webContents.on("did-finish-load", () => {
+    win?.webContents.send("main-process-message", new Date().toLocaleString());
+  });
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
     win.webContents.openDevTools();
   } else {
-    // win.loadFile('dist/index.html')
     win.loadFile(path.join(process.env.DIST!, "index.html"));
   }
 }
@@ -134,8 +139,8 @@ function createWindow() {
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
-    win = null;
   }
+  win = null;
 });
 
 app.on("activate", () => {
@@ -147,6 +152,9 @@ app.on("activate", () => {
 });
 
 app.whenReady().then(() => {
+  setupIpcHandlers();
+  setupAutoUpdater();
+  setupCsp();
   createWindow();
 
   // Check for updates after app is ready (with delay to not slow down startup)
