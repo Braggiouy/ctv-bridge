@@ -53,6 +53,12 @@ interface ElectronAPI {
   }>;
   // Generic invoke method for any IPC handler
   invoke: <T = unknown>(channel: string, ...args: unknown[]) => Promise<T>;
+  listTizenProfiles: () => Promise<{
+    success: boolean;
+    profiles: { name: string; active: boolean }[];
+    message?: string;
+  }>;
+  openExternal: (url: string) => Promise<{ success: boolean }>;
   // SDK paths management
   saveSdkPaths: (paths: {
     sdbPath?: string;

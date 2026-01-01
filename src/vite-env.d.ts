@@ -19,12 +19,18 @@ interface ElectronAPI {
   ) => Promise<{ success: boolean; message: string }>;
   buildPackage: (
     platform: string,
-    projectPath: string
+    projectPath: string,
+    profileName?: string
   ) => Promise<{
     success: boolean;
     message: string;
     packagePath?: string;
     packageName?: string;
+  }>;
+  listTizenProfiles: () => Promise<{
+    success: boolean;
+    profiles: { name: string; active: boolean }[];
+    message?: string;
   }>;
   deployApp: (
     platform: string,
@@ -55,6 +61,7 @@ interface ElectronAPI {
     callback: (info: { version: string }) => void
   ) => () => void;
   onUpdateError: (callback: (error: string) => void) => () => void;
+  openExternal: (url: string) => Promise<{ success: boolean }>;
 }
 
 interface Window {

@@ -54,11 +54,16 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(
     "build-package",
-    async (_event, platform: string, projectPath: string) => {
+    async (
+      _event,
+      platform: string,
+      projectPath: string,
+      profileName?: string
+    ) => {
       try {
         await fs.access(projectPath);
         if (platform === "tizen") {
-          return await buildTizenPackage(projectPath);
+          return await buildTizenPackage(projectPath, profileName);
         } else if (platform === "webos") {
           return await buildWebOsPackage(projectPath);
         }

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, session } from "electron";
+import { app, BrowserWindow, ipcMain, session, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { autoUpdater } from "electron-updater";
@@ -33,6 +33,12 @@ function setupIpcHandlers() {
 
   ipcMain.handle("get-sdk-paths", async () => {
     return store.getAll();
+  });
+
+  // Open external URL in system browser
+  ipcMain.handle("open-external", async (_event, url: string) => {
+    await shell.openExternal(url);
+    return { success: true };
   });
 }
 
@@ -133,6 +139,22 @@ function createWindow() {
   } else {
     win.loadFile(path.join(process.env.DIST!, "index.html"));
   }
+
+  // Make all outside links open in the default browser
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith("https:") || url.startsWith("http:")) {
+      shell.openExternal(url);
+    }
+    return { action: "deny" };
+  });
+
+  // Also handle navigation attempts (standard <a> tags)
+  win.webContents.on("will-navigate", (event, url) => {
+    if (url !== win?.webContents.getURL()) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
 }
 
 // Quit when all windows are closed, except on macOS

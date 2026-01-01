@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -64,8 +64,39 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
     wgtGenerated,
     generatedPkgInfo,
     lastBuildMessage,
+    tizenProfiles,
+    fetchTizenProfiles,
     executeBuild,
   } = useBuildProcess(platform);
+
+  const [selectedProfile, setSelectedProfile] = useState(
+    localStorage.getItem(`${platform}_selectedProfile`) || ""
+  );
+
+  useEffect(() => {
+    if (platform === "tizen") {
+      fetchTizenProfiles();
+    }
+  }, [platform]);
+
+  // Update selected profile when profiles are fetched if none selected
+  useEffect(() => {
+    if (platform === "tizen" && tizenProfiles.length > 0 && !selectedProfile) {
+      const active = tizenProfiles.find((p) => p.active);
+      if (active) setSelectedProfile(active.name);
+      else setSelectedProfile(tizenProfiles[0].name);
+    }
+  }, [tizenProfiles, selectedProfile, platform]);
+
+  const handleExecuteBuild = () => {
+    executeBuild(
+      projectPath,
+      platform === "tizen" ? selectedProfile : undefined
+    );
+    if (platform === "tizen" && selectedProfile) {
+      localStorage.setItem(`${platform}_selectedProfile`, selectedProfile);
+    }
+  };
 
   const handleSavePath = () => {
     if (!projectPath || savedPaths.length >= 3) return;
@@ -178,6 +209,59 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
           />
         </div>
 
+        {platform === "tizen" && (
+          <div className="space-y-3 p-4 rounded-lg bg-muted/40 border border-muted-foreground/10">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="profile-select" className="text-sm font-semibold">
+                Certificate Profile
+              </Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={fetchTizenProfiles}
+                disabled={building}
+              >
+                Refresh List
+              </Button>
+            </div>
+            <div className="relative">
+              <select
+                id="profile-select"
+                value={selectedProfile}
+                onChange={(e) => setSelectedProfile(e.target.value)}
+                disabled={building}
+                className="w-full h-10 px-3 py-2 bg-background border border-input rounded-md text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all appearance-none cursor-pointer"
+              >
+                {tizenProfiles.length === 0 ? (
+                  <option value="" disabled>
+                    No profiles found. Create one in Tizen Studio.
+                  </option>
+                ) : (
+                  <>
+                    <option value="" disabled>
+                      Select a profile...
+                    </option>
+                    {tizenProfiles.map((p) => (
+                      <option key={p.name} value={p.name}>
+                        {p.name} {p.active ? "(Active)" : ""}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
+                <span className="text-xs">▼</span>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              <strong>Why this?</strong> For Samsung TVs, your app must be
+              signed with a profile that includes your TV's DUID. If you don't
+              see your profile, make sure it's created in Tizen Studio.
+            </p>
+          </div>
+        )}
+
         {wgtGenerated && (
           <BuildOutput
             packageInfo={generatedPkgInfo}
@@ -190,7 +274,7 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
             <span className="mr-2">&lt;</span> Back
           </Button>
           <Button
-            onClick={() => executeBuild(projectPath)}
+            onClick={handleExecuteBuild}
             disabled={building}
             variant="outline"
             className="flex-1"

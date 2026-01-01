@@ -59,10 +59,37 @@ export const TizenSetup = ({
       </Alert>
 
       <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100">
-        <AlertDescription className="text-sm">
-          <strong>Samsung TV Tip:</strong> Deployment will fail unless your app
-          is signed with a Samsung Distributor Certificate that includes your
-          TV's unique DUID.
+        <AlertDescription className="text-sm space-y-3">
+          <p>
+            <strong>💡 Samsung TV Tip:</strong> Think of a Certificate like a
+            "Security Pass." Your TV will reject any app that doesn't have a
+            pass specifically authorized for its unique ID (called a DUID).
+          </p>
+          <div className="text-xs space-y-2 opacity-90 border-t border-amber-200/50 dark:border-amber-800/50 pt-2">
+            <p className="font-semibold uppercase tracking-wider">
+              Setup Steps (Requires Tizen Studio):
+            </p>
+            <ul className="list-disc list-inside space-y-1.5">
+              <li>
+                Open <strong>Certificate Manager</strong> in Tizen Studio (Tools
+                &gt; Tizen).
+              </li>
+              <li>
+                Choose <strong>Samsung</strong> profile. You will most likely be
+                asked to sign in to your Samsung account.
+              </li>
+              <li>
+                <strong>Link your TV:</strong> Add your TV's DUID to the
+                distributor certificate. You can find this in the settings of
+                your TV in "About this TV" under "Unique Device ID".
+              </li>
+              <li>
+                <strong>That's it!</strong> Once created, you can close Tizen
+                Studio. This app will automatically find your profiles in the
+                next step.
+              </li>
+            </ul>
+          </div>
         </AlertDescription>
       </Alert>
 

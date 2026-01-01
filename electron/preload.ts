@@ -35,8 +35,10 @@ contextBridge.exposeInMainWorld("electron", {
   testConnection: (platform: string, identifier: string, passphrase?: string) =>
     ipcRenderer.invoke("test-connection", platform, identifier, passphrase),
 
-  buildPackage: (platform: string, projectPath: string) =>
-    ipcRenderer.invoke("build-package", platform, projectPath),
+  buildPackage: (platform: string, projectPath: string, profileName?: string) =>
+    ipcRenderer.invoke("build-package", platform, projectPath, profileName),
+
+  listTizenProfiles: () => ipcRenderer.invoke("list-tizen-profiles"),
 
   deployApp: (
     platform: string,
@@ -97,6 +99,9 @@ contextBridge.exposeInMainWorld("electron", {
   // Generic invoke method
   invoke: <T = unknown>(channel: string, ...args: unknown[]): Promise<T> =>
     ipcRenderer.invoke(channel, ...args),
+
+  // External link handling
+  openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
 
   // SDK paths management
   saveSdkPaths: (paths: {

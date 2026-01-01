@@ -14,8 +14,26 @@ export function useBuildProcess(platform: "tizen" | "webos") {
     path: string;
   } | null>(null);
   const [lastBuildMessage, setLastBuildMessage] = useState<string>("");
+  const [tizenProfiles, setTizenProfiles] = useState<
+    Array<{ name: string; active: boolean }>
+  >([]);
 
-  const executeBuild = async (projectPath: string): Promise<void> => {
+  const fetchTizenProfiles = async () => {
+    if (platform !== "tizen") return;
+    try {
+      const result = await window.electron.listTizenProfiles();
+      if (result.success) {
+        setTizenProfiles(result.profiles);
+      }
+    } catch (error) {
+      console.error("Failed to fetch Tizen profiles:", error);
+    }
+  };
+
+  const executeBuild = async (
+    projectPath: string,
+    profileName?: string
+  ): Promise<void> => {
     // Reset state
     setWgtGenerated(false);
     setGeneratedPkgInfo(null);
@@ -37,7 +55,11 @@ export function useBuildProcess(platform: "tizen" | "webos") {
     localStorage.setItem(`${platform}_projectPath`, projectPath);
 
     try {
-      const result = await window.electron.buildPackage(platform, projectPath);
+      const result = await window.electron.buildPackage(
+        platform,
+        projectPath,
+        profileName
+      );
 
       setBuilding(false);
 
@@ -101,6 +123,8 @@ export function useBuildProcess(platform: "tizen" | "webos") {
     wgtGenerated,
     generatedPkgInfo,
     lastBuildMessage,
+    tizenProfiles,
+    fetchTizenProfiles,
     executeBuild,
   };
 }

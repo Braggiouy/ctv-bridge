@@ -124,6 +124,62 @@ export function registerTizenHandlers() {
       };
     }
   });
+
+  // List available Tizen security profiles
+  ipcMain.handle("list-tizen-profiles", async () => {
+    try {
+      const tizenCmd = getSdkCommand("tizen");
+      const { stdout } = await execAsync(
+        `"${tizenCmd}" security-profiles list`
+      );
+
+      // Parse the output to find profile names
+      const lines = stdout.split(/\r?\n/).filter(Boolean);
+      const profiles: Array<{ name: string; active: boolean }> = [];
+
+      let startParsing = false;
+      for (const line of lines) {
+        if (line.includes("Name") && line.includes("Active")) {
+          startParsing = true;
+          continue;
+        }
+
+        if (startParsing) {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length >= 1) {
+            const name = parts[0];
+            if (name === "------") continue;
+            const active = parts.length >= 2 && parts[1].toUpperCase() === "X";
+            profiles.push({ name, active });
+          }
+        }
+      }
+
+      // Fallback if the table format is unexpected
+      if (profiles.length === 0) {
+        for (const line of lines) {
+          if (
+            line.includes("------") ||
+            line.includes("Name") ||
+            line.includes("Active") ||
+            line.includes("security-profiles list")
+          )
+            continue;
+          const name = line.trim().split(/\s+/)[0];
+          if (name) profiles.push({ name, active: false });
+        }
+      }
+
+      return { success: true, profiles };
+    } catch (error) {
+      logger.error("Error listing Tizen profiles", error);
+      return {
+        success: false,
+        message: `Failed to list profiles: ${getErrorMessage(error)}`,
+        profiles: [],
+      };
+    }
+  });
 }
 
 // Exported platform-specific functions for use by main handler
@@ -155,7 +211,10 @@ export async function testTizenConnection(tvIp: string) {
   }
 }
 
-export async function buildTizenPackage(projectPath: string) {
+export async function buildTizenPackage(
+  projectPath: string,
+  profileName?: string
+) {
   const os = await import("os");
 
   try {
@@ -182,7 +241,12 @@ export async function buildTizenPackage(projectPath: string) {
       }
 
       const tizenCmd = getSdkCommand("tizen");
-      await execAsync(`"${tizenCmd}" package -t wgt`, { cwd: tempDir });
+      let packageCmd = `"${tizenCmd}" package -t wgt`;
+      if (profileName) {
+        packageCmd += ` -p "${profileName}"`;
+      }
+
+      await execAsync(packageCmd, { cwd: tempDir });
       const tempFiles = await fs.readdir(tempDir);
       const wgtFile = tempFiles.find((f) => f.endsWith(".wgt"));
 
