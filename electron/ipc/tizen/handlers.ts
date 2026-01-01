@@ -58,7 +58,7 @@ export function registerTizenHandlers() {
       return {
         success: false,
         message: `Failed to list devices: ${getErrorMessage(
-          error
+          error,
         )}. Ensure Tizen Studio is installed and 'sdb' is in your PATH.`,
         devices: [],
       };
@@ -70,7 +70,7 @@ export function registerTizenHandlers() {
     try {
       const sdbCmd = getSdkCommand("sdb");
       const { stdout, stderr } = await execAsync(
-        `"${sdbCmd}" connect ${ip}:${TIZEN_CONSTANTS.DEFAULT_PORT}`
+        `"${sdbCmd}" connect ${ip}:${TIZEN_CONSTANTS.DEFAULT_PORT}`,
       );
 
       if (stderr && stderr.toLowerCase().includes("error")) {
@@ -86,7 +86,7 @@ export function registerTizenHandlers() {
         };
       } else {
         throw new Error(
-          "Connection command executed but device not found in device list"
+          "Connection command executed but device not found in device list",
         );
       }
     } catch (error) {
@@ -139,7 +139,7 @@ export async function testTizenConnection(tvIp: string) {
       await execAsync(`"${sdbCmd}" -s ${tvIp}:26101 shell ls /`);
     } catch {
       throw new Error(
-        "Device did not respond to shell command. TV may be off or unreachable."
+        "Device did not respond to shell command. TV may be off or unreachable.",
       );
     }
 
@@ -190,7 +190,7 @@ export async function buildTizenPackage(projectPath: string) {
 
       await fs.copyFile(
         path.join(tempDir, wgtFile),
-        path.join(projectPath, wgtFile)
+        path.join(projectPath, wgtFile),
       );
       await execAsync(`rm -rf "${tempDir}"`);
 
@@ -213,7 +213,7 @@ export async function buildTizenPackage(projectPath: string) {
     return {
       success: false,
       message: `Build failed: ${getErrorMessage(
-        error
+        error,
       )}. Check if 'tizen' CLI is in your PATH and project has valid config.xml.`,
     };
   }
@@ -223,13 +223,13 @@ export async function deployTizenApp(
   tvIp: string,
   projectPath: string,
   mode: "debug" | "run",
-  sendLog: (message: string) => void
+  sendLog: (message: string) => void,
 ) {
   try {
     const sdbCmd = getSdkCommand("sdb");
     const tizenCmd = getSdkCommand("tizen");
     sendLog(
-      `[${new Date().toLocaleTimeString()}] Connecting to TV at ${tvIp}...`
+      `[${new Date().toLocaleTimeString()}] Connecting to TV at ${tvIp}...`,
     );
     await execAsync(`"${sdbCmd}" connect ${tvIp}`);
     sendLog(`[${new Date().toLocaleTimeString()}] Connected successfully`);
@@ -244,7 +244,7 @@ export async function deployTizenApp(
     if (wgtFile !== wgtFileNoSpaces) {
       const newWgtPath = path.join(projectPath, wgtFileNoSpaces);
       sendLog(
-        `[${new Date().toLocaleTimeString()}] Renaming WGT file from "${wgtFile}" to "${wgtFileNoSpaces}"`
+        `[${new Date().toLocaleTimeString()}] Renaming WGT file from "${wgtFile}" to "${wgtFileNoSpaces}"`,
       );
       await fs.rename(wgtPath, newWgtPath);
       wgtFile = wgtFileNoSpaces;
@@ -261,13 +261,13 @@ export async function deployTizenApp(
     const appIdMatch = configContent.match(TIZEN_CONSTANTS.APP_ID_PATTERN);
     if (!appIdMatch)
       throw new Error(
-        `Could not find tizen:application id in ${TIZEN_CONSTANTS.CONFIG_FILE}`
+        `Could not find tizen:application id in ${TIZEN_CONSTANTS.CONFIG_FILE}`,
       );
 
     const appId = appIdMatch[1];
     if (/^https?:\/\//.test(appId)) {
       throw new Error(
-        `Invalid Tizen app ID extracted from config.xml: ${appId}.\\nThe <tizen:application id> must be a valid Tizen app ID, not a URL.`
+        `Invalid Tizen app ID extracted from config.xml: ${appId}.\\nThe <tizen:application id> must be a valid Tizen app ID, not a URL.`,
       );
     }
 
@@ -275,10 +275,10 @@ export async function deployTizenApp(
     try {
       const targetName = tvIp.replace(/\./g, "-");
       await execAsync(
-        `"${tizenCmd}" add remote-device -n ${targetName} -t TV -i ${tvIp}`
+        `"${tizenCmd}" add remote-device -n ${targetName} -t TV -i ${tvIp}`,
       );
       sendLog(
-        `[${new Date().toLocaleTimeString()}] Registered TV as target: ${targetName}`
+        `[${new Date().toLocaleTimeString()}] Registered TV as target: ${targetName}`,
       );
     } catch (error) {
       // Target may already exist, which is fine - this step is optional
@@ -287,7 +287,7 @@ export async function deployTizenApp(
 
     if (mode === "debug") {
       sendLog(
-        `[${new Date().toLocaleTimeString()}] Starting app in debug mode...`
+        `[${new Date().toLocaleTimeString()}] Starting app in debug mode...`,
       );
 
       // Tizen debugging uses sdb shell debug command which outputs a dynamic port
@@ -297,7 +297,7 @@ export async function deployTizenApp(
         const debugProcess = spawn(
           sdbCmd,
           ["-s", deviceSerial, "shell", "0", "debug", appId],
-          { shell: true }
+          { shell: true },
         );
 
         let urlFound = false;
@@ -311,7 +311,7 @@ export async function deployTizenApp(
           // Tizen outputs debug port in format like:
           // "... port: 7011" or "debug port is 7011" or just the port number
           const portMatch = outputBuffer.match(
-            /(?:port[:\s]+|:)(\d{4,5})|^(\d{4,5})$/m
+            /(?:port[:\s]+|:)(\d{4,5})|^(\d{4,5})$/m,
           );
 
           if (portMatch) {
@@ -319,30 +319,30 @@ export async function deployTizenApp(
             urlFound = true;
 
             sendLog(
-              `[${new Date().toLocaleTimeString()}] Debug port detected: ${debugPort}`
+              `[${new Date().toLocaleTimeString()}] Debug port detected: ${debugPort}`,
             );
 
             // Forward the port
             execAsync(
-              `"${sdbCmd}" -s ${deviceSerial} forward tcp:${debugPort} tcp:${debugPort}`
+              `"${sdbCmd}" -s ${deviceSerial} forward tcp:${debugPort} tcp:${debugPort}`,
             )
               .then(() => {
                 const inspectorUrl = `chrome://inspect/#devices`;
                 const localUrl = `localhost:${debugPort}`;
 
                 sendLog(
-                  `[${new Date().toLocaleTimeString()}] ✓ Port forwarded successfully`
+                  `[${new Date().toLocaleTimeString()}] ✓ Port forwarded successfully`,
                 );
                 sendLog(
-                  `[${new Date().toLocaleTimeString()}] ✓ Inspector URL:`
+                  `[${new Date().toLocaleTimeString()}] ✓ Inspector URL:`,
                 );
                 sendLog(`  1. Open Chrome and navigate to: ${inspectorUrl}`);
                 sendLog(`  2. Click "Configure..." and add: ${localUrl}`);
                 sendLog(
-                  `  3. Your app should appear - click "inspect" to debug`
+                  `  3. Your app should appear - click "inspect" to debug`,
                 );
                 sendLog(
-                  `[${new Date().toLocaleTimeString()}] 🔍 Chrome DevTools connection ready!`
+                  `[${new Date().toLocaleTimeString()}] 🔍 Chrome DevTools connection ready!`,
                 );
 
                 if (timeoutHandle) {
@@ -358,10 +358,10 @@ export async function deployTizenApp(
                 sendLog(
                   `[${new Date().toLocaleTimeString()}] Warning: Port forwarding failed: ${
                     err.message
-                  }`
+                  }`,
                 );
                 sendLog(
-                  `[${new Date().toLocaleTimeString()}] You may need to manually run: sdb forward tcp:${debugPort} tcp:${debugPort}`
+                  `[${new Date().toLocaleTimeString()}] You may need to manually run: sdb forward tcp:${debugPort} tcp:${debugPort}`,
                 );
 
                 if (timeoutHandle) {
@@ -418,17 +418,17 @@ export async function deployTizenApp(
         const timeoutHandle = setTimeout(() => {
           if (!urlFound) {
             logger.warn(
-              "Debug port timeout: Port not detected within 15 seconds"
+              "Debug port timeout: Port not detected within 15 seconds",
             );
             logger.debug("Output buffer:", outputBuffer);
             sendLog(
-              `[${new Date().toLocaleTimeString()}] ⚠️ Application launched in debug mode`
+              `[${new Date().toLocaleTimeString()}] ⚠️ Application launched in debug mode`,
             );
             sendLog(
-              `[${new Date().toLocaleTimeString()}] Debug port not detected automatically.`
+              `[${new Date().toLocaleTimeString()}] Debug port not detected automatically.`,
             );
             sendLog(
-              `[${new Date().toLocaleTimeString()}] Check the logs above for port information.`
+              `[${new Date().toLocaleTimeString()}] Check the logs above for port information.`,
             );
 
             resolve({
@@ -442,7 +442,7 @@ export async function deployTizenApp(
       sendLog(`[${new Date().toLocaleTimeString()}] Launching application...`);
       await execAsync(`"${tizenCmd}" run -p ${appId} -s ${deviceSerial}`);
       sendLog(
-        `[${new Date().toLocaleTimeString()}] Application launched successfully`
+        `[${new Date().toLocaleTimeString()}] Application launched successfully`,
       );
     }
 
@@ -450,11 +450,25 @@ export async function deployTizenApp(
   } catch (error) {
     logger.error("Error deploying Tizen app", error);
     const message = getErrorMessage(error) || "Deployment failed";
+
+    // Capture detailed CLI output if available
+    const execError = error as { stdout?: string; stderr?: string };
+    if (execError.stdout) {
+      sendLog(
+        `[${new Date().toLocaleTimeString()}] CLI Output: ${execError.stdout.trim()}`,
+      );
+    }
+    if (execError.stderr) {
+      sendLog(
+        `[${new Date().toLocaleTimeString()}] CLI Error Details: ${execError.stderr.trim()}`,
+      );
+    }
+
     sendLog(`[${new Date().toLocaleTimeString()}] Error: ${message}`);
 
     let userMessage = message;
     if (message.includes("install failed")) {
-      userMessage = `Installation failed: ${message}. Check if TV has enough storage and Developer Mode is active.`;
+      userMessage = `Installation failed: ${message}. Check global logs for details (Tizen error codes). Common issues include storage, Developer Mode, or invalid certificates.`;
     } else if (message.includes("closed")) {
       userMessage =
         "Connection lost during deployment. Please check network connection.";
