@@ -77,7 +77,7 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
     if (platform === "tizen") {
       fetchTizenProfiles();
     }
-  }, [platform]);
+  }, [platform, fetchTizenProfiles]);
 
   // Update selected profile when profiles are fetched if none selected
   useEffect(() => {
@@ -130,7 +130,6 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
         addLog("step", `Project directory selected: ${selectedPath}`);
       }
     } catch (error: unknown) {
-      const err = error as Error;
       const msg = `Error selecting directory: ${
         error instanceof Error
           ? error.message

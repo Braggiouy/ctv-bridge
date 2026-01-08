@@ -1,5 +1,5 @@
 import { Device, WebOSDevice, TizenDevice } from "@/types";
-import { Wifi, WifiOff, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Wifi, Loader2, CheckCircle2, XCircle } from "lucide-react";
 
 /**
  * Get the unique identifier for a device

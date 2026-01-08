@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Device, WebOSDevice, TizenDevice } from "@/types";
+import { Device, WebOSDevice } from "@/types";
 import { useGlobalLogs } from "@/utils";
 import { useSecureStorage } from "@/hooks/useSecureStorage";
 import { toast } from "sonner";

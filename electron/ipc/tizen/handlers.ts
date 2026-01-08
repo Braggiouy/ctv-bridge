@@ -122,7 +122,7 @@ export function registerTizenHandlers() {
   ipcMain.handle("add-tizen-device", async (_event, ip: string) => {
     try {
       const sdbCmd = getSdkCommand("sdb");
-      const { stdout, stderr } = await execAsync(
+      const { stderr } = await execAsync(
         `"${sdbCmd}" connect ${ip}:${TIZEN_CONSTANTS.DEFAULT_PORT}`
       );
 
@@ -165,7 +165,7 @@ export function registerTizenHandlers() {
   ipcMain.handle("remove-tizen-device", async (_event, ip: string) => {
     try {
       const sdbCmd = getSdkCommand("sdb");
-      const { stdout } = await execAsync(`"${sdbCmd}" disconnect ${ip}`);
+      await execAsync(`"${sdbCmd}" disconnect ${ip}`);
       return {
         success: true,
         message: `Disconnected from ${ip}`,
@@ -249,7 +249,7 @@ async function registerRemoteDevice(
       `"${tizenCmd}" add remote-device -n ${targetName} -t TV -i ${tvIp}`
     );
     sendLog(getTimeLog(`Registered TV as target: ${targetName}`));
-  } catch (error) {
+  } catch {
     // Target may already exist, which is fine
   }
 }

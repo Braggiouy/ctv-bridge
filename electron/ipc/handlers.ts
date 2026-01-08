@@ -14,7 +14,6 @@ import {
 } from "./webos/handlers";
 import * as secureStorage from "../common/secure-storage";
 import { getErrorMessage } from "../utils/errors";
-import { logger } from "../utils/logger";
 
 export function registerIpcHandlers() {
   registerTizenHandlers();

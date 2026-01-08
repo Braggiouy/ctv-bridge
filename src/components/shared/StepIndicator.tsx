@@ -1,4 +1,3 @@
-import { Check, Circle, Info } from "lucide-react";
 import { cn } from "@/utils";
 
 interface Step {

@@ -2,7 +2,6 @@ import { safeStorage, app } from "electron";
 import fs from "fs/promises";
 import path from "path";
 import { logger } from "../utils/logger";
-import { getErrorMessage } from "../utils/errors";
 
 interface PassphraseStore {
   [deviceName: string]: string; // Encrypted passphrase (base64)

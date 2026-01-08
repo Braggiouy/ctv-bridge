@@ -4,7 +4,7 @@ import path from "path";
 import electron from "vite-plugin-electron/simple";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(() => ({
   server: {
     host: "::",
     port: 3000,

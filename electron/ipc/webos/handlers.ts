@@ -1,4 +1,4 @@
-import { ipcMain, dialog } from "electron";
+import { ipcMain } from "electron";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { store } from "../../store";
@@ -79,7 +79,9 @@ export function registerWebOsHandlers() {
         await execAsync(
           `${getAresCommand("-setup-device")} --remove ${device.name}`
         );
-      } catch {}
+      } catch {
+        // Ignore error if device does not exist or remove fails
+      }
 
       const cmd = `${getAresCommand("-setup-device")} -a ${device.name} -i "username=${device.username}" -i "host=${device.ip}" -i "port=${device.port}"`;
       await execAsync(cmd);
@@ -131,7 +133,7 @@ export function registerWebOsHandlers() {
         await execAsync(
           `${getAresCommand("-setup-device")} --remove ${device.name}`
         );
-      } catch (err) {
+      } catch {
         // Ignore error if device does not exist
         logger.debug(`Device removal (may not exist)`, { name: device.name });
       }
@@ -181,7 +183,7 @@ export async function testWebOsConnection(
 ) {
   try {
     // Test connection using ares-device-info
-    const { stdout, stderr } = await execAsync(
+    const { stderr } = await execAsync(
       `${getAresCommand("-device-info")} -d ${deviceName}`
     );
 
@@ -261,7 +263,7 @@ export async function testWebOsConnection(
                     success: true,
                     message: `SSH keys configured successfully. Connected to webOS device: ${deviceName}`,
                   });
-                } catch (retryError) {
+                } catch {
                   resolve({
                     success: true,
                     message: `SSH keys configured. Device is reachable at ${deviceName}. You can proceed to build and deploy.`,

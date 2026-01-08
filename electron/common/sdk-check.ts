@@ -20,7 +20,7 @@ export function registerSdkCheckHandlers() {
         available: true,
         sdbVersion: sdbVersion.trim(),
       };
-    } catch (error) {
+    } catch {
       return {
         available: false,
         error:
@@ -44,7 +44,7 @@ export function registerSdkCheckHandlers() {
         available: true,
         aresVersion: aresVersion.trim(),
       };
-    } catch (error) {
+    } catch {
       return {
         available: false,
         error:
