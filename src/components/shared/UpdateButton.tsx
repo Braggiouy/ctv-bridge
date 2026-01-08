@@ -44,8 +44,8 @@ export function UpdateButton() {
       });
 
       const unsubError = window.electron.onUpdateError((error: unknown) => {
-        const err = error as Error; // Assuming the error object has a message property
-        toast.error(`Update check failed: ${err.message || err}`); // Use err.message if available, otherwise the error itself
+        const err = error as Error;
+        toast.error(`Update check failed: ${err.message || err}`);
         setChecking(false);
       });
 

@@ -9,17 +9,46 @@ import { WEBOS_CONSTANTS, DEPLOY_CONSTANTS } from "../../utils/constants";
 const execAsync = promisify(exec);
 
 // Helper to get ares command with SDK path
-// The user provides a base path like: /Users/name/webOS_TV_SDK/CLI/bin/ares
-// We append the specific command suffix like: -setup-device, -package, etc.
 function getAresCommand(suffix: string): string {
   const paths = store.getAll();
-  if (paths.aresPath) {
-    // aresPath is like: /path/to/ares
-    // We need to append the suffix like: -setup-device
-    return `"${paths.aresPath}${suffix}"`;
+  return paths.aresPath ? `"${paths.aresPath}${suffix}"` : `ares${suffix}`;
+}
+
+// CLI parsing helpers
+function parseWebOsDevices(
+  stdout: string
+): Array<{ name: string; ip: string; port: string; username: string }> {
+  const lines = stdout.split(/\r?\n/).filter(Boolean);
+  const devices: Array<{
+    name: string;
+    ip: string;
+    port: string;
+    username: string;
+  }> = [];
+
+  let startIdx = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes("deviceinfo") && lines[i].includes("connection")) {
+      startIdx = i + 2;
+      break;
+    }
   }
-  // Fallback to system PATH
-  return `ares${suffix}`;
+
+  for (let i = startIdx; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const parts = line.split(/\s{2,}/);
+    if (parts.length < 2) continue;
+
+    const name = parts[0].replace(/ \(default\)/, "").trim();
+    const deviceinfo = parts[1];
+    const match = deviceinfo.match(/([^@]+)@([\d.]+):(\d+)/);
+
+    if (match) {
+      devices.push({ name, ip: match[2], port: match[3], username: match[1] });
+    }
+  }
+  return devices;
 }
 
 export function registerWebOsHandlers() {
@@ -29,47 +58,7 @@ export function registerWebOsHandlers() {
       const { stdout } = await execAsync(
         `${getAresCommand("-setup-device")} --list`
       );
-      // Parse tabular output
-      const lines = stdout.split(/\r?\n/).filter(Boolean);
-      const devices: Array<{
-        name: string;
-        ip: string;
-        port: string;
-        username: string;
-      }> = [];
-      // Find header line and start parsing after it
-      let startIdx = 0;
-      for (let i = 0; i < lines.length; i++) {
-        if (
-          lines[i].includes("deviceinfo") &&
-          lines[i].includes("connection")
-        ) {
-          startIdx = i + 2; // skip header and separator
-          break;
-        }
-      }
-      for (let i = startIdx; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        // Split by two or more spaces
-        const parts = line.split(/\s{2,}/);
-        if (parts.length < 2) continue;
-        // name, deviceinfo, connection, profile
-        const name = parts[0].replace(/ \(default\)/, "").trim();
-        const deviceinfo = parts[1];
-        // deviceinfo format: user@ip:port
-        let username = "",
-          ip = "",
-          port = "";
-        const match = deviceinfo.match(/([^@]+)@([\d.]+):(\d+)/);
-        if (match) {
-          username = match[1];
-          ip = match[2];
-          port = match[3];
-        }
-        devices.push({ name, ip, port, username });
-      }
-      return { success: true, devices };
+      return { success: true, devices: parseWebOsDevices(stdout) };
     } catch (error) {
       return { success: false, message: getErrorMessage(error) };
     }
@@ -78,119 +67,41 @@ export function registerWebOsHandlers() {
   // Add/register a new webOS device
   ipcMain.handle("add-device", async (_event, device) => {
     try {
-      // Validate device name
-      if (!device.name) {
-        return { success: false, message: "Device name is required." };
-      }
-      // Validate IP address
-      if (!device.ip || !/^\d{1,3}(\.\d{1,3}){3}$/.test(device.ip)) {
-        return { success: false, message: "Device IP is invalid or missing." };
-      }
-      // Validate port
-      if (!device.port || isNaN(Number(device.port))) {
+      if (!device.name || !device.ip || !device.port) {
         return {
           success: false,
-          message: "Device port is invalid or missing.",
+          message: "Missing required device connection info.",
         };
       }
+
       // Always remove any existing device with the same name before adding
       try {
         await execAsync(
           `${getAresCommand("-setup-device")} --remove ${device.name}`
         );
-      } catch (err) {
-        // Ignore error if device does not exist
-      }
+      } catch {}
 
-      const cmd = `${getAresCommand("-setup-device")} -a ${
-        device.name
-      } -i "username=${device.username}" -i "host=${device.ip}" -i "port=${
-        device.port
-      }"`;
-      const { stdout } = await execAsync(cmd);
-      // After adding, list devices and return updated list
+      const cmd = `${getAresCommand("-setup-device")} -a ${device.name} -i "username=${device.username}" -i "host=${device.ip}" -i "port=${device.port}"`;
+      await execAsync(cmd);
+
       const { stdout: listOut } = await execAsync(
         `${getAresCommand("-setup-device")} --list`
       );
-      // Parse tabular output
-      const lines = listOut.split(/\r?\n/).filter(Boolean);
-      const devices: Array<{
-        name: string;
-        ip: string;
-        port: string;
-        username: string;
-      }> = [];
-      let startIdx = 0;
-      for (let i = 0; i < lines.length; i++) {
-        if (
-          lines[i].includes("deviceinfo") &&
-          lines[i].includes("connection")
-        ) {
-          startIdx = i + 2;
-          break;
-        }
-      }
-      for (let i = startIdx; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        const parts = line.split(/\s{2,}/);
-        if (parts.length < 2) continue;
-        const name = parts[0].replace(/ \(default\)/, "").trim();
-        const deviceinfo = parts[1];
-        let username = "",
-          ip = "",
-          port = "";
-        const match = deviceinfo.match(/([^@]+)@([\d.]+):(\d+)/);
-        if (match) {
-          username = match[1];
-          ip = match[2];
-          port = match[3];
-        }
-        devices.push({ name, ip, port, username });
-      }
-      return { success: true, message: stdout, devices };
+      return {
+        success: true,
+        message: "Device registered successfully",
+        devices: parseWebOsDevices(listOut),
+      };
     } catch (error) {
-      if (error.message && error.message.includes("already exists")) {
-        // Still return updated device list
+      if (error.message?.includes("already exists")) {
         const { stdout: listOut } = await execAsync(
           `${getAresCommand("-setup-device")} --list`
         );
-        const lines = listOut.split(/\r?\n/).filter(Boolean);
-        const devices: Array<{
-          name: string;
-          ip: string;
-          port: string;
-          username: string;
-        }> = [];
-        let startIdx = 0;
-        for (let i = 0; i < lines.length; i++) {
-          if (
-            lines[i].includes("deviceinfo") &&
-            lines[i].includes("connection")
-          ) {
-            startIdx = i + 2;
-            break;
-          }
-        }
-        for (let i = startIdx; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          const parts = line.split(/\s{2,}/);
-          if (parts.length < 2) continue;
-          const name = parts[0].replace(/ \(default\)/, "").trim();
-          const deviceinfo = parts[1];
-          let username = "",
-            ip = "",
-            port = "";
-          const match = deviceinfo.match(/([^@]+)@([\d.]+):(\d+)/);
-          if (match) {
-            username = match[1];
-            ip = match[2];
-            port = match[3];
-          }
-          devices.push({ name, ip, port, username });
-        }
-        return { success: true, message: error.message, devices };
+        return {
+          success: true,
+          message: error.message,
+          devices: parseWebOsDevices(listOut),
+        };
       }
       return { success: false, message: getErrorMessage(error) };
     }
@@ -240,13 +151,26 @@ export function registerWebOsHandlers() {
   // Remove a webOS device
   ipcMain.handle("remove-device", async (_event, name) => {
     try {
-      const cmd = `${getAresCommand("-setup-device")} --remove ${name}`;
-      const { stdout } = await execAsync(cmd);
+      const { stdout } = await execAsync(
+        `${getAresCommand("-setup-device")} --remove ${name}`
+      );
       return { success: true, message: stdout };
     } catch (error) {
       return { success: false, message: getErrorMessage(error) };
     }
   });
+}
+
+// Internal Deployment Helpers
+
+async function getAppIdFromInfo(projectPath: string): Promise<string> {
+  const fs = await import("fs/promises");
+  const path = await import("path");
+  const appinfoPath = path.join(projectPath, WEBOS_CONSTANTS.CONFIG_FILE);
+  const content = await fs.readFile(appinfoPath, "utf-8");
+  const appinfo = JSON.parse(content);
+  if (!appinfo.id) throw new Error("Could not find app ID in appinfo.json");
+  return appinfo.id;
 }
 
 // Exported platform-specific functions for use by main handler
@@ -402,62 +326,42 @@ export async function testWebOsConnection(
 
 export async function buildWebOsPackage(projectPath: string) {
   try {
-    logger.info("Building webOS package", { projectPath });
-
     const path = await import("path");
     const fs = await import("fs/promises");
 
-    // ares-package needs to be run from the parent directory
-    // and passed the folder name (not full path)
+    logger.info("Building webOS package", { projectPath });
+
     const parentDir = path.dirname(projectPath);
     const folderName = path.basename(projectPath);
 
-    // Run ares-package from parent directory
-    const { stdout, stderr } = await execAsync(
-      `${getAresCommand("-package")} "${folderName}"`,
-      {
-        cwd: parentDir,
-      }
+    // Run ares-package
+    await execAsync(`${getAresCommand("-package")} "${folderName}"`, {
+      cwd: parentDir,
+    });
+
+    const files = await fs.readdir(parentDir);
+    const ipkFiles = files.filter((f) =>
+      f.endsWith(WEBOS_CONSTANTS.PACKAGE_EXTENSION)
     );
 
-    if (stderr) {
-      logger.debug("ares-package stderr", stderr);
-    }
-
-    // The IPK file is created in the parent directory
-    // Find the most recently created IPK file to avoid picking up old builds
-    const files = await fs.readdir(parentDir);
-    const ipkFiles = files.filter((f) => f.endsWith(".ipk"));
-
     if (ipkFiles.length === 0) {
-      throw new Error(
-        "IPK file not found after build. The build may have failed silently or output to an unexpected location."
-      );
+      throw new Error("IPK file not found after build.");
     }
 
-    // Get the most recently modified IPK file
+    // Get newest IPK
     let newestIpk = ipkFiles[0];
     let newestTime = 0;
 
     for (const ipkFile of ipkFiles) {
-      const filePath = path.join(parentDir, ipkFile);
-      const stats = await fs.stat(filePath);
+      const stats = await fs.stat(path.join(parentDir, ipkFile));
       if (stats.mtimeMs > newestTime) {
         newestTime = stats.mtimeMs;
         newestIpk = ipkFile;
       }
     }
 
-    const ipkInParent = path.join(parentDir, newestIpk);
     const ipkInProject = path.join(projectPath, newestIpk);
-
-    logger.info(`Found IPK file: ${newestIpk}`, {
-      modifiedTime: new Date(newestTime).toISOString(),
-    });
-    logger.debug(`Moving IPK from ${ipkInParent} to ${ipkInProject}`);
-
-    // Move the IPK file into the project directory
-    await fs.rename(ipkInParent, ipkInProject);
+    await fs.rename(path.join(parentDir, newestIpk), ipkInProject);
 
     return {
       success: true,
@@ -467,28 +371,15 @@ export async function buildWebOsPackage(projectPath: string) {
     };
   } catch (error) {
     logger.error("Build error", error);
+    const message = getErrorMessage(error) || "Build failed";
 
-    // Check for common errors
-    if (error.message.includes("command not found")) {
+    if (message.includes("appinfo.json")) {
       return {
         success: false,
-        message:
-          "ares-package command not found. Please ensure webOS SDK is installed and in your PATH.",
+        message: "appinfo.json not found in project directory.",
       };
     }
-
-    if (error.message.includes("appinfo.json")) {
-      return {
-        success: false,
-        message:
-          "appinfo.json not found. Please ensure your project directory contains the required webOS meta files.",
-      };
-    }
-
-    return {
-      success: false,
-      message: getErrorMessage(error) || "Build failed",
-    };
+    return { success: false, message };
   }
 }
 
@@ -502,218 +393,140 @@ export async function deployWebOsApp(
     const fs = await import("fs/promises");
     const path = await import("path");
 
-    sendLog("Connecting to device: " + deviceName + "...");
+    sendLog(logger.getTimeLog(`Connecting to device: ${deviceName}...`));
 
-    // Find the IPK file in the project directory
+    // Find IPK
     const files = await fs.readdir(projectPath);
-    const ipkFile = files.find((f) => f.endsWith(".ipk"));
-
-    if (!ipkFile) {
-      throw new Error(
-        "IPK file not found in project directory. Please build the package first."
-      );
-    }
+    const ipkFile = files.find((f) =>
+      f.endsWith(WEBOS_CONSTANTS.PACKAGE_EXTENSION)
+    );
+    if (!ipkFile)
+      throw new Error("IPK file not found. Please build the package first.");
 
     const ipkPath = path.join(projectPath, ipkFile);
-    sendLog("Found IPK: " + ipkFile);
+    sendLog(logger.getTimeLog(`Found IPK: ${ipkFile}`));
 
-    // Install the IPK using ares-install
-    sendLog("Installing " + ipkFile + "...");
-    const { stdout: installOut, stderr: installErr } = await execAsync(
+    // Install
+    sendLog(logger.getTimeLog(`Installing ${ipkFile}...`));
+    const { stderr: installErr } = await execAsync(
       `${getAresCommand("-install")} -d ${deviceName} "${ipkPath}"`
     );
-
-    if (installErr && installErr.toLowerCase().includes("error")) {
+    if (installErr && installErr.toLowerCase().includes("error"))
       throw new Error(installErr);
-    }
+    sendLog(logger.getTimeLog("Installation complete"));
 
-    sendLog("Installation complete");
-    logger.debug("Install output", installOut);
-
-    // Extract app ID from appinfo.json
-    const appinfoPath = path.join(projectPath, "appinfo.json");
-    const appinfoContent = await fs.readFile(appinfoPath, "utf-8");
-    const appinfo = JSON.parse(appinfoContent);
-    const appId = appinfo.id;
-
-    if (!appId) {
-      throw new Error("Could not find app ID in appinfo.json");
-    }
-
-    sendLog("App ID: " + appId);
-
-    // Launch the app using ares-launch
-    sendLog("Launching application...");
+    const appId = await getAppIdFromInfo(projectPath);
+    sendLog(logger.getTimeLog(`App ID: ${appId}`));
 
     if (mode === "debug") {
-      // For debug mode, use ares-inspect to launch with inspector
-      // ares-inspect is a long-running process, so we spawn it and capture the URL
-      const { spawn } = await import("child_process");
-
-      return await new Promise((resolve) => {
-        const aresInspect = getAresCommand("-inspect").replace(/"/g, "");
-        const proc = spawn(aresInspect, ["-d", deviceName, appId], {
-          shell: true,
-        });
-
-        let urlFound = false;
-        let outputBuffer = "";
-        let timeoutHandle: NodeJS.Timeout | undefined = undefined;
-
-        // Helper function to check for URL in text
-        const checkForUrl = (text: string, source: string) => {
-          if (urlFound) return;
-
-          // Buffer the output to handle cases where URL is split across chunks
-          outputBuffer += text;
-
-          // Look for the inspector URL with multiple possible patterns
-          // Pattern 1: http://localhost:PORT/devtools/inspector.html?ws=...
-          // Pattern 2: chrome-devtools://devtools/bundled/inspector.html?ws=...
-          // Pattern 3: Any URL starting with http://localhost: followed by devtools
-          const urlPatterns = [
-            /(https?:\/\/localhost:\d+\/[^\s"'<>]+)/,
-            /(chrome-devtools:\/\/[^\s"'<>]+)/,
-            /(ws:\/\/localhost:\d+\/[^\s"'<>]+)/,
-          ];
-
-          for (const pattern of urlPatterns) {
-            const urlMatch = outputBuffer.match(pattern);
-            if (urlMatch) {
-              urlFound = true;
-              const inspectorUrl = urlMatch[1];
-              logger.debug(`Debug URL found in ${source}: ${inspectorUrl}`);
-              sendLog("✓ Inspector URL captured:");
-              sendLog(inspectorUrl);
-              sendLog("Copy and paste the URL above into Chrome to debug");
-
-              // Clear the timeout since we found the URL
-              if (timeoutHandle) {
-                clearTimeout(timeoutHandle);
-              }
-
-              // Resolve immediately after getting the URL
-              // The process will keep running in the background
-              resolve({
-                success: true,
-                message: "Deployment completed successfully",
-              });
-              return;
-            }
-          }
-        };
-
-        proc.stdout.on("data", (data) => {
-          const text = data.toString();
-          logger.debug(`ares-inspect stdout: ${text}`);
-
-          // Check for URL in stdout first
-          const hasUrl =
-            /(https?:\/\/localhost:\d+\/|chrome-devtools:\/\/|ws:\/\/localhost:\d+\/)/.test(
-              text
-            );
-
-          // Send the raw output to logs only if it doesn't contain a URL
-          // (we'll send a custom formatted version when URL is found)
-          if (text.trim() && !hasUrl) {
-            sendLog(text.trim());
-          }
-
-          // Check for URL and send custom formatted message if found
-          checkForUrl(text, "stdout");
-        });
-
-        proc.stderr.on("data", (data) => {
-          const text = data.toString();
-          logger.debug(`ares-inspect stderr: ${text}`);
-
-          // Check for URL in stderr first
-          const hasUrl =
-            /(https?:\/\/localhost:\d+\/|chrome-devtools:\/\/|ws:\/\/localhost:\d+\/)/.test(
-              text
-            );
-
-          // Also send stderr to logs as it might contain important info
-          // But skip if it contains a URL (we'll send custom formatted version)
-          if (
-            text.trim() &&
-            !text.toLowerCase().includes("deprecat") &&
-            !hasUrl
-          ) {
-            sendLog(text.trim());
-          }
-
-          // Check for URL in stderr as well (some versions output here)
-          checkForUrl(text, "stderr");
-        });
-
-        proc.on("error", (err) => {
-          logger.error("ares-inspect process error", err);
-          sendLog("Error starting inspector: " + err.message);
-          if (timeoutHandle) {
-            clearTimeout(timeoutHandle);
-          }
-          resolve({
-            success: false,
-            message: "Failed to start inspector: " + err.message,
-          });
-        });
-
-        // Timeout after 15 seconds if no URL is found (increased from 10s)
-        timeoutHandle = setTimeout(() => {
-          if (!urlFound) {
-            logger.warn("Debug URL timeout: URL not captured within timeout");
-            logger.debug("Output buffer content:", outputBuffer);
-            sendLog("⚠️ Application launched in debug mode");
-            sendLog(
-              "Debug URL not captured automatically. This can happen if:"
-            );
-            sendLog(
-              "  • The app launched but ares-inspect didn't output the URL"
-            );
-            sendLog("  • The URL format changed in your webOS SDK version");
-            sendLog("  • Check the logs above for any URLs or error messages");
-            resolve({
-              success: true,
-              message: "Deployment completed (debug URL not captured)",
-            });
-          }
-        }, DEPLOY_CONSTANTS.DEBUG_PORT_TIMEOUT_MS);
-      });
+      sendLog(logger.getTimeLog("Launching application in debug mode..."));
+      return await startWebOsDebugSession(deviceName, appId, sendLog);
     } else {
-      // For run mode, just launch normally
-      const { stdout: launchOut, stderr: launchErr } = await execAsync(
+      sendLog(logger.getTimeLog("Launching application..."));
+      const { stderr: launchErr } = await execAsync(
         `${getAresCommand("-launch")} -d ${deviceName} ${appId}`
       );
-
-      if (launchErr && launchErr.toLowerCase().includes("error")) {
+      if (launchErr && launchErr.toLowerCase().includes("error"))
         throw new Error(launchErr);
-      }
-
-      logger.debug("Launch output", launchOut);
-      sendLog("Application launched successfully");
+      sendLog(logger.getTimeLog("Application launched successfully"));
     }
 
-    return {
-      success: true,
-      message: "Deployment completed successfully",
-    };
+    return { success: true, message: "Deployment completed successfully" };
   } catch (error) {
     logger.error("Deployment error", error);
     const message = getErrorMessage(error) || "Deployment failed";
-
-    // Capture detailed CLI output if available
     const execError = error as { stdout?: string; stderr?: string };
-    if (execError.stdout) {
-      sendLog(execError.stdout.trim());
-    }
-    if (execError.stderr) {
-      sendLog("ERROR DETAILS: " + execError.stderr.trim());
-    }
-
-    return {
-      success: false,
-      message: message,
-    };
+    if (execError.stdout)
+      sendLog(logger.getTimeLog(`CLI Output: ${execError.stdout.trim()}`));
+    if (execError.stderr)
+      sendLog(
+        logger.getTimeLog(`CLI Error Details: ${execError.stderr.trim()}`)
+      );
+    return { success: false, message };
   }
+}
+
+async function startWebOsDebugSession(
+  deviceName: string,
+  appId: string,
+  sendLog: (msg: string) => void
+): Promise<{ success: boolean; message: string }> {
+  const { spawn } = await import("child_process");
+
+  return new Promise((resolve) => {
+    const proc = spawn(
+      getAresCommand("-inspect").replace(/"/g, ""),
+      ["-d", deviceName, appId],
+      {
+        shell: true,
+      }
+    );
+
+    let urlFound = false;
+    let outputBuffer = "";
+
+    const checkForUrl = (text: string) => {
+      if (urlFound) return;
+      outputBuffer += text;
+
+      const patterns = [
+        /(https?:\/\/localhost:\d+\/[^\s"'<>]+)/,
+        /(chrome-devtools:\/\/[^\s"'<>]+)/,
+        /(ws:\/\/localhost:\d+\/[^\s"'<>]+)/,
+      ];
+
+      for (const pattern of patterns) {
+        const match = outputBuffer.match(pattern);
+        if (match) {
+          urlFound = true;
+          const url = match[1];
+          sendLog(logger.getTimeLog(`✓ Inspector URL captured: ${url}`));
+          sendLog("Copy and paste the URL above into Chrome to debug");
+          if (timeoutHandle) clearTimeout(timeoutHandle);
+          resolve({
+            success: true,
+            message: "Deployment completed successfully",
+          });
+          return;
+        }
+      }
+    };
+
+    proc.stdout.on("data", (data) => {
+      const text = data.toString();
+      if (text.trim() && !text.includes("http"))
+        sendLog(logger.getTimeLog(text.trim()));
+      checkForUrl(text);
+    });
+
+    proc.stderr.on("data", (data) => {
+      const text = data.toString();
+      if (
+        text.trim() &&
+        !text.includes("http") &&
+        !text.toLowerCase().includes("deprecat")
+      ) {
+        sendLog(logger.getTimeLog(text.trim()));
+      }
+      checkForUrl(text);
+    });
+
+    proc.on("error", (err) => {
+      logger.error("ares-inspect process error", err);
+      sendLog(logger.getTimeLog(`Error starting inspector: ${err.message}`));
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      resolve({ success: false, message: "Failed to start inspector" });
+    });
+
+    const timeoutHandle = setTimeout(() => {
+      if (!urlFound) {
+        sendLog(
+          logger.getTimeLog(
+            "⚠️ Application launched in debug mode (URL not captured)"
+          )
+        );
+        resolve({ success: true, message: "Deployment completed" });
+      }
+    }, DEPLOY_CONSTANTS.DEBUG_PORT_TIMEOUT_MS);
+  });
 }

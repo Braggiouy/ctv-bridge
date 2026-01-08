@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, CheckCircle2 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useGlobalLogs } from "@/utils";
 import { TizenSetup } from "./TizenSetup";
 import { WebOSSetup } from "./WebOSSetup";
@@ -50,13 +50,11 @@ export const InstallationStep = ({ onNext }: InstallationStepProps) => {
 
     if (!validation.valid) {
       const errorMessage = validation.errors.join(". ");
-      toast({
-        title: platform === "tizen" ? "Missing Paths" : "Missing Path",
+      toast.error(platform === "tizen" ? "Missing Paths" : "Missing Path", {
         description:
           platform === "tizen"
             ? "Please enter all required SDK paths before proceeding."
             : "Please enter the webOS CLI path before proceeding.",
-        variant: "destructive",
       });
       addLog("error", `Validation failed: ${errorMessage}`);
       return;
@@ -79,8 +77,7 @@ export const InstallationStep = ({ onNext }: InstallationStepProps) => {
       console.error("Failed to save SDK paths to electron store:", error);
     }
 
-    toast({
-      title: "SDK Configuration Saved",
+    toast.success("SDK Configuration Saved", {
       description: "Your SDK paths have been configured successfully.",
     });
     addLog("step", "SDK configuration saved for platform: " + platform);

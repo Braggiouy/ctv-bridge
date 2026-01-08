@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { TOAST_DURATION, useGlobalLogs } from "@/utils";
 
 /**
@@ -41,10 +41,8 @@ export function useBuildProcess(platform: "tizen" | "webos") {
 
     if (!projectPath) {
       const msg = `Missing Project Path: Please enter the path to your ${platform} project.`;
-      toast({
-        title: "Missing Project Path",
+      toast.error("Missing Project Path", {
         description: `Please enter the path to your ${platform} project.`,
-        variant: "destructive",
         duration: TOAST_DURATION,
       });
       addLog("error", msg);
@@ -76,14 +74,16 @@ export function useBuildProcess(platform: "tizen" | "webos") {
           setGeneratedPkgInfo(null);
         }
 
-        toast({
-          title: `${platform === "tizen" ? "WGT" : "IPK"} Package Generated`,
-          description:
-            result.packageName && result.packagePath
-              ? `✓ ${result.packageName} generated at ${result.packagePath}`
-              : result.message,
-          duration: TOAST_DURATION,
-        });
+        toast.success(
+          `${platform === "tizen" ? "WGT" : "IPK"} Package Generated`,
+          {
+            description:
+              result.packageName && result.packagePath
+                ? `✓ ${result.packageName} generated at ${result.packagePath}`
+                : result.message,
+            duration: TOAST_DURATION,
+          }
+        );
 
         addLog(
           "step",
@@ -92,10 +92,8 @@ export function useBuildProcess(platform: "tizen" | "webos") {
             : `Build successful: ${result.message}`
         );
       } else {
-        toast({
-          title: "Build Failed",
+        toast.error("Build Failed", {
           description: result.message,
-          variant: "destructive",
           duration: TOAST_DURATION,
         });
         addLog("error", `Build failed: ${result.message}`);
@@ -106,12 +104,10 @@ export function useBuildProcess(platform: "tizen" | "webos") {
       const msg = `Build failed: ${
         err.message || "An error occurred during the build process"
       }`;
-      toast({
-        title: "Build Failed",
+      toast.error("Build Failed", {
         description:
           (error as Error).message ||
           "An error occurred during the build process",
-        variant: "destructive",
         duration: TOAST_DURATION,
       });
       addLog("error", msg);

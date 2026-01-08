@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Device, WebOSDevice, TizenDevice } from "@/types";
 import { useGlobalLogs } from "@/utils";
 import { useSecureStorage } from "@/hooks/useSecureStorage";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { TOAST_DURATION } from "@/utils";
 
 /**
@@ -78,8 +78,7 @@ export function useDevices(platform: "tizen" | "webos") {
     if (platform === "webos") {
       const res = await window.electron.addDevice(device);
       if (res.success) {
-        toast({
-          title: "Device registered",
+        toast.success("Device registered", {
           description: `Device ${device.name} added.`,
           duration: TOAST_DURATION,
         });
@@ -96,10 +95,8 @@ export function useDevices(platform: "tizen" | "webos") {
         await fetchDevices();
         return { success: true };
       } else {
-        toast({
-          title: "Registration failed",
+        toast.error("Registration failed", {
           description: res.message,
-          variant: "destructive",
           duration: TOAST_DURATION,
         });
         addLog("error", `Device registration failed: ${res.message}`);
@@ -109,8 +106,7 @@ export function useDevices(platform: "tizen" | "webos") {
       // Tizen
       const res = await window.electron.addTizenDevice(device.ip);
       if (res.success) {
-        toast({
-          title: "Device Connected",
+        toast.success("Device Connected", {
           description: res.message,
           duration: TOAST_DURATION,
         });
@@ -131,10 +127,8 @@ export function useDevices(platform: "tizen" | "webos") {
         await fetchDevices();
         return { success: true };
       } else {
-        toast({
-          title: "Connection Failed",
+        toast.error("Connection Failed", {
           description: res.message,
-          variant: "destructive",
           duration: TOAST_DURATION,
         });
         addLog("error", `Tizen connection failed: ${res.message}`);
@@ -148,8 +142,7 @@ export function useDevices(platform: "tizen" | "webos") {
       if (platform === "webos") {
         const res = await window.electron.removeDevice(device.name);
         if (res.success) {
-          toast({
-            title: "Device removed",
+          toast.success("Device removed", {
             description: `Device ${device.name} removed.`,
             duration: TOAST_DURATION,
           });
@@ -160,10 +153,8 @@ export function useDevices(platform: "tizen" | "webos") {
 
           await fetchDevices();
         } else {
-          toast({
-            title: "Remove failed",
+          toast.error("Remove failed", {
             description: res.message,
-            variant: "destructive",
             duration: TOAST_DURATION,
           });
         }
@@ -171,8 +162,7 @@ export function useDevices(platform: "tizen" | "webos") {
         // Tizen
         const res = await window.electron.removeTizenDevice(device.ip);
         if (res.success) {
-          toast({
-            title: "Device Disconnected",
+          toast.success("Device Disconnected", {
             description: res.message,
             duration: TOAST_DURATION,
           });
@@ -189,20 +179,16 @@ export function useDevices(platform: "tizen" | "webos") {
 
           await fetchDevices();
         } else {
-          toast({
-            title: "Disconnect Failed",
+          toast.error("Disconnect Failed", {
             description: res.message,
-            variant: "destructive",
             duration: TOAST_DURATION,
           });
         }
       }
     } catch (error: unknown) {
       const err = error as Error;
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: err.message,
-        variant: "destructive",
         duration: TOAST_DURATION,
       });
     }
@@ -221,10 +207,8 @@ export function useDevices(platform: "tizen" | "webos") {
         // Remove old device
         const removeRes = await window.electron.removeDevice(oldName);
         if (!removeRes.success) {
-          toast({
-            title: "Update failed",
+          toast.error("Update failed", {
             description: `Failed to remove old device: ${removeRes.message}`,
-            variant: "destructive",
             duration: TOAST_DURATION,
           });
           return;
@@ -233,10 +217,8 @@ export function useDevices(platform: "tizen" | "webos") {
         // Add new device with new name
         const addRes = await window.electron.addDevice(newDevice);
         if (!addRes.success) {
-          toast({
-            title: "Update failed",
+          toast.error("Update failed", {
             description: addRes.message,
-            variant: "destructive",
             duration: TOAST_DURATION,
           });
           return;
@@ -248,23 +230,21 @@ export function useDevices(platform: "tizen" | "webos") {
           await savePassphrase(newName, (newDevice as WebOSDevice).passphrase!);
         }
 
-        toast({ title: "Device updated", duration: TOAST_DURATION });
+        toast.success("Device updated", { duration: TOAST_DURATION });
         addLog("step", `Device renamed: ${oldName} → ${newName}`);
       } else {
         // Name didn't change, just update
         const res = await window.electron.updateDevice(newDevice);
         if (!res.success) {
-          toast({
-            title: "Update failed",
+          toast.error("Update failed", {
             description: res.message,
-            variant: "destructive",
             duration: TOAST_DURATION,
           });
           addLog("error", `Device update failed: ${res.message}`);
           return;
         }
 
-        toast({ title: "Device updated", duration: TOAST_DURATION });
+        toast.success("Device updated", { duration: TOAST_DURATION });
         addLog("step", `Device updated: ${newDevice.name}`);
 
         // Save passphrase to secure storage
@@ -289,10 +269,8 @@ export function useDevices(platform: "tizen" | "webos") {
         await window.electron.removeTizenDevice(oldIp);
         const res = await window.electron.addTizenDevice(newIp);
         if (!res.success) {
-          toast({
-            title: "Update failed",
+          toast.error("Update failed", {
             description: res.message,
-            variant: "destructive",
             duration: TOAST_DURATION,
           });
           return;
@@ -313,7 +291,7 @@ export function useDevices(platform: "tizen" | "webos") {
       }
       localStorage.setItem("tizen-device-names", JSON.stringify(storedNames));
 
-      toast({ title: "Device updated", duration: TOAST_DURATION });
+      toast.success("Device updated", { duration: TOAST_DURATION });
       addLog("step", `Device updated: ${newDevice.name || newIp}`);
       await fetchDevices();
     }

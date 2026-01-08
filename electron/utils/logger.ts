@@ -38,6 +38,13 @@ class Logger {
   error(message: string, ...args: unknown[]): void {
     console.error(this.formatMessage(LogLevel.ERROR, message, ...args));
   }
+
+  /**
+   * Helper for timestamped logging in IPC handlers
+   */
+  getTimeLog(message: string): string {
+    return `[${new Date().toLocaleTimeString()}] ${message}`;
+  }
 }
 
 export const logger = new Logger();

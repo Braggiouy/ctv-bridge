@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Loader2, Rocket, Bug, Play } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { TOAST_DURATION } from "@/utils";
 import { cn } from "@/utils";
 import { useGlobalLogs } from "@/utils";
@@ -41,10 +41,8 @@ export const DeployStep = (props: DeployStepProps) => {
     if (!deviceArg || !projectPath) {
       const msg =
         "Missing Configuration: Please complete the previous steps first.";
-      toast({
-        title: "Missing Configuration",
+      toast.error("Missing Configuration", {
         description: "Please complete the previous steps first.",
-        variant: "destructive",
         duration: TOAST_DURATION,
       });
       addLog("error", msg);
@@ -70,17 +68,14 @@ export const DeployStep = (props: DeployStepProps) => {
       setDeployMode(null);
 
       if (result.success) {
-        toast({
-          title: "Deployment Successful",
+        toast.success("Deployment Successful", {
           description: result.message,
           duration: TOAST_DURATION,
         });
         addLog("step", `Deployment successful: ${result.message}`);
       } else {
-        toast({
-          title: "Deployment Failed",
+        toast.error("Deployment Failed", {
           description: result.message,
-          variant: "destructive",
           duration: TOAST_DURATION,
         });
         addLog("error", `Deployment failed: ${result.message}`);
@@ -92,11 +87,9 @@ export const DeployStep = (props: DeployStepProps) => {
       const msg = `Deployment failed: ${
         err.message || "An error occurred during deployment"
       }`;
-      toast({
-        title: "Deployment Failed",
+      toast.error("Deployment Failed", {
         description:
           (error as Error).message || "An error occurred during deployment",
-        variant: "destructive",
         duration: TOAST_DURATION,
       });
       addLog("error", msg);

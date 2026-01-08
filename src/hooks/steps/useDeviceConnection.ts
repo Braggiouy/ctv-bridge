@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Device } from "@/types";
 import { useSecureStorage } from "@/hooks/useSecureStorage";
 import { useGlobalLogs } from "@/utils";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { TOAST_DURATION } from "@/utils";
 
 /**
@@ -31,18 +31,15 @@ export function useDeviceConnection(platform: "tizen" | "webos") {
       );
 
       if (result.success) {
-        toast({
-          title: "Connection Successful",
+        toast.success("Connection Successful", {
           description: result.message,
           duration: TOAST_DURATION,
         });
         addLog("step", `Connection successful: ${device.name || device.ip}`);
         return true;
       } else {
-        toast({
-          title: "Connection Failed",
+        toast.error("Connection Failed", {
           description: result.message,
-          variant: "destructive",
           duration: TOAST_DURATION,
         });
         addLog("error", `Connection failed: ${result.message}`);
@@ -50,10 +47,8 @@ export function useDeviceConnection(platform: "tizen" | "webos") {
       }
     } catch (error: unknown) {
       const err = error as Error;
-      toast({
-        title: "Connection Error",
+      toast.error("Connection Error", {
         description: err.message,
-        variant: "destructive",
         duration: TOAST_DURATION,
       });
       addLog("error", `Connection error: ${err.message}`);

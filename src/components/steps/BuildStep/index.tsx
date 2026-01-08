@@ -15,7 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { TOAST_DURATION, useGlobalLogs } from "@/utils";
 import { SavedPathsList } from "./SavedPathsList";
 import { ProjectPathInput } from "./ProjectPathInput";
@@ -103,10 +103,8 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
 
     const name = projectPath;
     if (savedPaths.some((p) => p.name === name)) {
-      toast({
-        title: "Duplicate path",
+      toast.error("Duplicate path", {
         description: "This path is already saved.",
-        variant: "destructive",
         duration: TOAST_DURATION,
       });
       return;
@@ -118,8 +116,7 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
       `${platform}_savedBuildPaths`,
       JSON.stringify(updated)
     );
-    toast({
-      title: "Path saved",
+    toast.success("Path saved", {
       description: `Saved as '${name}'`,
       duration: TOAST_DURATION,
     });
@@ -139,11 +136,9 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
           ? error.message
           : "An error occurred during the build process"
       }`;
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description:
           (error as Error).message || "An error occurred during deployment",
-        variant: "destructive",
         duration: TOAST_DURATION,
       });
       addLog("error", msg);
@@ -152,10 +147,8 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
 
   const handleNext = () => {
     if (!wgtGenerated) {
-      toast({
-        title: "Generate Package First",
+      toast.error("Generate Package First", {
         description: "Please generate the WGT package before proceeding.",
-        variant: "destructive",
         duration: TOAST_DURATION,
       });
       return;

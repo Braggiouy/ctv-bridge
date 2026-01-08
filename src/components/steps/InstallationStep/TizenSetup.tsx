@@ -2,7 +2,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Lightbulb, Info, Settings2 } from "lucide-react";
+import { isWindows } from "@/utils/platform";
 
 interface TizenSetupProps {
   sdbPath: string;
@@ -12,7 +13,7 @@ interface TizenSetupProps {
 }
 
 /**
- * Tizen SDK configuration component
+ * Tizen Studio configuration and onboarding component
  */
 export const TizenSetup = ({
   sdbPath,
@@ -20,134 +21,185 @@ export const TizenSetup = ({
   onSdbPathChange,
   onTizenPathChange,
 }: TizenSetupProps) => {
+  const win = isWindows();
+
   return (
-    <div className="space-y-4 mt-6">
-      <Alert>
-        <AlertDescription className="space-y-2">
-          <p className="font-medium">First time setup:</p>
-          <ol className="list-decimal list-inside space-y-1 text-sm">
-            <li>Download Tizen Studio from Samsung Developer</li>
-            <li>Install and note the installation directory</li>
-            <li>Locate the tools in the installation folder</li>
+    <div className="space-y-6 mt-6">
+      {/* Step 1: External Requirements */}
+      <Alert className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/30">
+        <AlertDescription className="space-y-3">
+          <div className="flex items-center gap-2 font-semibold text-blue-900 dark:text-blue-100">
+            <Info className="h-4 w-4" />
+            <span>Getting Started</span>
+          </div>
+          <ol className="list-decimal list-inside space-y-2 text-sm text-blue-800 dark:text-blue-200">
             <li>
-              Create a <strong>Samsung Certificate</strong> with your TV's DUID
+              Download and install <strong>Tizen Studio</strong>
+            </li>
+            <li>
+              Launch <strong>Package Manager</strong> to install the Main SDK
+            </li>
+            <li>
+              Create a <strong>Samsung Certificate</strong> (see Tip below)
             </li>
           </ol>
-          <div className="flex gap-4">
-            <Button variant="link" className="h-auto p-0 text-sm" asChild>
+          <div className="flex flex-wrap gap-3 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs bg-white dark:bg-slate-900"
+              asChild
+            >
               <a
                 href="https://developer.samsung.com/smarttv/develop/getting-started/setting-up-sdk/installing-tv-sdk.html"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 Download Tizen Studio{" "}
-                <ExternalLink className="ml-1 h-3 w-3 inline" />
+                <ExternalLink className="ml-1.5 h-3 w-3" />
               </a>
             </Button>
-            <Button variant="link" className="h-auto p-0 text-sm" asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs bg-white dark:bg-slate-900"
+              asChild
+            >
               <a
                 href="https://developer.samsung.com/smarttv/develop/getting-started/setting-up-sdk/creating-certificates.html"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Certificate Guide{" "}
-                <ExternalLink className="ml-1 h-3 w-3 inline" />
+                Certificate Guide <ExternalLink className="ml-1.5 h-3 w-3" />
               </a>
             </Button>
           </div>
         </AlertDescription>
       </Alert>
 
-      <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100">
-        <AlertDescription className="text-sm space-y-3">
-          <p>
-            <strong>💡 Samsung TV Tip:</strong> Think of a Certificate like a
-            "Security Pass." Your TV will reject any app that doesn't have a
-            pass specifically authorized for its unique ID (called a DUID).
-          </p>
-          <div className="text-xs space-y-2 opacity-90 border-t border-amber-200/50 dark:border-amber-800/50 pt-2">
-            <p className="font-semibold uppercase tracking-wider">
-              Setup Steps (Requires Tizen Studio):
+      {/* Helpful Tip Section */}
+      <Alert className="bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900">
+        <AlertDescription className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 p-1 bg-amber-100 dark:bg-amber-900/60 rounded-full">
+              <Lightbulb className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-amber-900 dark:text-amber-100">
+                The "Security Pass"
+              </p>
+              <p className="text-sm text-amber-800/90 dark:text-amber-200/80 leading-relaxed">
+                Samsung TVs only run apps with a "Security Pass" (Certificate)
+                linked to their unique ID (DUID). You only need to set this up
+                once in Tizen Studio.
+              </p>
+            </div>
+          </div>
+
+          <div className="text-xs space-y-2.5 bg-white/40 dark:bg-black/20 p-3 rounded-md border border-amber-200/50 dark:border-amber-900/50">
+            <p className="font-bold uppercase tracking-wider text-amber-900 dark:text-amber-100 opacity-70">
+              One-Time Action (In Tizen Studio):
             </p>
-            <ul className="list-disc list-inside space-y-1.5">
-              <li>
-                Open <strong>Certificate Manager</strong> in Tizen Studio (Tools
-                &gt; Tizen).
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-amber-800 dark:text-amber-200">
+              <li className="flex gap-2">
+                <span className="font-mono text-amber-600 dark:text-amber-400">
+                  1.
+                </span>
+                <span>
+                  Open <strong>Certificate Manager</strong>
+                </span>
               </li>
-              <li>
-                Choose <strong>Samsung</strong> profile. You will most likely be
-                asked to sign in to your Samsung account.
+              <li className="flex gap-2">
+                <span className="font-mono text-amber-600 dark:text-amber-400">
+                  2.
+                </span>
+                <span>
+                  Select <strong>Samsung</strong> profile
+                </span>
               </li>
-              <li>
-                <strong>Link your TV:</strong> Add your TV's DUID to the
-                distributor certificate. You can find this in the settings of
-                your TV in "About this TV" under "Unique Device ID".
+              <li className="flex gap-2">
+                <span className="font-mono text-amber-600 dark:text-amber-400">
+                  3.
+                </span>
+                <span>
+                  Add your TV's <strong>DUID</strong>
+                </span>
               </li>
-              <li>
-                <strong>That's it!</strong> Once created, you can close Tizen
-                Studio. This app will automatically find your profiles in the
-                next step.
+              <li className="flex gap-2">
+                <span className="font-mono text-amber-600 dark:text-amber-400">
+                  4.
+                </span>
+                <span>Save and close Studio</span>
               </li>
             </ul>
           </div>
         </AlertDescription>
       </Alert>
 
-      <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-        <AlertDescription>
-          <p className="font-medium text-green-900 dark:text-green-100 mb-2">
-            ℹ️ SDK Path Configuration
-          </p>
-          <p className="text-sm text-green-800 dark:text-green-200">
-            Enter the <strong>full path</strong> to each binary file below. No
-            need to add anything to your system PATH.
-          </p>
-          <p className="text-xs text-green-700 dark:text-green-300 mt-2">
-            The app will use these exact paths when running Tizen commands.
-          </p>
-        </AlertDescription>
-      </Alert>
+      {/* Path Configuration */}
+      <div className="space-y-4 pt-2">
+        <div className="flex items-center gap-2 mb-1">
+          <Settings2 className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">SDK Path Configuration</h3>
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="sdbPath">SDB Path</Label>
-        <Input
-          id="sdbPath"
-          placeholder="/path/to/tizen-studio/tools/sdb"
-          value={sdbPath}
-          onChange={(e) => onSdbPathChange(e.target.value)}
-          className="font-mono text-sm"
-        />
-        <p className="text-xs text-muted-foreground">
-          Example (macOS/Linux):{" "}
-          <code className="text-xs">
-            /Users/yourname/tizen-studio/tools/sdb
-          </code>
-          <br />
-          Example (Windows):{" "}
-          <code className="text-xs">C:\tizen-studio\tools\sdb.exe</code>
-        </p>
-      </div>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label
+              htmlFor="sdbPath"
+              className="text-xs font-medium uppercase tracking-wider opacity-70"
+            >
+              SDB Path
+            </Label>
+            <Input
+              id="sdbPath"
+              placeholder={
+                win
+                  ? "C:\\tizen-studio\\tools\\sdb.exe"
+                  : "/Users/name/tizen-studio/tools/sdb"
+              }
+              value={sdbPath}
+              onChange={(e) => onSdbPathChange(e.target.value)}
+              className="font-mono text-sm bg-muted/30 focus-visible:ring-blue-500"
+            />
+            <p className="text-[11px] text-muted-foreground italic">
+              Expected:{" "}
+              {win ? (
+                <code>...\\tools\\sdb.exe</code>
+              ) : (
+                <code>.../tools/sdb</code>
+              )}
+            </p>
+          </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="tizenPath">Tizen CLI Path</Label>
-        <Input
-          id="tizenPath"
-          placeholder="/path/to/tizen-studio/tools/ide/bin/tizen"
-          value={tizenPath}
-          onChange={(e) => onTizenPathChange(e.target.value)}
-          className="font-mono text-sm"
-        />
-        <p className="text-xs text-muted-foreground">
-          Example (macOS/Linux):{" "}
-          <code className="text-xs">
-            /Users/yourname/tizen-studio/tools/ide/bin/tizen
-          </code>
-          <br />
-          Example (Windows):{" "}
-          <code className="text-xs">
-            C:\tizen-studio\tools\ide\bin\tizen.bat
-          </code>
-        </p>
+          <div className="space-y-2">
+            <Label
+              htmlFor="tizenPath"
+              className="text-xs font-medium uppercase tracking-wider opacity-70"
+            >
+              Tizen CLI Path
+            </Label>
+            <Input
+              id="tizenPath"
+              placeholder={
+                win
+                  ? "C:\\tizen-studio\\tools\\ide\\bin\\tizen.bat"
+                  : "/Users/name/tizen-studio/tools/ide/bin/tizen"
+              }
+              value={tizenPath}
+              onChange={(e) => onTizenPathChange(e.target.value)}
+              className="font-mono text-sm bg-muted/30 focus-visible:ring-blue-500"
+            />
+            <p className="text-[11px] text-muted-foreground italic">
+              Expected:{" "}
+              {win ? (
+                <code>...\\ide\\bin\\tizen.bat</code>
+              ) : (
+                <code>.../ide/bin/tizen</code>
+              )}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

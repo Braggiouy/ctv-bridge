@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { TOAST_DURATION } from "@/utils";
 import { Device } from "@/types";
 import { LoadingState } from "./LoadingState";
@@ -34,10 +34,8 @@ export const DeviceSetupStep = ({ onNext, onBack }: DeviceSetupStepProps) => {
 
   const handleDeviceSelect = (device: Device) => {
     if (device.connectionStatus !== "connected") {
-      toast({
-        title: "Test Connection First",
+      toast.error("Test Connection First", {
         description: "Please test the connection before proceeding.",
-        variant: "destructive",
         duration: TOAST_DURATION,
       });
       return;
@@ -49,8 +47,7 @@ export const DeviceSetupStep = ({ onNext, onBack }: DeviceSetupStepProps) => {
       localStorage.setItem("deviceName", device.name);
     }
 
-    toast({
-      title: "Device Selected",
+    toast.success("Device Selected", {
       description: `Connected to ${device.name || device.ip}`,
       duration: TOAST_DURATION,
     });
