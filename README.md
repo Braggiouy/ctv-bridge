@@ -10,9 +10,23 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7.2-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)
 
-**The ultimate deployment utility for Connected TV developers.**
+**CTV Bridge is an open-source desktop tool that simplifies deploying and debugging Connected TV applications directly on real Samsung Tizen and LG webOS devices.**
 
-**CTV Bridge** streamlines the development workflow for Samsung Tizen and LG webOS applications. Stop wrestling with complex CLI commands and fragmented tools. Build, deploy, and debug your TV apps from a single, unified interface.
+## Why CTV Bridge exists
+
+Developing for Connected TVs often means dealing with fragmented tooling, repetitive CLI commands,
+and fragile deployment workflows that slow down iteration and testing.
+
+CTV Bridge was created to reduce that friction by providing a single, unified interface on top of
+the official Tizen and webOS tooling, without reinventing or replacing vendor SDKs.
+
+---
+
+## High-level architecture
+
+CTV Bridge acts as a thin UI layer on top of official vendor CLIs (Tizen, webOS),
+handling command orchestration, device management and log aggregation,
+while keeping all execution local to the developer machine.
 
 ---
 
@@ -38,6 +52,17 @@
 
 - **Unified Dashboard**: Manage all your Tizen and webOS devices in one place.
 - **Connection Doctor**: Built-in troubleshooting for SSH keys and connection issues.
+
+---
+
+## Who is this for?
+
+CTV Bridge is designed for:
+
+- CTV / Smart TV developers
+- Frontend engineers working with Tizen or webOS
+- QA engineers testing apps on real TV devices
+- Teams building OTT / streaming applications
 
 ---
 
@@ -72,7 +97,7 @@ Build, install, and launch your app in seconds. Toggle **Debug Mode** to automat
 
 ---
 
-## � Getting Started
+## 🚀 Getting Started
 
 1. **Download** the latest release from the [GitHub releases page](https://github.com/Braggiouy/ctv-bridge/releases/latest).
 2. **Install** the app for your OS (macOS `.dmg`/`.zip`, Windows `.exe`, Linux `.AppImage`/`.deb`).
