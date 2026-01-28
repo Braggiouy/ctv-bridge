@@ -42,9 +42,9 @@ export const DeviceSetupStep = ({ onNext, onBack }: DeviceSetupStepProps) => {
     }
 
     // Save selected device info
-    localStorage.setItem("tvIp", device.ip);
+    localStorage.setItem(`${platform}_tvIp`, device.ip);
     if (platform === "webos") {
-      localStorage.setItem("deviceName", device.name);
+      localStorage.setItem(`${platform}_deviceName`, device.name);
     }
 
     toast.success("Device Selected", {

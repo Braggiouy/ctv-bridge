@@ -4,10 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
-import {
-  validateDeviceForm,
-  DeviceValidationErrors,
-} from "@/utils/steps/deviceValidation";
+import { validateDeviceForm, DeviceValidationErrors } from "@/utils";
 
 interface DeviceEditFormProps {
   device: Device;

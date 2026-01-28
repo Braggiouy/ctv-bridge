@@ -7,7 +7,7 @@ import {
   getConnectionStatusText,
   formatDeviceDisplayName,
   maskPassphrase,
-} from "@/utils/steps/deviceHelpers";
+} from "./helpers";
 
 interface DeviceCardProps {
   device: Device;

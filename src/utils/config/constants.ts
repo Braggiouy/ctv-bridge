@@ -129,12 +129,12 @@ export const STORAGE_KEYS = {
 // Platform Types
 // ============================================================================
 
-export type Platform = "tizen" | "webos";
-
 export const PLATFORMS = {
-  TIZEN: "tizen" as Platform,
-  WEBOS: "webos" as Platform,
+  TIZEN: "tizen",
+  WEBOS: "webos",
 } as const;
+
+export type Platform = (typeof PLATFORMS)[keyof typeof PLATFORMS];
 
 // ============================================================================
 // Default Values

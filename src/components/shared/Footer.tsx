@@ -1,36 +1,32 @@
-import { Github } from "lucide-react";
 import packageJson from "../../../package.json";
 
 export const Footer = () => {
   return (
-    <footer className="border-t bg-card/30 mt-auto">
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/60">
-          <span>{packageJson.version}</span>
-          <span>•</span>
-          <span>
-            by{" "}
+    <footer className="mt-auto py-6 border-t border-border/50">
+      <div className="container mx-auto px-4">
+        <div className="flex flex-col items-center justify-center gap-2">
+          <div className="flex items-center gap-4 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/40">
+            <span>Version {packageJson.version}</span>
+            <span>
+              &copy; {new Date().getFullYear()}{" "}
+              <a
+                href="https://github.com/Braggiouy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-primary transition-colors inline-block"
+              >
+                Braggiouy
+              </a>
+            </span>
             <a
-              href="https://github.com/Braggiouy"
+              href="https://github.com/Braggiouy/ctv-bridge"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-muted-foreground transition-colors"
+              className="hover:text-primary transition-colors"
             >
-              @Braggiouy
+              MIT License
             </a>
-          </span>
-          <span>•</span>
-          <span>MIT License</span>
-          <span>•</span>
-          <a
-            href="https://github.com/Braggiouy/ctv-bridge"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 hover:text-muted-foreground transition-colors"
-          >
-            <Github className="h-3 w-3" />
-            GitHub
-          </a>
+          </div>
         </div>
       </div>
     </footer>

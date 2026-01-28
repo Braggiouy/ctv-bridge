@@ -10,10 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { useGlobalLogs } from "@/utils";
+import { useGlobalLogs, validateSdkPaths } from "@/utils";
 import { TizenSetup } from "./TizenSetup";
 import { WebOSSetup } from "./WebOSSetup";
-import { validateSdkPaths } from "@/utils/steps/pathValidation";
 
 interface InstallationStepProps {
   onNext: () => void;

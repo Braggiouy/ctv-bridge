@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ExternalLink, Lightbulb, Info, Settings2 } from "lucide-react";
-import { isWindows } from "@/utils/platform";
+import { isWindows } from "@/utils";
 
 interface TizenSetupProps {
   sdbPath: string;

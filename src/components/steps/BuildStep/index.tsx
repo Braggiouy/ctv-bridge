@@ -61,8 +61,8 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
   // Build process hook
   const {
     building,
-    wgtGenerated,
-    generatedPkgInfo,
+    isPackageGenerated,
+    generatedPackageInfo,
     lastBuildMessage,
     tizenProfiles,
     fetchTizenProfiles,
@@ -145,7 +145,7 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
   };
 
   const handleNext = () => {
-    if (!wgtGenerated) {
+    if (!isPackageGenerated) {
       toast.error("Generate Package First", {
         description: "Please generate the WGT package before proceeding.",
         duration: TOAST_DURATION,
@@ -182,6 +182,7 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
                 <Label>Saved Build Paths</Label>
                 <div className="flex flex-col gap-2 mt-1">
                   <SavedPathsList
+                    platform={platform}
                     savedPaths={savedPaths}
                     setSavedPaths={setSavedPaths}
                     setProjectPath={setProjectPath}
@@ -254,9 +255,9 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
           </div>
         )}
 
-        {wgtGenerated && (
+        {isPackageGenerated && (
           <BuildOutput
-            packageInfo={generatedPkgInfo}
+            packageInfo={generatedPackageInfo}
             message={lastBuildMessage}
           />
         )}
@@ -281,13 +282,13 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
                   <Button
                     onClick={handleNext}
                     className="w-full"
-                    disabled={!wgtGenerated}
+                    disabled={!isPackageGenerated}
                   >
                     Next: Deploy
                   </Button>
                 </span>
               </TooltipTrigger>
-              {!wgtGenerated && (
+              {!isPackageGenerated && (
                 <TooltipContent side="top">
                   <div className="flex items-center gap-2">
                     <Info className="h-4 w-4 text-blue-500" />

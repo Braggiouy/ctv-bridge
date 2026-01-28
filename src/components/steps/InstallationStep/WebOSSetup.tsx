@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ExternalLink, Info, Settings2, Command } from "lucide-react";
-import { isWindows } from "@/utils/platform";
+import { isWindows } from "@/utils";
 
 interface WebOSSetupProps {
   aresPath: string;

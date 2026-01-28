@@ -1,7 +1,3 @@
-import { PLATFORMS } from "@/utils/config/constants";
-
-export type Platform = (typeof PLATFORMS)[keyof typeof PLATFORMS];
-
 export interface BaseDevice {
   name: string;
   ip: string;

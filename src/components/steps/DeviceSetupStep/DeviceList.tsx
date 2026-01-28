@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Device } from "@/types";
 import { DeviceCard } from "./DeviceCard";
 import { useDeviceConnection } from "@/hooks/steps/useDeviceConnection";
-import { getDeviceId } from "@/utils/steps/deviceHelpers";
+import { getDeviceId } from "./helpers";
 
 interface DeviceListProps {
   devices: Device[];

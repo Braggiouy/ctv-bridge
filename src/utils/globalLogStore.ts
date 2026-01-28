@@ -1,5 +1,16 @@
 import { useState, useEffect } from "react";
-import { createLog, LogEntry, LogType } from "./cn";
+import { type LogEntry, type LogType } from "@/types";
+
+/**
+ * Creates a new log entry
+ */
+export function createLog(type: LogType, message: string): LogEntry {
+  return {
+    type,
+    message,
+    timestamp: Date.now(),
+  };
+}
 
 let listeners: ((logs: LogEntry[]) => void)[] = [];
 let logs: LogEntry[] = [];

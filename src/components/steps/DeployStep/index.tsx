@@ -10,7 +10,7 @@ import {
 import { Loader2, Rocket, Bug, Play } from "lucide-react";
 import { toast } from "sonner";
 import { TOAST_DURATION } from "@/utils";
-import { cn } from "@/utils";
+import { mergeClassNames } from "@/utils";
 import { useGlobalLogs } from "@/utils";
 
 interface DeployStepProps {
@@ -31,8 +31,8 @@ export const DeployStep = (props: DeployStepProps) => {
     setDeployMode(mode);
     addLog("step", `Deploy started: mode=${mode}`);
 
-    const tvIp = localStorage.getItem("tvIp") || "";
-    const deviceName = localStorage.getItem("deviceName") || "";
+    const tvIp = localStorage.getItem(`${platform}_tvIp`) || "";
+    const deviceName = localStorage.getItem(`${platform}_deviceName`) || "";
     const projectPath = localStorage.getItem(`${platform}_projectPath`) || "";
 
     // For webOS, require deviceName; for Tizen, use tvIp
@@ -115,7 +115,7 @@ export const DeployStep = (props: DeployStepProps) => {
           <button
             onClick={() => handleDeploy("debug")}
             disabled={deploying}
-            className={cn(
+            className={mergeClassNames(
               "group relative overflow-hidden rounded-lg border-2 p-6 text-left transition-all hover:border-primary focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50",
               deployMode === "debug" && deploying
                 ? "border-primary bg-primary/5"
@@ -144,7 +144,7 @@ export const DeployStep = (props: DeployStepProps) => {
           <button
             onClick={() => handleDeploy("run")}
             disabled={deploying}
-            className={cn(
+            className={mergeClassNames(
               "group relative overflow-hidden rounded-lg border-2 p-6 text-left transition-all hover:border-primary focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50",
               deployMode === "run" && deploying
                 ? "border-primary bg-primary/5"

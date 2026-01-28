@@ -8,8 +8,8 @@ import { TOAST_DURATION, useGlobalLogs } from "@/utils";
 export function useBuildProcess(platform: "tizen" | "webos") {
   const { addLog } = useGlobalLogs();
   const [building, setBuilding] = useState(false);
-  const [wgtGenerated, setWgtGenerated] = useState(false);
-  const [generatedPkgInfo, setGeneratedPkgInfo] = useState<{
+  const [isPackageGenerated, setIsPackageGenerated] = useState(false);
+  const [generatedPackageInfo, setGeneratedPackageInfo] = useState<{
     name: string;
     path: string;
   } | null>(null);
@@ -33,8 +33,8 @@ export function useBuildProcess(platform: "tizen" | "webos") {
   const executeBuild = useCallback(
     async (projectPath: string, profileName?: string): Promise<void> => {
       // Reset state
-      setWgtGenerated(false);
-      setGeneratedPkgInfo(null);
+      setIsPackageGenerated(false);
+      setGeneratedPackageInfo(null);
       setLastBuildMessage("");
 
       if (!projectPath) {
@@ -61,15 +61,15 @@ export function useBuildProcess(platform: "tizen" | "webos") {
 
         if (result.success) {
           setLastBuildMessage(result.message);
-          setWgtGenerated(true);
+          setIsPackageGenerated(true);
 
           if (result.packageName && result.packagePath) {
-            setGeneratedPkgInfo({
+            setGeneratedPackageInfo({
               name: result.packageName,
               path: result.packagePath,
             });
           } else {
-            setGeneratedPkgInfo(null);
+            setGeneratedPackageInfo(null);
           }
 
           toast.success(
@@ -116,8 +116,8 @@ export function useBuildProcess(platform: "tizen" | "webos") {
 
   return {
     building,
-    wgtGenerated,
-    generatedPkgInfo,
+    isPackageGenerated,
+    generatedPackageInfo,
     lastBuildMessage,
     tizenProfiles,
     fetchTizenProfiles,

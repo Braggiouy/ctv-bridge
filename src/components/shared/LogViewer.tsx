@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -6,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Terminal,
@@ -15,17 +17,29 @@ import {
   Info,
   XCircle,
   ChevronRight,
+  Search,
 } from "lucide-react";
-import { cn } from "@/utils";
+import { mergeClassNames } from "@/utils";
 import { useGlobalLogs } from "@/utils";
 
 export const LogViewer = () => {
   const { logs, clearLogs } = useGlobalLogs();
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredLogs = logs.filter((log) => {
+    if (!searchTerm) return true;
+    const message = typeof log.message === "string" ? log.message : "";
+    return (
+      message.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.type.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex-1">
             <CardTitle className="flex items-center gap-2">
               <Terminal className="h-5 w-5" />
               App Logs
@@ -34,27 +48,39 @@ export const LogViewer = () => {
               Real-time logs from the entire app: errors, warnings, and activity
             </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearLogs}
-            disabled={logs.length === 0}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Clear
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="relative w-64">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search logs..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearLogs}
+              disabled={logs.length === 0}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Clear
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[300px] w-full rounded-md border bg-muted/30 p-4">
-          {logs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No logs yet. All app activity, errors, and warnings will appear
-              here.
+          {filteredLogs.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              {logs.length === 0
+                ? "No logs yet. All app activity, errors, and warnings will appear here."
+                : "No logs match your search."}
             </p>
           ) : (
             <div className="space-y-1">
-              {logs
+              {filteredLogs
                 .slice()
                 .reverse()
                 .map((log, index) => {
@@ -78,7 +104,7 @@ export const LogViewer = () => {
                   return (
                     <div
                       key={index}
-                      className={cn(
+                      className={mergeClassNames(
                         "flex items-center gap-2 font-mono text-xs leading-relaxed py-1 px-2 rounded",
                         color,
                         log.type === "error" && "bg-red-50 dark:bg-red-950",
