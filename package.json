@@ -19,7 +19,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "preview": "vite preview",
-    "release": "npx standard-version"
+    "release": "npm run lint && npm run format && npx standard-version"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",

@@ -1,5 +1,5 @@
 import { ipcMain } from "electron";
-import { exec, spawn } from "child_process";
+import { exec } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
@@ -55,7 +55,7 @@ export function registerAndroidHandlers() {
       // Try to disconnect first to ensure clean state
       try {
         await execAsync(`"${adbCmd}" disconnect ${ip}`);
-      } catch (e) {
+      } catch {
         // Ignore disconnect errors
       }
 
@@ -105,7 +105,7 @@ export async function testAndroidConnection(tvIp: string) {
     const adbCmd = getAdbCommand();
     try {
       await execAsync(`"${adbCmd}" connect ${tvIp}`);
-    } catch (e) {
+    } catch {
       // might already be connected
     }
 
@@ -133,7 +133,7 @@ async function getAaptCommand(): Promise<string | null> {
   try {
     await execAsync("aapt version");
     return "aapt";
-  } catch (e) {
+  } catch {
     // 2. Try to find relative to ADB path
     const adbPath = getAdbCommand();
     if (adbPath && adbPath !== "adb") {
@@ -156,7 +156,7 @@ async function getAaptCommand(): Promise<string | null> {
             continue;
           }
         }
-      } catch (e) {
+      } catch {
         // build-tools dir not found or access error
       }
     }

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ChevronDown, ChevronUp, LucideIcon } from "lucide-react";
+import { ChevronDown, LucideIcon } from "lucide-react";
 import { cn } from "@/utils";
 
 type AlertVariant = "blue" | "slate" | "amber";
