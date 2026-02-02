@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.4.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.3.14...v1.4.0) (2026-02-02)
+
+
+### Features
+
+* add Android TV support, auto-launch, and setup UI improvements ([b3213bc](https://github.com/Braggiouy/ctv-bridge/commit/b3213bcf2519103bb7fa0da24725305147b594f8))
+
 ### [1.3.14](https://github.com/Braggiouy/ctv-bridge/compare/v1.3.13...v1.3.14) (2026-01-28)
 
 ### [1.3.13](https://github.com/Braggiouy/ctv-bridge/compare/v1.3.12...v1.3.13) (2026-01-20)
