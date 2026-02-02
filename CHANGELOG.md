@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.4.1](https://github.com/Braggiouy/ctv-bridge/compare/v1.4.0...v1.4.1) (2026-02-02)
+
+
+### Bug Fixes
+
+* resolve lint errors and enforce linting in release workflow ([3637b0c](https://github.com/Braggiouy/ctv-bridge/commit/3637b0cdd92b9ed08bb06dcccb7c89922dc06d11))
+
 ## [1.4.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.3.14...v1.4.0) (2026-02-02)
 
 
