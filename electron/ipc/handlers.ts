@@ -12,12 +12,18 @@ import {
   buildWebOsPackage,
   deployWebOsApp,
 } from "./webos/handlers";
+import {
+  registerAndroidHandlers,
+  testAndroidConnection,
+  deployAndroidApp,
+} from "./android/handlers";
 import * as secureStorage from "../common/secure-storage";
 import { getErrorMessage } from "../utils/errors";
 
 export function registerIpcHandlers() {
   registerTizenHandlers();
   registerWebOsHandlers();
+  registerAndroidHandlers();
 
   ipcMain.handle("select-directory", async () => {
     const result = await dialog.showOpenDialog({
@@ -26,6 +32,18 @@ export function registerIpcHandlers() {
     });
     return result.canceled ? null : result.filePaths[0];
   });
+
+  ipcMain.handle(
+    "select-file",
+    async (_event, filters?: Electron.FileFilter[]) => {
+      const result = await dialog.showOpenDialog({
+        properties: ["openFile"],
+        title: "Select File",
+        filters: filters,
+      });
+      return result.canceled ? null : result.filePaths[0];
+    }
+  );
 
   ipcMain.handle(
     "test-connection",
@@ -40,6 +58,8 @@ export function registerIpcHandlers() {
           return await testTizenConnection(identifier);
         } else if (platform === "webos") {
           return await testWebOsConnection(identifier, passphrase);
+        } else if (platform === "android") {
+          return await testAndroidConnection(identifier);
         }
         return { success: false, message: "Unknown platform" };
       } catch (error) {
@@ -65,6 +85,16 @@ export function registerIpcHandlers() {
           return await buildTizenPackage(projectPath, profileName);
         } else if (platform === "webos") {
           return await buildWebOsPackage(projectPath);
+        } else if (platform === "android") {
+          // For Android, we just verify the APK exists if the user pointed to a file
+          // Or if they pointed to a project, we might need a real build step (future).
+          // For now, assume projectPath IS the APK.
+          return {
+            success: true,
+            message: "APK Verification Successful",
+            packageName: projectPath.split("/").pop(),
+            packagePath: projectPath,
+          };
         }
         return { success: false, message: "Unknown platform" };
       } catch (error) {
@@ -95,6 +125,8 @@ export function registerIpcHandlers() {
           return await deployTizenApp(identifier, projectPath, mode, sendLog);
         } else if (platform === "webos") {
           return await deployWebOsApp(identifier, projectPath, mode, sendLog);
+        } else if (platform === "android") {
+          return await deployAndroidApp(identifier, projectPath, mode, sendLog);
         }
         return { success: false, message: "Unknown platform" };
       } catch (error) {

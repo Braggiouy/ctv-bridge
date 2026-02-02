@@ -1,7 +1,7 @@
 import { WifiOff } from "lucide-react";
 
 interface EmptyStateProps {
-  platform: "tizen" | "webos";
+  platform: "tizen" | "webos" | "android";
 }
 
 /**

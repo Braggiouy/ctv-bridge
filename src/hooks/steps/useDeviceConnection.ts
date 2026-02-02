@@ -8,7 +8,7 @@ import { TOAST_DURATION } from "@/utils";
 /**
  * Hook for testing device connections
  */
-export function useDeviceConnection(platform: "tizen" | "webos") {
+export function useDeviceConnection(platform: "tizen" | "webos" | "android") {
   const { getPassphrase } = useSecureStorage();
   const { addLog } = useGlobalLogs();
   const [testingDeviceId, setTestingDeviceId] = useState<string | null>(null);

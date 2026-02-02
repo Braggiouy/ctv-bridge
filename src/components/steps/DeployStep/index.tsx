@@ -22,7 +22,8 @@ export const DeployStep = (props: DeployStepProps) => {
   const { onBack } = props;
   const { addLog } = useGlobalLogs();
   const platform =
-    (localStorage.getItem("platform") as "tizen" | "webos") || "tizen";
+    (localStorage.getItem("platform") as "tizen" | "webos" | "android") ||
+    "tizen";
   const [deploying, setDeploying] = useState(false);
   const [deployMode, setDeployMode] = useState<"debug" | "run" | null>(null);
 
@@ -35,7 +36,7 @@ export const DeployStep = (props: DeployStepProps) => {
     const deviceName = localStorage.getItem(`${platform}_deviceName`) || "";
     const projectPath = localStorage.getItem(`${platform}_projectPath`) || "";
 
-    // For webOS, require deviceName; for Tizen, use tvIp
+    // For webOS, require deviceName; for Tizen and Android, use tvIp (or ID)
     const deviceArg = platform === "webos" ? deviceName : tvIp;
 
     if (!deviceArg || !projectPath) {
@@ -107,7 +108,12 @@ export const DeployStep = (props: DeployStepProps) => {
         </CardTitle>
         <CardDescription>
           Choose your deployment mode and launch the application on your{" "}
-          {platform === "tizen" ? "Samsung" : "LG"} TV
+          {platform === "tizen"
+            ? "Samsung"
+            : platform === "webos"
+              ? "LG"
+              : "Android"}{" "}
+          TV
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

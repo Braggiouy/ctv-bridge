@@ -128,10 +128,39 @@ export const STORAGE_KEYS = {
 // ============================================================================
 // Platform Types
 // ============================================================================
+// Android Configuration
+// ============================================================================
+
+export const ANDROID_CONFIG = {
+  /** Default ADB port for Android devices (usually 5555 for TCP/IP) */
+  DEFAULT_PORT: "5555",
+
+  /** Package file extension */
+  PACKAGE_EXTENSION: "apk",
+
+  /** CLI command for device connection */
+  CLI_CONNECT_COMMAND: "adb connect",
+
+  /** CLI command for device disconnection */
+  CLI_DISCONNECT_COMMAND: "adb disconnect",
+
+  /** CLI command for listing devices */
+  CLI_LIST_COMMAND: "adb devices",
+
+  /** CLI command for installing packages */
+  CLI_INSTALL_COMMAND: "adb install",
+
+  /** Build tip message */
+  BUILD_TIP:
+    "Ensure your APK is signed and debuggable if necessary for your testing device.",
+} as const;
+
+// ============================================================================
 
 export const PLATFORMS = {
   TIZEN: "tizen",
   WEBOS: "webos",
+  ANDROID: "android",
 } as const;
 
 export type Platform = (typeof PLATFORMS)[keyof typeof PLATFORMS];

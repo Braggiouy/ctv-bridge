@@ -40,7 +40,8 @@ interface BuildStepProps {
 export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
   const { addLog } = useGlobalLogs();
   const platform =
-    (localStorage.getItem("platform") as "tizen" | "webos") || "tizen";
+    (localStorage.getItem("platform") as "tizen" | "webos" | "android") ||
+    "tizen";
 
   // Project path state
   const [projectPath, setProjectPath] = useState(
@@ -124,20 +125,28 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
 
   const handleSelectDirectory = async () => {
     try {
-      const selectedPath = await window.electron.selectDirectory();
+      let selectedPath;
+      if (platform === "android") {
+        selectedPath = await window.electron.invoke("select-file", [
+          { name: "APK", extensions: ["apk"] },
+        ]);
+      } else {
+        selectedPath = await window.electron.selectDirectory();
+      }
+
       if (selectedPath) {
         setProjectPath(selectedPath);
-        addLog("step", `Project directory selected: ${selectedPath}`);
+        addLog("step", `Project path selected: ${selectedPath}`);
       }
     } catch (error: unknown) {
-      const msg = `Error selecting directory: ${
+      const msg = `Error selecting path: ${
         error instanceof Error
           ? error.message
           : "An error occurred during the build process"
       }`;
       toast.error("Error", {
         description:
-          (error as Error).message || "An error occurred during deployment",
+          (error as Error).message || "An error occurred during selection",
         duration: TOAST_DURATION,
       });
       addLog("error", msg);
@@ -163,8 +172,9 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
           Build Application
         </CardTitle>
         <CardDescription>
-          Generate a {platform === "tizen" ? "WGT" : "IPK"} package from your
-          pre-built {platform} project
+          {platform === "android"
+            ? "Select your pre-built Android package (APK)"
+            : `Generate a ${platform === "tizen" ? "WGT" : "IPK"} package from your pre-built ${platform} project`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -273,7 +283,9 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
             className="flex-1"
           >
             {building && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Generate {platform === "tizen" ? "WGT" : "IPK"} Package
+            {platform === "android"
+              ? "Verify APK"
+              : `Generate ${platform === "tizen" ? "WGT" : "IPK"} Package`}
           </Button>
           <TooltipProvider>
             <Tooltip>

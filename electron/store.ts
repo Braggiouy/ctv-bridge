@@ -6,6 +6,7 @@ interface SdkPaths {
   sdbPath?: string;
   tizenPath?: string;
   aresPath?: string;
+  adbPath?: string;
 }
 
 class Store {

@@ -5,7 +5,7 @@ import { TOAST_DURATION, useGlobalLogs } from "@/utils";
 /**
  * Hook for managing build process state and execution
  */
-export function useBuildProcess(platform: "tizen" | "webos") {
+export function useBuildProcess(platform: "tizen" | "webos" | "android") {
   const { addLog } = useGlobalLogs();
   const [building, setBuilding] = useState(false);
   const [isPackageGenerated, setIsPackageGenerated] = useState(false);

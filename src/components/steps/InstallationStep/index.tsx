@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useGlobalLogs, validateSdkPaths } from "@/utils";
 import { TizenSetup } from "./TizenSetup";
 import { WebOSSetup } from "./WebOSSetup";
+import { AndroidSetup } from "./AndroidSetup";
 
 interface InstallationStepProps {
   onNext: () => void;
@@ -26,8 +27,9 @@ export const InstallationStep = ({ onNext }: InstallationStepProps) => {
   const { addLog } = useGlobalLogs();
 
   // Platform selection
-  const [platform, setPlatform] = useState<"tizen" | "webos">(
-    (localStorage.getItem("platform") as "tizen" | "webos") || "tizen"
+  const [platform, setPlatform] = useState<"tizen" | "webos" | "android">(
+    (localStorage.getItem("platform") as "tizen" | "webos" | "android") ||
+      "tizen"
   );
 
   // SDK paths
@@ -38,6 +40,7 @@ export const InstallationStep = ({ onNext }: InstallationStepProps) => {
   const [aresPath, setAresPath] = useState(
     localStorage.getItem("aresPath") || ""
   );
+  const [adbPath, setAdbPath] = useState(localStorage.getItem("adbPath") || "");
 
   const handleNext = async () => {
     // Validate paths
@@ -45,6 +48,7 @@ export const InstallationStep = ({ onNext }: InstallationStepProps) => {
       sdbPath,
       tizenPath,
       aresPath,
+      adbPath,
     });
 
     if (!validation.valid) {
@@ -53,7 +57,9 @@ export const InstallationStep = ({ onNext }: InstallationStepProps) => {
         description:
           platform === "tizen"
             ? "Please enter all required SDK paths before proceeding."
-            : "Please enter the webOS CLI path before proceeding.",
+            : platform === "webos"
+              ? "Please enter the webOS CLI path before proceeding."
+              : "Please enter the ADB path before proceeding.",
       });
       addLog("error", `Validation failed: ${errorMessage}`);
       return;
@@ -64,6 +70,7 @@ export const InstallationStep = ({ onNext }: InstallationStepProps) => {
     localStorage.setItem("sdbPath", sdbPath);
     localStorage.setItem("tizenPath", tizenPath);
     localStorage.setItem("aresPath", aresPath);
+    localStorage.setItem("adbPath", adbPath);
 
     // Save to electron store (for main process)
     try {
@@ -71,6 +78,7 @@ export const InstallationStep = ({ onNext }: InstallationStepProps) => {
         sdbPath,
         tizenPath,
         aresPath,
+        adbPath,
       });
     } catch (error) {
       console.error("Failed to save SDK paths to electron store:", error);
@@ -97,11 +105,14 @@ export const InstallationStep = ({ onNext }: InstallationStepProps) => {
       <CardContent className="space-y-6">
         <Tabs
           value={platform}
-          onValueChange={(value) => setPlatform(value as "tizen" | "webos")}
+          onValueChange={(value) =>
+            setPlatform(value as "tizen" | "webos" | "android")
+          }
         >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="tizen">Tizen (Samsung)</TabsTrigger>
-            <TabsTrigger value="webos">webOS (LG)</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="tizen">Tizen</TabsTrigger>
+            <TabsTrigger value="webos">webOS</TabsTrigger>
+            <TabsTrigger value="android">Android</TabsTrigger>
           </TabsList>
 
           <TabsContent value="tizen">
@@ -115,6 +126,10 @@ export const InstallationStep = ({ onNext }: InstallationStepProps) => {
 
           <TabsContent value="webos">
             <WebOSSetup aresPath={aresPath} onAresPathChange={setAresPath} />
+          </TabsContent>
+
+          <TabsContent value="android">
+            <AndroidSetup adbPath={adbPath} onAdbPathChange={setAdbPath} />
           </TabsContent>
         </Tabs>
 

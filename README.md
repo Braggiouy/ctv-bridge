@@ -10,7 +10,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7.2-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)
 
-**CTV Bridge is an open-source desktop tool that simplifies deploying and debugging Connected TV applications directly on real Samsung Tizen and LG webOS devices.**
+**CTV Bridge is an open-source desktop tool that simplifies deploying and debugging Connected TV applications directly on real Samsung Tizen, LG webOS, and Android TV devices.**
 
 ## Why CTV Bridge exists
 
@@ -18,13 +18,13 @@ Developing for Connected TVs often means dealing with fragmented tooling, repeti
 and fragile deployment workflows that slow down iteration and testing.
 
 CTV Bridge was created to reduce that friction by providing a single, unified interface on top of
-the official Tizen and webOS tooling, without reinventing or replacing vendor SDKs.
+the official Tizen, webOS, and Android tooling, without reinventing or replacing vendor SDKs.
 
 ---
 
 ## High-level architecture
 
-CTV Bridge acts as a thin UI layer on top of official vendor CLIs (Tizen, webOS),
+CTV Bridge acts as a thin UI layer on top of official vendor CLIs (Tizen, webOS, Android),
 handling command orchestration, device management and log aggregation,
 while keeping all execution local to the developer machine.
 
@@ -36,10 +36,11 @@ while keeping all execution local to the developer machine.
 
 - **Samsung Tizen**: Seamless integration with Tizen Studio CLI (`sdb`, `tizen`).
 - **LG webOS**: Full support for webOS OSE/TV CLI (`ares-*` tools).
+- **Android TV**: Integration with Android Debug Bridge (`adb`) for APK deployment on Android TV / Fire TV.
 
 ### ⚡ One-Click Deployment
 
-- **Automated Build**: Generate `.wgt` and `.ipk` packages instantly.
+- **Automated Build**: Generate `.wgt`, `.ipk`, and `.apk` packages instantly.
 - **Smart Install**: Automatically handles uninstallation of old versions and installation of new packages.
 - **Instant Launch**: Apps launch immediately after deployment.
 
@@ -50,7 +51,7 @@ while keeping all execution local to the developer machine.
 
 ### 🔌 Device Management
 
-- **Unified Dashboard**: Manage all your Tizen and webOS devices in one place.
+- **Unified Dashboard**: Manage all your Tizen, webOS, and Android devices in one place.
 - **Connection Doctor**: Built-in troubleshooting for SSH keys and connection issues.
 
 ---
@@ -60,7 +61,7 @@ while keeping all execution local to the developer machine.
 CTV Bridge is designed for:
 
 - CTV / Smart TV developers
-- Frontend engineers working with Tizen or webOS
+- Frontend engineers working with Tizen, webOS, or Android TV
 - QA engineers testing apps on real TV devices
 - Teams building OTT / streaming applications
 
@@ -70,7 +71,7 @@ CTV Bridge is designed for:
 
 ### 1. Easy SDK Configuration
 
-Configure your Tizen and webOS SDK paths directly in the app. No system PATH modification required.
+Configure your Tizen, webOS, and Android SDK paths directly in the app. No system PATH modification required.
 
 <p align="center">
   <img src=".github/assets/screenshot-tizen-installation.png" width="45%" alt="Tizen Installation" />
@@ -101,10 +102,11 @@ Build, install, and launch your app in seconds. Toggle **Debug Mode** to automat
 
 1. **Download** the latest release from the [GitHub releases page](https://github.com/Braggiouy/ctv-bridge/releases/latest).
 2. **Install** the app for your OS (macOS `.dmg`/`.zip`, Windows `.exe`, Linux `.AppImage`/`.deb`).
-3. **Run CTV Bridge** and select your platform (Tizen or webOS).
+3. **Run CTV Bridge** and select your platform (Tizen, webOS, or Android).
 4. **Add a device**:
    - _Tizen_: Enter the TV's IP address (Developer Mode must be enabled).
    - _webOS_: Enter IP, port `9922`, username `prisoner`, and the passphrase you set in the TV's Developer Mode app.
+   - _Android_: Enter the TV's IP address (enable wireless debugging/ADB on device).
 5. **Test the connection** – the app will report success or show troubleshooting hints.
 6. **Build & Deploy** – choose your project folder, click **Build Package**, then **Deploy to TV**. Enable **Debug Mode** to launch with the inspector.
 
@@ -156,6 +158,7 @@ To use CTV Bridge, you'll need to download and install the respective SDKs:
 
 - **Samsung Tizen**: [Tizen Studio](https://developer.tizen.org/development/tizen-studio/download)
 - **LG webOS**: [webOS TV CLI](https://webostv.developer.lge.com/develop/tools/cli-installation)
+- **Android TV**: [Android Platform Tools (ADB)](https://developer.android.com/tools/releases/platform-tools)
 
 > **Note**: You don't need to add SDK tools to your system PATH. CTV Bridge lets you configure the full paths to SDK binaries directly in the Installation step (e.g., `/path/to/tizen-studio/tools/sdb`). The app will use these exact paths when running commands.
 
@@ -174,6 +177,7 @@ To use CTV Bridge, you'll need to download and install the respective SDKs:
   - Tizen: Path to `sdb` binary (e.g., `/Users/yourname/tizen-studio/tools/sdb`)
   - Tizen: Path to `tizen` binary (e.g., `/Users/yourname/tizen-studio/tools/ide/bin/tizen`)
   - webOS: Path to `ares` binary (e.g., `/Users/yourname/webOS_TV_SDK/CLI/bin/ares`)
+  - Android: Path to `adb` binary (e.g., `/Users/yourname/platform-tools/adb`)
 - Restart CTV Bridge after configuring paths
 - Test paths by running them manually in terminal (e.g., `/path/to/sdb version`)
 
@@ -191,6 +195,12 @@ To use CTV Bridge, you'll need to download and install the respective SDKs:
 - Check firewall isn't blocking port 9922
 - Try removing and re-adding the device
 - Ensure SSH keys are properly configured (CTV Bridge handles this automatically)
+
+**Android**:
+
+- Ensure "USB Debugging" or "Network Debugging" is enabled in Developer Options
+- Verify device is on same network
+- Try `adb connect <IP>` manually
 
 ### Build Failures
 
@@ -212,7 +222,7 @@ To use CTV Bridge, you'll need to download and install the respective SDKs:
 ## ❓ FAQ
 
 **Q: Does CTV Bridge work on all Samsung/LG TVs?**  
-A: CTV Bridge works with any Samsung Tizen TV or LG webOS TV that supports Developer Mode. This typically includes models from 2015 onwards.
+A: CTV Bridge works with any Samsung Tizen TV, LG webOS TV, or Android TV device (including Fire TV, Google TV) that supports debugging.
 
 **Q: Can I deploy to multiple TVs at once?**  
 A: Currently, CTV Bridge deploys to one TV at a time.

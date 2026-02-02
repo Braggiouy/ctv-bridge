@@ -7,3 +7,5 @@ import { twMerge } from "tailwind-merge";
 export function mergeClassNames(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+export const cn = mergeClassNames;

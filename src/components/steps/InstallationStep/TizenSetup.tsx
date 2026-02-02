@@ -1,9 +1,16 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ExternalLink, Lightbulb, Info, Settings2 } from "lucide-react";
+import {
+  ExternalLink,
+  Lightbulb,
+  Info,
+  Settings2,
+  FolderOpen,
+  Command,
+} from "lucide-react";
 import { isWindows } from "@/utils";
+import { SetupAlert } from "./SetupAlert";
 
 interface TizenSetupProps {
   sdbPath: string;
@@ -23,15 +30,40 @@ export const TizenSetup = ({
 }: TizenSetupProps) => {
   const win = isWindows();
 
+  const handleBrowseSdb = async () => {
+    try {
+      const path = (await window.electron.invoke(
+        "select-file",
+        win ? [{ name: "Executable", extensions: ["exe"] }] : []
+      )) as string | null;
+      if (path) onSdbPathChange(path);
+    } catch (error) {
+      console.error("Failed to select file:", error);
+    }
+  };
+
+  const handleBrowseTizen = async () => {
+    try {
+      const path = (await window.electron.invoke(
+        "select-file",
+        win ? [{ name: "Executable", extensions: ["bat", "exe"] }] : []
+      )) as string | null;
+      if (path) onTizenPathChange(path);
+    } catch (error) {
+      console.error("Failed to select file:", error);
+    }
+  };
+
   return (
     <div className="space-y-6 mt-6">
       {/* Step 1: External Requirements */}
-      <Alert className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/30">
-        <AlertDescription className="space-y-3">
-          <div className="flex items-center gap-2 font-semibold text-blue-900 dark:text-blue-100">
-            <Info className="h-4 w-4" />
-            <span>Getting Started</span>
-          </div>
+      <SetupAlert
+        title="Getting Started"
+        icon={Info}
+        variant="blue"
+        defaultOpen={true}
+      >
+        <div className="space-y-3">
           <ol className="list-decimal list-inside space-y-2 text-sm text-blue-800 dark:text-blue-200">
             <li>
               Download and install <strong>Tizen Studio</strong>
@@ -74,35 +106,33 @@ export const TizenSetup = ({
               </a>
             </Button>
           </div>
-        </AlertDescription>
-      </Alert>
+        </div>
+      </SetupAlert>
+
+      <SetupAlert title="Tizen CLI Tools" icon={Command} variant="slate">
+        <p className="text-sm text-slate-800/90 dark:text-slate-300 leading-relaxed">
+          Tizen uses two main tools: <code>tizen</code> (for packaging/signing)
+          and <code>sdb</code> (for device connection). Both are found in your
+          Tizen Studio installation.
+        </p>
+      </SetupAlert>
 
       {/* Helpful Tip Section */}
-      <Alert className="bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900">
-        <AlertDescription className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 p-1 bg-amber-100 dark:bg-amber-900/60 rounded-full">
-              <Lightbulb className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div className="space-y-1">
-              <p className="font-semibold text-amber-900 dark:text-amber-100">
-                The "Security Pass"
-              </p>
-              <p className="text-sm text-amber-800/90 dark:text-amber-200/80 leading-relaxed">
-                Samsung TVs only run apps with a "Security Pass" (Certificate)
-                linked to their unique ID (DUID). You only need to set this up
-                once in Tizen Studio.
-              </p>
-            </div>
-          </div>
+      <SetupAlert title='The "Security Pass"' icon={Lightbulb} variant="slate">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-800/90 dark:text-slate-300 leading-relaxed">
+            Samsung TVs only run apps with a "Security Pass" (Certificate)
+            linked to their unique ID (DUID). You only need to set this up once
+            in Tizen Studio.
+          </p>
 
-          <div className="text-xs space-y-2.5 bg-white/40 dark:bg-black/20 p-3 rounded-md border border-amber-200/50 dark:border-amber-900/50">
-            <p className="font-bold uppercase tracking-wider text-amber-900 dark:text-amber-100 opacity-70">
+          <div className="text-xs space-y-2.5 bg-white/40 dark:bg-black/20 p-3 rounded-md border border-slate-200/50 dark:border-slate-800/50">
+            <p className="font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 opacity-70">
               One-Time Action (In Tizen Studio):
             </p>
-            <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-amber-800 dark:text-amber-200">
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-slate-800 dark:text-slate-300">
               <li className="flex gap-2">
-                <span className="font-mono text-amber-600 dark:text-amber-400">
+                <span className="font-mono text-slate-600 dark:text-slate-400">
                   1.
                 </span>
                 <span>
@@ -110,7 +140,7 @@ export const TizenSetup = ({
                 </span>
               </li>
               <li className="flex gap-2">
-                <span className="font-mono text-amber-600 dark:text-amber-400">
+                <span className="font-mono text-slate-600 dark:text-slate-400">
                   2.
                 </span>
                 <span>
@@ -118,7 +148,7 @@ export const TizenSetup = ({
                 </span>
               </li>
               <li className="flex gap-2">
-                <span className="font-mono text-amber-600 dark:text-amber-400">
+                <span className="font-mono text-slate-600 dark:text-slate-400">
                   3.
                 </span>
                 <span>
@@ -126,15 +156,61 @@ export const TizenSetup = ({
                 </span>
               </li>
               <li className="flex gap-2">
-                <span className="font-mono text-amber-600 dark:text-amber-400">
+                <span className="font-mono text-slate-600 dark:text-slate-400">
                   4.
                 </span>
                 <span>Save and close Studio</span>
               </li>
             </ul>
           </div>
-        </AlertDescription>
-      </Alert>
+        </div>
+      </SetupAlert>
+
+      <SetupAlert
+        title="Enabling Developer Mode"
+        icon={Lightbulb}
+        variant="amber"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-amber-800/90 dark:text-amber-200/80 leading-relaxed">
+            You must enable Developer Mode on your Samsung TV to install apps
+            via SDB.
+          </p>
+
+          <div className="text-xs space-y-2.5 bg-white/40 dark:bg-black/20 p-3 rounded-md border border-amber-200/50 dark:border-amber-900/50">
+            <p className="font-bold uppercase tracking-wider text-amber-900 dark:text-amber-100 opacity-70">
+              How to enable:
+            </p>
+            <ul className="grid grid-cols-1 gap-2 text-amber-800 dark:text-amber-200">
+              <li className="flex gap-2">
+                <span className="font-mono text-amber-600 dark:text-amber-400">
+                  1.
+                </span>
+                <span>
+                  Go to the <strong>Apps</strong> panel on your TV
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="font-mono text-amber-600 dark:text-amber-400">
+                  2.
+                </span>
+                <span>
+                  Press <strong>1, 2, 3, 4, 5</strong> on your remote control
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="font-mono text-amber-600 dark:text-amber-400">
+                  3.
+                </span>
+                <span>
+                  Switch <strong>Developer Mode</strong> to <strong>On</strong>{" "}
+                  and enter your computer's IP
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </SetupAlert>
 
       {/* Path Configuration */}
       <div className="space-y-4 pt-2">
@@ -151,17 +227,28 @@ export const TizenSetup = ({
             >
               SDB Path
             </Label>
-            <Input
-              id="sdbPath"
-              placeholder={
-                win
-                  ? "C:\\tizen-studio\\tools\\sdb.exe"
-                  : "/Users/name/tizen-studio/tools/sdb"
-              }
-              value={sdbPath}
-              onChange={(e) => onSdbPathChange(e.target.value)}
-              className="font-mono text-sm bg-muted/30 focus-visible:ring-blue-500"
-            />
+            <div className="flex gap-2">
+              <Input
+                id="sdbPath"
+                placeholder={
+                  win
+                    ? "C:\\tizen-studio\\tools\\sdb.exe"
+                    : "/Users/name/tizen-studio/tools/sdb"
+                }
+                value={sdbPath}
+                onChange={(e) => onSdbPathChange(e.target.value)}
+                className="font-mono text-sm bg-muted/30 focus-visible:ring-blue-500"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleBrowseSdb}
+                title="Browse for sdb executable"
+                type="button"
+              >
+                <FolderOpen className="h-4 w-4" />
+              </Button>
+            </div>
             <p className="text-[11px] text-muted-foreground italic">
               Expected:{" "}
               {win ? (
@@ -179,17 +266,28 @@ export const TizenSetup = ({
             >
               Tizen CLI Path
             </Label>
-            <Input
-              id="tizenPath"
-              placeholder={
-                win
-                  ? "C:\\tizen-studio\\tools\\ide\\bin\\tizen.bat"
-                  : "/Users/name/tizen-studio/tools/ide/bin/tizen"
-              }
-              value={tizenPath}
-              onChange={(e) => onTizenPathChange(e.target.value)}
-              className="font-mono text-sm bg-muted/30 focus-visible:ring-blue-500"
-            />
+            <div className="flex gap-2">
+              <Input
+                id="tizenPath"
+                placeholder={
+                  win
+                    ? "C:\\tizen-studio\\tools\\ide\\bin\\tizen.bat"
+                    : "/Users/name/tizen-studio/tools/ide/bin/tizen"
+                }
+                value={tizenPath}
+                onChange={(e) => onTizenPathChange(e.target.value)}
+                className="font-mono text-sm bg-muted/30 focus-visible:ring-blue-500"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleBrowseTizen}
+                title="Browse for tizen CLI executable"
+                type="button"
+              >
+                <FolderOpen className="h-4 w-4" />
+              </Button>
+            </div>
             <p className="text-[11px] text-muted-foreground italic">
               Expected:{" "}
               {win ? (

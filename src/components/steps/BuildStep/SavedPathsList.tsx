@@ -9,7 +9,7 @@ interface SavedPath {
 }
 
 interface SavedPathsListProps {
-  platform: "tizen" | "webos";
+  platform: "tizen" | "webos" | "android";
   savedPaths: SavedPath[];
   setSavedPaths: React.Dispatch<React.SetStateAction<SavedPath[]>>;
   setProjectPath: (path: string) => void;

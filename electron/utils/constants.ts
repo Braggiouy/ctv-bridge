@@ -20,6 +20,12 @@ export const WEBOS_CONSTANTS = {
   APP_ID_PATTERN: /"id"\s*:\s*"([^"]+)"/,
 } as const;
 
+// Android configuration
+export const ANDROID_CONSTANTS = {
+  DEFAULT_PORT: 5555,
+  PACKAGE_EXTENSION: ".apk",
+} as const;
+
 // Build configuration
 export const BUILD_CONSTANTS = {
   EXCLUDE_PATTERNS: [

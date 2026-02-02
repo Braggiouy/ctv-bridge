@@ -8,6 +8,7 @@ import {
   PLATFORMS,
   WEBOS_CONFIG,
   TIZEN_CONFIG,
+  ANDROID_CONFIG,
   type Platform,
 } from "./config/constants";
 
@@ -26,7 +27,11 @@ export const isWindows = (): boolean => {
  * Get human-readable platform display name
  */
 export const getPlatformDisplayName = (platform: Platform): string => {
-  return platform === PLATFORMS.TIZEN ? "Samsung" : "LG";
+  return platform === PLATFORMS.TIZEN
+    ? "Samsung"
+    : platform === PLATFORMS.WEBOS
+      ? "LG"
+      : "Android TV";
 };
 
 /**
@@ -35,14 +40,20 @@ export const getPlatformDisplayName = (platform: Platform): string => {
 export const getPackageExtension = (platform: Platform): string => {
   return platform === PLATFORMS.TIZEN
     ? TIZEN_CONFIG.PACKAGE_EXTENSION
-    : WEBOS_CONFIG.PACKAGE_EXTENSION;
+    : platform === PLATFORMS.WEBOS
+      ? WEBOS_CONFIG.PACKAGE_EXTENSION
+      : ANDROID_CONFIG.PACKAGE_EXTENSION;
 };
 
 /**
  * Get CLI command name for platform
  */
 export const getPlatformCLI = (platform: Platform): string => {
-  return platform === PLATFORMS.TIZEN ? "tizen" : "ares";
+  return platform === PLATFORMS.TIZEN
+    ? "tizen"
+    : platform === PLATFORMS.WEBOS
+      ? "ares"
+      : "adb";
 };
 
 // ============================================================================
@@ -151,7 +162,12 @@ export const isValidPath = (path: string): boolean => {
  */
 export function validateSdkPaths(
   platform: Platform,
-  paths: { sdbPath?: string; tizenPath?: string; aresPath?: string }
+  paths: {
+    sdbPath?: string;
+    tizenPath?: string;
+    aresPath?: string;
+    adbPath?: string;
+  }
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -166,6 +182,9 @@ export function validateSdkPaths(
     if (!isValidPath(paths.aresPath || "")) {
       errors.push("webOS CLI path is required");
     }
+  } else if (platform === PLATFORMS.ANDROID) {
+    // ADB path is optional if it's already in the system PATH.
+    // We treat empty "adbPath" as valid.
   }
 
   return {

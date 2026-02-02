@@ -11,7 +11,7 @@ import {
 
 interface DeviceCardProps {
   device: Device;
-  platform: "tizen" | "webos";
+  platform: "tizen" | "webos" | "android";
   isEditing: boolean;
   isTesting: boolean;
   onTest: (device: Device) => Promise<boolean>;

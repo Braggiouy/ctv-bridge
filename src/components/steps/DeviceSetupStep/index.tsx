@@ -21,7 +21,8 @@ interface DeviceSetupStepProps {
  */
 export const DeviceSetupStep = ({ onNext, onBack }: DeviceSetupStepProps) => {
   const platform =
-    (localStorage.getItem("platform") as "tizen" | "webos") || "tizen";
+    (localStorage.getItem("platform") as "tizen" | "webos" | "android") ||
+    "tizen";
   const {
     devices,
     loading,
@@ -67,7 +68,11 @@ export const DeviceSetupStep = ({ onNext, onBack }: DeviceSetupStepProps) => {
               ? "Select a registered device or add a new one. Devices are managed via "
               : "Select a connected device or connect to a new one. Devices are managed via "}
             <code>
-              {platform === "webos" ? "ares-setup-device" : "sdb connect"}
+              {platform === "webos"
+                ? "ares-setup-device"
+                : platform === "tizen"
+                  ? "sdb connect"
+                  : "adb connect"}
             </code>
             .
           </p>

@@ -6,7 +6,7 @@ import { getDeviceId } from "./helpers";
 
 interface DeviceListProps {
   devices: Device[];
-  platform: "tizen" | "webos";
+  platform: "tizen" | "webos" | "android";
   onSelect: (device: Device) => void;
   onRemove: (device: Device) => void;
   onUpdate: (oldDevice: Device, newDevice: Device) => void;

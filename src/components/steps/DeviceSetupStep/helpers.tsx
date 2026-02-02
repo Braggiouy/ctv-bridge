@@ -52,7 +52,7 @@ export function getConnectionStatusClass(status?: string): string {
  */
 export function getConnectionStatusText(
   device: Device,
-  platform: "tizen" | "webos"
+  platform: "tizen" | "webos" | "android"
 ): string {
   if (platform === "tizen") {
     const tizenDevice = device as TizenDevice;
@@ -78,7 +78,7 @@ export function getConnectionStatusText(
  */
 export function formatDeviceDisplayName(
   device: Device,
-  platform: "tizen" | "webos"
+  platform: "tizen" | "webos" | "android"
 ): string {
   if (platform === "webos") {
     const webosDevice = device as WebOSDevice;

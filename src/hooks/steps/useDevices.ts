@@ -8,7 +8,7 @@ import { TOAST_DURATION } from "@/utils";
 /**
  * Hook for managing device CRUD operations
  */
-export function useDevices(platform: "tizen" | "webos") {
+export function useDevices(platform: "tizen" | "webos" | "android") {
   const { addLog } = useGlobalLogs();
   const { getPassphrase, savePassphrase, deletePassphrase } =
     useSecureStorage();
@@ -36,6 +36,26 @@ export function useDevices(platform: "tizen" | "webos") {
           addLog("log", `Loaded ${res.devices.length} webOS devices.`);
         } else {
           addLog("error", `Failed to load webOS devices: ${res.message}`);
+        }
+      } else if (platform === "android") {
+        // Android
+        const res = await window.electron.invoke("list-android-devices");
+        if (res.success) {
+          const storedNames = JSON.parse(
+            localStorage.getItem("android-device-names") || "{}"
+          );
+          const devicesWithNames = (res.devices || []).map(
+            (device: { ip: string; status: string }) => ({
+              name: storedNames[device.ip] || device.ip,
+              ip: device.ip,
+              status: device.status,
+              connectionStatus: "idle" as const,
+            })
+          );
+          setDevices(devicesWithNames);
+          addLog("log", `Loaded ${res.devices?.length || 0} Android devices.`);
+        } else {
+          addLog("error", `Failed to load Android devices: ${res.message}`);
         }
       } else {
         // Tizen
@@ -102,6 +122,38 @@ export function useDevices(platform: "tizen" | "webos") {
         addLog("error", `Device registration failed: ${res.message}`);
         return res;
       }
+    } else if (platform === "android") {
+      // Android
+      const res = await window.electron.invoke("add-android-device", device.ip);
+      if (res.success) {
+        toast.success("Device Connected", {
+          description: res.message,
+          duration: TOAST_DURATION,
+        });
+        addLog("step", `Android device connected: ${device.ip}`);
+
+        // Save device name if provided
+        if (device.name) {
+          const storedNames = JSON.parse(
+            localStorage.getItem("android-device-names") || "{}"
+          );
+          storedNames[device.ip] = device.name;
+          localStorage.setItem(
+            "android-device-names",
+            JSON.stringify(storedNames)
+          );
+        }
+
+        await fetchDevices();
+        return { success: true };
+      } else {
+        toast.error("Connection Failed", {
+          description: res.message,
+          duration: TOAST_DURATION,
+        });
+        addLog("error", `Android connection failed: ${res.message}`);
+        return res;
+      }
     } else {
       // Tizen
       const res = await window.electron.addTizenDevice(device.ip);
@@ -154,6 +206,35 @@ export function useDevices(platform: "tizen" | "webos") {
           await fetchDevices();
         } else {
           toast.error("Remove failed", {
+            description: res.message,
+            duration: TOAST_DURATION,
+          });
+        }
+      } else if (platform === "android") {
+        // Android
+        const res = await window.electron.invoke(
+          "remove-android-device",
+          device.ip
+        );
+        if (res.success) {
+          toast.success("Device Disconnected", {
+            description: res.message,
+            duration: TOAST_DURATION,
+          });
+          addLog("step", `Android device disconnected: ${device.ip}`);
+
+          const storedNames = JSON.parse(
+            localStorage.getItem("android-device-names") || "{}"
+          );
+          delete storedNames[device.ip];
+          localStorage.setItem(
+            "android-device-names",
+            JSON.stringify(storedNames)
+          );
+
+          await fetchDevices();
+        } else {
+          toast.error("Disconnect Failed", {
             description: res.message,
             duration: TOAST_DURATION,
           });

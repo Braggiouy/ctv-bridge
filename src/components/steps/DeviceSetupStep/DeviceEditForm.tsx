@@ -8,7 +8,7 @@ import { validateDeviceForm, DeviceValidationErrors } from "@/utils";
 
 interface DeviceEditFormProps {
   device: Device;
-  platform: "tizen" | "webos";
+  platform: "tizen" | "webos" | "android";
   onSave: (device: Device) => void;
   onCancel: () => void;
 }

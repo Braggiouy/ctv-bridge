@@ -7,7 +7,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { validateDeviceForm, DeviceValidationErrors } from "@/utils";
 
 interface AddDeviceFormProps {
-  platform: "tizen" | "webos";
+  platform: "tizen" | "webos" | "android";
   onAdd: (device: Device) => Promise<{ success: boolean; message?: string }>;
   onCancel: () => void;
 }
@@ -67,13 +67,13 @@ export const AddDeviceForm = ({
 
       <div className="space-y-2">
         <Label htmlFor="deviceName">
-          Device Name {platform === "tizen" && "(optional)"}
+          Device Name {platform !== "webos" && "(optional)"}
         </Label>
         <Input
           id="deviceName"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder={platform === "tizen" ? "Optional" : "my-lg-tv"}
+          placeholder={platform !== "webos" ? "Optional" : "my-lg-tv"}
           disabled={submitting}
         />
         {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
