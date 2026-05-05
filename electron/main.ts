@@ -8,6 +8,7 @@ import { registerUpdaterHandlers } from "./ipc/updater/handlers";
 import { store } from "./store";
 import { WINDOW_CONSTANTS, DEPLOY_CONSTANTS } from "./utils/constants";
 import { logger } from "./utils/logger";
+import { processManager } from "./utils/process-manager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -55,11 +56,15 @@ function setupAutoUpdater() {
 
   // Auto-updater event handlers
   autoUpdater.on("update-available", (info) => {
-    win?.webContents.send("update-available", info);
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("update-available", info);
+    }
   });
 
   autoUpdater.on("update-downloaded", (info) => {
-    win?.webContents.send("update-downloaded", info);
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("update-downloaded", info);
+    }
   });
 
   autoUpdater.on("error", (err) => {
@@ -74,7 +79,9 @@ function setupAutoUpdater() {
       message =
         "Update failed due to macOS security. Please download the new version manually.";
     }
-    win?.webContents.send("update-error", message);
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("update-error", message);
+    }
   });
 }
 
@@ -130,7 +137,9 @@ function createWindow() {
 
   // Test active push message to Renderer-process.
   win.webContents.on("did-finish-load", () => {
-    win?.webContents.send("main-process-message", new Date().toLocaleString());
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("main-process-message", new Date().toLocaleString());
+    }
   });
 
   if (VITE_DEV_SERVER_URL) {

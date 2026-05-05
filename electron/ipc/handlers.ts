@@ -117,7 +117,9 @@ export function registerIpcHandlers() {
     ) => {
       const mainWindow = BrowserWindow.getAllWindows()[0];
       const sendLog = (message: string) => {
-        if (mainWindow) mainWindow.webContents.send("deploy-log", message);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send("deploy-log", message);
+        }
       };
       try {
         sendLog(`[${new Date().toLocaleTimeString()}] Starting deployment...`);

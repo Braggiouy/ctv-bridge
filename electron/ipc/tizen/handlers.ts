@@ -11,6 +11,7 @@ import {
   BUILD_CONSTANTS,
   DEPLOY_CONSTANTS,
 } from "../../utils/constants";
+import { processManager } from "../../utils/process-manager";
 
 const execAsync = promisify(exec);
 
@@ -460,6 +461,7 @@ async function startTizenDebugSession(
         shell: true,
       }
     );
+    processManager.track(debugProcess);
 
     let urlFound = false;
     let outputBuffer = "";

@@ -5,6 +5,7 @@ import { store } from "../../store";
 import { logger } from "../../utils/logger";
 import { getErrorMessage } from "../../utils/errors";
 import { WEBOS_CONSTANTS, DEPLOY_CONSTANTS } from "../../utils/constants";
+import { processManager } from "../../utils/process-manager";
 
 const execAsync = promisify(exec);
 
@@ -219,6 +220,7 @@ export async function testWebOsConnection(
             const proc = spawn(aresNovacom, ["--getkey", "-d", deviceName], {
               shell: true,
             });
+            processManager.track(proc);
 
             let output = "";
             let errorOutput = "";
@@ -463,6 +465,7 @@ async function startWebOsDebugSession(
         shell: true,
       }
     );
+    processManager.track(proc);
 
     let urlFound = false;
     let outputBuffer = "";
