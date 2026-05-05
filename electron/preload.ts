@@ -24,6 +24,12 @@ contextBridge.exposeInMainWorld("electron", {
   addTizenDevice: (ip: string) => ipcRenderer.invoke("add-tizen-device", ip),
   removeTizenDevice: (ip: string) =>
     ipcRenderer.invoke("remove-tizen-device", ip),
+
+  // Device management (Android)
+  listAndroidDevices: () => ipcRenderer.invoke("list-android-devices"),
+  addAndroidDevice: (ip: string) => ipcRenderer.invoke("add-android-device", ip),
+  removeAndroidDevice: (ip: string) =>
+    ipcRenderer.invoke("remove-android-device", ip),
   // File operations
   selectDirectory: () => ipcRenderer.invoke("select-directory"),
 

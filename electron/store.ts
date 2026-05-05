@@ -9,9 +9,14 @@ interface SdkPaths {
   adbPath?: string;
 }
 
+interface StoreData {
+  sdkPaths: SdkPaths;
+  extras: Record<string, unknown>;
+}
+
 class Store {
   private storePath: string;
-  private data: SdkPaths;
+  private data: StoreData;
 
   constructor() {
     const userDataPath = app.getPath("userData");
@@ -19,16 +24,20 @@ class Store {
     this.data = this.load();
   }
 
-  private load(): SdkPaths {
+  private load(): StoreData {
     try {
       if (fs.existsSync(this.storePath)) {
-        const data = fs.readFileSync(this.storePath, "utf-8");
-        return JSON.parse(data);
+        const raw = JSON.parse(fs.readFileSync(this.storePath, "utf-8"));
+        // Migrate from old flat format (SdkPaths at root) to new nested format
+        if (raw && !raw.sdkPaths && !raw.extras) {
+          return { sdkPaths: raw, extras: {} };
+        }
+        return { sdkPaths: raw.sdkPaths ?? {}, extras: raw.extras ?? {} };
       }
     } catch (error) {
       console.error("Error loading store:", error);
     }
-    return {};
+    return { sdkPaths: {}, extras: {} };
   }
 
   private save() {
@@ -40,21 +49,32 @@ class Store {
   }
 
   get(key: keyof SdkPaths): string | undefined {
-    return this.data[key];
+    return this.data.sdkPaths[key];
   }
 
   set(key: keyof SdkPaths, value: string) {
-    this.data[key] = value;
+    this.data.sdkPaths[key] = value;
     this.save();
   }
 
   setAll(paths: SdkPaths) {
-    this.data = { ...this.data, ...paths };
+    this.data.sdkPaths = { ...this.data.sdkPaths, ...paths };
     this.save();
   }
 
   getAll(): SdkPaths {
-    return { ...this.data };
+    return { ...this.data.sdkPaths };
+  }
+
+  /** Get a cached value from the extras bucket */
+  getExtra<T>(key: string): T | undefined {
+    return this.data.extras[key] as T | undefined;
+  }
+
+  /** Set a cached value in the extras bucket */
+  setExtra(key: string, value: unknown) {
+    this.data.extras[key] = value;
+    this.save();
   }
 }
 

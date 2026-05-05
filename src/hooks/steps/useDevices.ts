@@ -15,6 +15,17 @@ export function useDevices(platform: "tizen" | "webos" | "android") {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const getStoredNames = (key: string): Record<string, string> => {
+    try {
+      return JSON.parse(localStorage.getItem(key) || "{}") as Record<
+        string,
+        string
+      >;
+    } catch {
+      return {};
+    }
+  };
+
   const fetchDevices = useCallback(async () => {
     setLoading(true);
     try {
@@ -39,11 +50,9 @@ export function useDevices(platform: "tizen" | "webos" | "android") {
         }
       } else if (platform === "android") {
         // Android
-        const res = await window.electron.invoke("list-android-devices");
+        const res = await window.electron.listAndroidDevices();
         if (res.success) {
-          const storedNames = JSON.parse(
-            localStorage.getItem("android-device-names") || "{}"
-          );
+          const storedNames = getStoredNames("android-device-names");
           const devicesWithNames = (res.devices || []).map(
             (device: { ip: string; status: string }) => ({
               name: storedNames[device.ip] || device.ip,
@@ -61,9 +70,7 @@ export function useDevices(platform: "tizen" | "webos" | "android") {
         // Tizen
         const res = await window.electron.listTizenDevices();
         if (res.success) {
-          const storedNames = JSON.parse(
-            localStorage.getItem("tizen-device-names") || "{}"
-          );
+          const storedNames = getStoredNames("tizen-device-names");
           const devicesWithNames = (res.devices || []).map(
             (device: { ip: string; status: string }) => ({
               name: storedNames[device.ip] || device.ip,
@@ -124,7 +131,7 @@ export function useDevices(platform: "tizen" | "webos" | "android") {
       }
     } else if (platform === "android") {
       // Android
-      const res = await window.electron.invoke("add-android-device", device.ip);
+      const res = await window.electron.addAndroidDevice(device.ip);
       if (res.success) {
         toast.success("Device Connected", {
           description: res.message,
@@ -134,9 +141,7 @@ export function useDevices(platform: "tizen" | "webos" | "android") {
 
         // Save device name if provided
         if (device.name) {
-          const storedNames = JSON.parse(
-            localStorage.getItem("android-device-names") || "{}"
-          );
+          const storedNames = getStoredNames("android-device-names");
           storedNames[device.ip] = device.name;
           localStorage.setItem(
             "android-device-names",
@@ -166,9 +171,7 @@ export function useDevices(platform: "tizen" | "webos" | "android") {
 
         // Save device name if provided
         if (device.name) {
-          const storedNames = JSON.parse(
-            localStorage.getItem("tizen-device-names") || "{}"
-          );
+          const storedNames = getStoredNames("tizen-device-names");
           storedNames[device.ip] = device.name;
           localStorage.setItem(
             "tizen-device-names",
@@ -212,10 +215,7 @@ export function useDevices(platform: "tizen" | "webos" | "android") {
         }
       } else if (platform === "android") {
         // Android
-        const res = await window.electron.invoke(
-          "remove-android-device",
-          device.ip
-        );
+        const res = await window.electron.removeAndroidDevice(device.ip);
         if (res.success) {
           toast.success("Device Disconnected", {
             description: res.message,
@@ -223,9 +223,7 @@ export function useDevices(platform: "tizen" | "webos" | "android") {
           });
           addLog("step", `Android device disconnected: ${device.ip}`);
 
-          const storedNames = JSON.parse(
-            localStorage.getItem("android-device-names") || "{}"
-          );
+          const storedNames = getStoredNames("android-device-names");
           delete storedNames[device.ip];
           localStorage.setItem(
             "android-device-names",
@@ -249,9 +247,7 @@ export function useDevices(platform: "tizen" | "webos" | "android") {
           });
           addLog("step", `Tizen device disconnected: ${device.ip}`);
 
-          const storedNames = JSON.parse(
-            localStorage.getItem("tizen-device-names") || "{}"
-          );
+          const storedNames = getStoredNames("tizen-device-names");
           delete storedNames[device.ip];
           localStorage.setItem(
             "tizen-device-names",
@@ -359,9 +355,7 @@ export function useDevices(platform: "tizen" | "webos" | "android") {
       }
 
       // Update name in localStorage
-      const storedNames = JSON.parse(
-        localStorage.getItem("tizen-device-names") || "{}"
-      );
+      const storedNames = getStoredNames("tizen-device-names");
       if (oldIp !== newIp) {
         delete storedNames[oldIp];
       }
