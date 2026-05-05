@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.5.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.4.3...v1.5.0) (2026-05-05)
+
+
+### Features
+
+* add Android support, refactor storage, and resolve security vulnerabilities ([3b53f81](https://github.com/Braggiouy/ctv-bridge/commit/3b53f8166bc5af979d82a9342369f8a3960cc54d))
+
 ### [1.4.1](https://github.com/Braggiouy/ctv-bridge/compare/v1.4.0...v1.4.1) (2026-02-02)
 
 
