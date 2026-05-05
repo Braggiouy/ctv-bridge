@@ -18,8 +18,9 @@
     "build:dir": "vite build && electron-builder --dir",
     "lint": "eslint .",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "preview": "vite preview",
-    "release": "npm run lint && npm run format && npx standard-version"
+    "release": "npm run lint && npm run format:check && npx standard-version"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
