@@ -8,7 +8,7 @@ import { registerUpdaterHandlers } from "./ipc/updater/handlers";
 import { store } from "./store";
 import { WINDOW_CONSTANTS, DEPLOY_CONSTANTS } from "./utils/constants";
 import { logger } from "./utils/logger";
-import { processManager } from "./utils/process-manager";
+import "./utils/process-manager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
