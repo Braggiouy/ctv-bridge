@@ -27,7 +27,8 @@ contextBridge.exposeInMainWorld("electron", {
 
   // Device management (Android)
   listAndroidDevices: () => ipcRenderer.invoke("list-android-devices"),
-  addAndroidDevice: (ip: string) => ipcRenderer.invoke("add-android-device", ip),
+  addAndroidDevice: (ip: string) =>
+    ipcRenderer.invoke("add-android-device", ip),
   removeAndroidDevice: (ip: string) =>
     ipcRenderer.invoke("remove-android-device", ip),
   // File operations
