@@ -2,20 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-## [Unreleased]
+## [1.6.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.5.1...v1.6.0) (2026-06-08)
+
 
 ### Features
 
-* add Samsung OAuth certificate login flow with logout/cancel support and email autofill
-* add guided Tizen certificate generation UI with DUID validation and disabled-state tooltips
-* centralize Tizen certificate profile management in Build step
-
-### Bug Fixes
-
-* fix Tizen profile parsing/canonical naming to prevent phantom profile names
-* improve Tizen profile deletion reliability and active profile handling
-* retry Tizen install by uninstalling old app when author certificate mismatch occurs
-* remove broken saved build paths UX from Tizen flow
+* improve tizen certificate and deployment release flow ([9c743a8](https://github.com/Braggiouy/ctv-bridge/commit/9c743a8426191562d35b3011f5221f0895cad46f))
 
 ### [1.5.1](https://github.com/Braggiouy/ctv-bridge/compare/v1.5.0...v1.5.1) (2026-05-05)
 
