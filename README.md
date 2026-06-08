@@ -44,6 +44,13 @@ while keeping all execution local to the developer machine.
 - **Smart Install**: Automatically handles uninstallation of old versions and installation of new packages.
 - **Instant Launch**: Apps launch immediately after deployment.
 
+### 🔐 Tizen Certificate Workflow
+
+- **Samsung Login Wizard**: Sign in with Samsung directly in-app, cancel login anytime, and sign out cleanly.
+- **Guided Certificate Creation**: Generate `author.p12` and `distributor.p12` with clear, step-by-step validation.
+- **DUID Validation**: Enforces one DUID per line and explains disabled CTA reasons via tooltips.
+- **Profile Management**: Refresh, select, and delete Tizen security profiles from the Build step.
+
 ### 🛠️ Advanced Debugging
 
 - **webOS Inspector**: Integrated support for `ares-inspect`. Automatically captures and displays the Chrome DevTools URL for instant debugging.
@@ -216,6 +223,7 @@ To use CTV Bridge, you'll need to download and install the respective SDKs:
 - Verify connection test passes before deploying
 - Check TV has sufficient storage space
 - For webOS: Ensure Developer Mode app is running on TV
+- For Tizen author certificate mismatch errors (`install failed[118, -11]`), CTV Bridge now attempts uninstall + reinstall automatically.
 
 ---
 

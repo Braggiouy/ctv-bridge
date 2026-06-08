@@ -1,6 +1,14 @@
+/**
+ * Type definitions for the Electron preload bridge.
+ *
+ * This is the single source of truth for the `window.electron` API.
+ * When adding a new IPC handler, update this file AND `electron/preload.ts`.
+ */
+
 interface Device {
   name: string;
-  ip: string;
+  ip?: string;
+  host?: string;
   port?: string;
   username?: string;
 }
@@ -18,7 +26,7 @@ interface SdkCheckResult {
 }
 
 interface ElectronAPI {
-  // webOS device management
+  // ── Device management (webOS) ─────────────────────────────────────────────
   listDevices: () => Promise<{
     success: boolean;
     devices: Device[];
@@ -32,7 +40,7 @@ interface ElectronAPI {
     name: string
   ) => Promise<{ success: boolean; message: string }>;
 
-  // Tizen device management
+  // ── Device management (Tizen) ─────────────────────────────────────────────
   listTizenDevices: () => Promise<{
     success: boolean;
     devices: { ip: string; status: string }[];
@@ -45,7 +53,7 @@ interface ElectronAPI {
     ip: string
   ) => Promise<{ success: boolean; message: string }>;
 
-  // Android device management
+  // ── Device management (Android) ───────────────────────────────────────────
   listAndroidDevices: () => Promise<{
     success: boolean;
     devices: AndroidDeviceStatus[];
@@ -58,10 +66,14 @@ interface ElectronAPI {
     ip: string
   ) => Promise<{ success: boolean; message: string }>;
 
-  // Other methods
+  // ── File operations ───────────────────────────────────────────────────────
   selectDirectory: () => Promise<string | null>;
+
+  // ── SDK checks ────────────────────────────────────────────────────────────
   checkTizenSdk: () => Promise<SdkCheckResult>;
   checkWebOsSdk: () => Promise<SdkCheckResult>;
+
+  // ── SDK operations ────────────────────────────────────────────────────────
   testConnection: (
     platform: string,
     identifier: string,
@@ -77,6 +89,15 @@ interface ElectronAPI {
     packagePath?: string;
     packageName?: string;
   }>;
+  listTizenProfiles: () => Promise<{
+    success: boolean;
+    profiles: { name: string; active: boolean }[];
+    message?: string;
+  }>;
+  deleteTizenProfile: (name: string) => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
   deployApp: (
     platform: string,
     tvIp: string,
@@ -85,7 +106,20 @@ interface ElectronAPI {
   ) => Promise<{ success: boolean; message: string }>;
   onDeployLog: (callback: (log: string) => void) => () => void;
 
-  // Secure storage
+  // ── Auto-updater ──────────────────────────────────────────────────────────
+  checkForUpdates: () => Promise<{ version: string } | null>;
+  downloadUpdate: () => Promise<{ success: boolean; error?: string }>;
+  installUpdate: () => void;
+  getAppVersion: () => Promise<string>;
+  onUpdateAvailable: (
+    callback: (info: { version: string }) => void
+  ) => () => void;
+  onUpdateDownloaded: (
+    callback: (info: { version: string }) => void
+  ) => () => void;
+  onUpdateError: (callback: (error: string) => void) => () => void;
+
+  // ── Secure storage ────────────────────────────────────────────────────────
   savePassphrase: (
     deviceName: string,
     passphrase: string
@@ -107,33 +141,19 @@ interface ElectronAPI {
     success: boolean;
     available: boolean;
   }>;
-  // Generic invoke method for any IPC handler
+
+  // ── Generic invoke ────────────────────────────────────────────────────────
   invoke: <T = unknown>(channel: string, ...args: unknown[]) => Promise<T>;
-  listTizenProfiles: () => Promise<{
-    success: boolean;
-    profiles: { name: string; active: boolean }[];
-    message?: string;
-  }>;
 
-  // Auto-updater
-  checkForUpdates: () => Promise<{ version: string } | null>;
-  downloadUpdate: () => Promise<{ success: boolean; error?: string }>;
-  installUpdate: () => void;
-  getAppVersion: () => Promise<string>;
-  onUpdateAvailable: (
-    callback: (info: { version: string }) => void
-  ) => () => void;
-  onUpdateDownloaded: (
-    callback: (info: { version: string }) => void
-  ) => () => void;
-  onUpdateError: (callback: (error: string) => void) => () => void;
-
+  // ── External links ────────────────────────────────────────────────────────
   openExternal: (url: string) => Promise<{ success: boolean }>;
-  // SDK paths management
+
+  // ── SDK paths management ──────────────────────────────────────────────────
   saveSdkPaths: (paths: {
     sdbPath?: string;
     tizenPath?: string;
     aresPath?: string;
+    adbPath?: string;
   }) => Promise<{ success: boolean }>;
   getSdkPaths: () => Promise<{
     sdbPath?: string;
@@ -141,6 +161,33 @@ interface ElectronAPI {
     aresPath?: string;
     adbPath?: string;
   }>;
+
+  // ── Tizen certificate generation ──────────────────────────────────────────
+  loginTizenCertificateSession: () => Promise<{
+    success: boolean;
+    message?: string;
+    cancelled?: boolean;
+    email?: string;
+  }>;
+  cancelTizenCertificateLogin: () => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
+  logoutTizenCertificateSession: () => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
+  generateTizenCertificates: (params: {
+    email: string;
+    deviceIds?: string[];
+    password?: string;
+    privilegeLevel?: "Public" | "Partner" | "Platform";
+    developerType?: "Individual" | "Corporation";
+    profileName?: string;
+  }) => Promise<{ success: boolean; path?: string; message?: string }>;
+  onTizenCertLog: (callback: (log: string) => void) => () => void;
+
+  showInFolder: (target: string) => Promise<{ success: boolean }>;
 }
 
 interface Window {

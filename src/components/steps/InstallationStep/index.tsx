@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -41,6 +41,25 @@ export const InstallationStep = ({ onNext }: InstallationStepProps) => {
     localStorage.getItem("aresPath") || ""
   );
   const [adbPath, setAdbPath] = useState(localStorage.getItem("adbPath") || "");
+
+  useEffect(() => {
+    const hydrateSdkPaths = async () => {
+      try {
+        const stored = await window.electron.getSdkPaths();
+
+        if (stored.sdbPath && !sdbPath) setSdbPath(stored.sdbPath);
+        if (stored.tizenPath && !tizenPath) setTizenPath(stored.tizenPath);
+        if (stored.aresPath && !aresPath) setAresPath(stored.aresPath);
+        if (stored.adbPath && !adbPath) setAdbPath(stored.adbPath);
+      } catch (error) {
+        console.error("Failed to load SDK paths from electron store:", error);
+      }
+    };
+
+    void hydrateSdkPaths();
+    // We only want initial hydration from persisted store.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleNext = async () => {
     // Validate paths

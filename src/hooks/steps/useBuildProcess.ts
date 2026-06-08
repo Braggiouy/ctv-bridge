@@ -2,6 +2,11 @@ import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { TOAST_DURATION, useGlobalLogs } from "@/utils";
 
+export interface TizenProfile {
+  name: string;
+  active: boolean;
+}
+
 /**
  * Hook for managing build process state and execution
  */
@@ -14,21 +19,34 @@ export function useBuildProcess(platform: "tizen" | "webos" | "android") {
     path: string;
   } | null>(null);
   const [lastBuildMessage, setLastBuildMessage] = useState<string>("");
-  const [tizenProfiles, setTizenProfiles] = useState<
-    Array<{ name: string; active: boolean }>
-  >([]);
+  const [tizenProfiles, setTizenProfiles] = useState<TizenProfile[]>([]);
 
   const fetchTizenProfiles = useCallback(async () => {
     if (platform !== "tizen") return;
     try {
       const result = await window.electron.listTizenProfiles();
-      if (result.success) {
-        setTizenProfiles(result.profiles);
+      if (!result.success) {
+        throw new Error(result.message || "Failed to list Tizen profiles");
       }
+      setTizenProfiles(result.profiles || []);
     } catch (error) {
       console.error("Failed to fetch Tizen profiles:", error);
     }
   }, [platform]);
+
+  const deleteTizenProfile = useCallback(
+    async (name: string): Promise<void> => {
+      if (platform !== "tizen") return;
+
+      const result = await window.electron.deleteTizenProfile(name);
+      if (!result.success) {
+        throw new Error(result.message || "Failed to delete Tizen profile");
+      }
+
+      await fetchTizenProfiles();
+    },
+    [platform, fetchTizenProfiles]
+  );
 
   const executeBuild = useCallback(
     async (projectPath: string, profileName?: string): Promise<void> => {
@@ -121,6 +139,7 @@ export function useBuildProcess(platform: "tizen" | "webos" | "android") {
     lastBuildMessage,
     tizenProfiles,
     fetchTizenProfiles,
+    deleteTizenProfile,
     executeBuild,
   };
 }

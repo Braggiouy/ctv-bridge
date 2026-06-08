@@ -46,6 +46,8 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("build-package", platform, projectPath, profileName),
 
   listTizenProfiles: () => ipcRenderer.invoke("list-tizen-profiles"),
+  deleteTizenProfile: (name: string) =>
+    ipcRenderer.invoke("delete-tizen-profile", name),
 
   deployApp: (
     platform: string,
@@ -110,6 +112,9 @@ contextBridge.exposeInMainWorld("electron", {
   // External link handling
   openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
 
+  showInFolder: (target: string) =>
+    ipcRenderer.invoke("show-in-folder", target),
+
   // SDK paths management
   saveSdkPaths: (paths: {
     sdbPath?: string;
@@ -117,4 +122,25 @@ contextBridge.exposeInMainWorld("electron", {
     aresPath?: string;
   }) => ipcRenderer.invoke("save-sdk-paths", paths),
   getSdkPaths: () => ipcRenderer.invoke("get-sdk-paths"),
+
+  // Tizen certificate generation
+  loginTizenCertificateSession: () => ipcRenderer.invoke("tizen-cert-login"),
+  cancelTizenCertificateLogin: () =>
+    ipcRenderer.invoke("tizen-cert-cancel-login"),
+  logoutTizenCertificateSession: () => ipcRenderer.invoke("tizen-cert-logout"),
+  generateTizenCertificates: (params: {
+    email: string;
+    deviceIds?: string[];
+    password?: string;
+    privilegeLevel?: "Public" | "Partner" | "Platform";
+    developerType?: "Individual" | "Corporation";
+    profileName?: string;
+  }) => ipcRenderer.invoke("tizen-generate-certificates", params),
+  onTizenCertLog: (callback: (log: string) => void) => {
+    const subscription = (_event: unknown, log: string) => callback(log);
+    ipcRenderer.on("tizen-cert-log", subscription);
+    return () => {
+      ipcRenderer.removeListener("tizen-cert-log", subscription);
+    };
+  },
 });

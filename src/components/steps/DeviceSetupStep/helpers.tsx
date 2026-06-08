@@ -38,6 +38,8 @@ export function getConnectionStatusClass(status?: string): string {
   switch (status) {
     case "connected":
       return "bg-green-50 text-green-700 ring-1 ring-green-600/20";
+    case "disconnected":
+      return "bg-orange-50 text-orange-700 ring-1 ring-orange-600/20";
     case "error":
       return "bg-red-50 text-red-700 ring-1 ring-red-600/20";
     case "testing":
@@ -64,6 +66,8 @@ export function getConnectionStatusText(
   switch (device.connectionStatus) {
     case "connected":
       return "✓ Connected";
+    case "disconnected":
+      return "Saved (not connected)";
     case "error":
       return "✗ Connection Failed";
     case "testing":

@@ -9,6 +9,7 @@ import { store } from "./store";
 import { WINDOW_CONSTANTS, DEPLOY_CONSTANTS } from "./utils/constants";
 import { logger } from "./utils/logger";
 import "./utils/process-manager";
+import { registerTizenCertHandlers } from "./ipc/tizen/certificates";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,6 +26,7 @@ function setupIpcHandlers() {
   registerIpcHandlers();
   registerSdkCheckHandlers();
   registerUpdaterHandlers();
+  registerTizenCertHandlers();
 
   // Register SDK paths handlers
   ipcMain.handle("save-sdk-paths", async (_event, paths) => {
@@ -39,6 +41,11 @@ function setupIpcHandlers() {
   // Open external URL in system browser
   ipcMain.handle("open-external", async (_event, url: string) => {
     await shell.openExternal(url);
+    return { success: true };
+  });
+
+  ipcMain.handle("show-in-folder", async (_event, target: string) => {
+    shell.showItemInFolder(target);
     return { success: true };
   });
 }

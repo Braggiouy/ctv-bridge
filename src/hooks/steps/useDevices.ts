@@ -71,16 +71,37 @@ export function useDevices(platform: "tizen" | "webos" | "android") {
         const res = await window.electron.listTizenDevices();
         if (res.success) {
           const storedNames = getStoredNames("tizen-device-names");
-          const devicesWithNames = (res.devices || []).map(
+          const connectedDevices = (res.devices || []).map(
             (device: { ip: string; status: string }) => ({
               name: storedNames[device.ip] || device.ip,
               ip: device.ip,
               sdbStatus: device.status,
-              connectionStatus: "idle" as const,
+              connectionStatus:
+                device.status === "connected"
+                  ? ("connected" as const)
+                  : ("idle" as const),
             })
           );
-          setDevices(devicesWithNames);
-          addLog("log", `Loaded ${res.devices?.length || 0} Tizen devices.`);
+
+          const connectedIpSet = new Set(
+            connectedDevices.map((device) => device.ip)
+          );
+
+          const rememberedDevices = Object.entries(storedNames)
+            .filter(([ip]) => !connectedIpSet.has(ip))
+            .map(([ip, name]) => ({
+              name: name || ip,
+              ip,
+              sdbStatus: "disconnected",
+              connectionStatus: "disconnected" as const,
+            }));
+
+          const mergedDevices = [...connectedDevices, ...rememberedDevices];
+          setDevices(mergedDevices);
+          addLog(
+            "log",
+            `Loaded ${connectedDevices.length} connected and ${rememberedDevices.length} remembered Tizen devices.`
+          );
         } else {
           addLog("error", `Failed to load Tizen devices: ${res.message}`);
         }
@@ -170,14 +191,9 @@ export function useDevices(platform: "tizen" | "webos" | "android") {
         addLog("step", `Tizen device connected: ${device.ip}`);
 
         // Save device name if provided
-        if (device.name) {
-          const storedNames = getStoredNames("tizen-device-names");
-          storedNames[device.ip] = device.name;
-          localStorage.setItem(
-            "tizen-device-names",
-            JSON.stringify(storedNames)
-          );
-        }
+        const storedNames = getStoredNames("tizen-device-names");
+        storedNames[device.ip] = device.name || device.ip;
+        localStorage.setItem("tizen-device-names", JSON.stringify(storedNames));
 
         await fetchDevices();
         return { success: true };

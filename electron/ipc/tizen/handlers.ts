@@ -51,39 +51,120 @@ function parseTizenProfiles(
   const lines = stdout.split(/\r?\n/).filter(Boolean);
   const profiles: Array<{ name: string; active: boolean }> = [];
 
+  const isNoiseLine = (line: string): boolean => {
+    const normalized = line.trim();
+    if (!normalized) return true;
+    if (normalized.includes("------")) return true;
+    if (/^security-profiles\s+list/i.test(normalized)) return true;
+    if (/^loaded\b/i.test(normalized)) return true;
+    if (/^available\s*:?$/i.test(normalized)) return true;
+    if (/^\[profile\s+name\]\s+\[active\]/i.test(normalized)) return true;
+    if (/^name\s+active/i.test(normalized)) return true;
+    return false;
+  };
+
+  const parseDataLine = (
+    rawLine: string
+  ): { name: string; active: boolean } | null => {
+    const trimmed = rawLine.trim();
+    if (!trimmed) return null;
+
+    // Standard format: "name   X"
+    const spacedMatch = trimmed.match(/^(.*\S)\s+([OX])$/i);
+    if (spacedMatch) {
+      return {
+        name: spacedMatch[1].trim(),
+        active: spacedMatch[2].toUpperCase() === "O",
+      };
+    }
+
+    // Some CLI versions append active marker to the end of long names: "nameO"
+    const attachedMatch = trimmed.match(/^(.*\S)([OX])$/i);
+    if (attachedMatch) {
+      return {
+        name: attachedMatch[1].trim(),
+        active: attachedMatch[2].toUpperCase() === "O",
+      };
+    }
+
+    return { name: trimmed, active: false };
+  };
+
   let startParsing = false;
+  let sawHeader = false;
   for (const line of lines) {
     if (line.includes("Name") && line.includes("Active")) {
       startParsing = true;
+      sawHeader = true;
       continue;
     }
 
     if (startParsing) {
-      const parts = line.trim().split(/\s+/);
-      if (parts.length >= 1) {
-        const name = parts[0];
-        if (name === "------") continue;
-        const active = parts.length >= 2 && parts[1].toUpperCase() === "X";
-        profiles.push({ name, active });
-      }
+      if (isNoiseLine(line)) continue;
+      const parsed = parseDataLine(line);
+      if (!parsed) continue;
+      if (!parsed.name || parsed.name.endsWith(":")) continue;
+      profiles.push(parsed);
     }
+  }
+
+  // If header exists but there are no data rows, the profile list is empty.
+  if (sawHeader && profiles.length === 0) {
+    return [];
   }
 
   // Fallback if the table format is unexpected
   if (profiles.length === 0) {
     for (const line of lines) {
-      if (
-        line.includes("------") ||
-        line.includes("Name") ||
-        line.includes("Active") ||
-        line.includes("security-profiles list")
-      )
-        continue;
-      const name = line.trim().split(/\s+/)[0];
-      if (name) profiles.push({ name, active: false });
+      if (isNoiseLine(line)) continue;
+      const parsed = parseDataLine(line);
+      if (!parsed) continue;
+      if (!parsed.name || parsed.name.endsWith(":")) continue;
+      profiles.push(parsed);
     }
   }
   return profiles;
+}
+
+function parseProfilesXml(
+  xmlContent: string
+): Array<{ name: string; active: boolean }> {
+  const activeNameMatch = xmlContent.match(/<profiles[^>]*\sactive="([^"]*)"/i);
+  const activeName = activeNameMatch?.[1]?.trim() || "";
+
+  const profiles: Array<{ name: string; active: boolean }> = [];
+  const profileMatches = xmlContent.matchAll(/<profile\s+name="([^"]+)"/gi);
+  for (const match of profileMatches) {
+    const name = match[1]?.trim();
+    if (!name) continue;
+    profiles.push({ name, active: name === activeName });
+  }
+
+  return profiles;
+}
+
+async function listTizenProfilesWithCanonicalNames(
+  tizenCmd: string
+): Promise<Array<{ name: string; active: boolean }>> {
+  const { stdout } = await execAsync(`"${tizenCmd}" security-profiles list`);
+
+  const loadedPathMatch = stdout.match(/Loaded in '([^']+)'\./i);
+  if (loadedPathMatch?.[1]) {
+    try {
+      const xmlContent = await fs.readFile(loadedPathMatch[1], "utf-8");
+      const profilesFromXml = parseProfilesXml(xmlContent);
+      if (profilesFromXml.length > 0) {
+        return profilesFromXml;
+      }
+    } catch (error) {
+      logger.warn(
+        "Failed to parse profiles.xml, falling back to CLI output",
+        error
+      );
+    }
+  }
+
+  return parseTizenProfiles(stdout);
 }
 
 // Helper to get command with SDK path
@@ -183,10 +264,7 @@ export function registerTizenHandlers() {
   ipcMain.handle("list-tizen-profiles", async () => {
     try {
       const tizenCmd = getSdkCommand("tizen");
-      const { stdout } = await execAsync(
-        `"${tizenCmd}" security-profiles list`
-      );
-      const profiles = parseTizenProfiles(stdout);
+      const profiles = await listTizenProfilesWithCanonicalNames(tizenCmd);
       return { success: true, profiles };
     } catch (error) {
       logger.error("Error listing Tizen profiles", error);
@@ -197,6 +275,70 @@ export function registerTizenHandlers() {
       };
     }
   });
+
+  ipcMain.handle(
+    "delete-tizen-profile",
+    async (_event, profileName: string) => {
+      try {
+        if (!profileName?.trim()) {
+          return { success: false, message: "Profile name is required" };
+        }
+
+        const tizenCmd = getSdkCommand("tizen");
+        const normalizedName = profileName.trim();
+        const profiles = await listTizenProfilesWithCanonicalNames(tizenCmd);
+
+        // Recover from legacy parser bug that could append active marker (O/X) to profile names.
+        let resolvedName = normalizedName;
+        if (!profiles.some((p) => p.name === resolvedName)) {
+          const withoutStatusSuffix = resolvedName.replace(/[OX]$/i, "");
+          if (profiles.some((p) => p.name === withoutStatusSuffix)) {
+            resolvedName = withoutStatusSuffix;
+          }
+        }
+
+        const escapedName = resolvedName.replace(/"/g, '\\"');
+
+        const targetProfile = profiles.find((p) => p.name === resolvedName);
+        if (!targetProfile) {
+          return {
+            success: false,
+            message: `Profile "${normalizedName}" was not found in Tizen security profiles.`,
+          };
+        }
+
+        // Some Tizen CLI builds refuse deleting the currently active profile.
+        // If possible, switch active profile first, then remove the target.
+        if (targetProfile.active) {
+          const replacement = profiles.find((p) => p.name !== resolvedName);
+          if (replacement) {
+            const escapedReplacement = replacement.name.replace(/"/g, '\\"');
+            await execAsync(
+              `"${tizenCmd}" security-profiles set-active -n "${escapedReplacement}"`
+            );
+          } else {
+            return {
+              success: false,
+              message:
+                "Cannot delete the active profile because it is the only profile. Create another profile first, set it active, then retry.",
+            };
+          }
+        }
+
+        await execAsync(
+          `"${tizenCmd}" security-profiles remove -n "${escapedName}"`
+        );
+
+        return { success: true };
+      } catch (error) {
+        logger.error(`Error deleting Tizen profile ${profileName}`, error);
+        return {
+          success: false,
+          message: `Failed to delete profile: ${getErrorMessage(error)}`,
+        };
+      }
+    }
+  );
 }
 
 // Internal Deployment Helpers
@@ -403,12 +545,45 @@ export async function deployTizenApp(
 
     wgtFile = await renameWgtIfNeeded(projectPath, wgtFile, sendLog);
     const wgtPath = path.join(projectPath, wgtFile);
+    const appId = await getAppIdFromConfig(projectPath);
 
     sendLog(getTimeLog(`Installing ${wgtFile}...`));
-    await execAsync(`"${tizenCmd}" install -n "${wgtPath}" -s ${deviceSerial}`);
-    sendLog(getTimeLog(`Installation complete`));
+    const installCommand = `"${tizenCmd}" install -n "${wgtPath}" -s ${deviceSerial}`;
 
-    const appId = await getAppIdFromConfig(projectPath);
+    try {
+      await execAsync(installCommand);
+    } catch (installError) {
+      const installMessage = getErrorMessage(installError);
+      const installStdout = (installError as { stdout?: string }).stdout ?? "";
+      const isAuthorMismatch =
+        /author certificate not match/i.test(installMessage) ||
+        /author certificate not match/i.test(installStdout) ||
+        /install failed\[118,\s*-11\]/i.test(installStdout);
+
+      if (!isAuthorMismatch) {
+        throw installError;
+      }
+
+      sendLog(
+        getTimeLog(
+          "Existing app was signed with a different author certificate. Uninstalling old app and retrying installation..."
+        )
+      );
+
+      try {
+        await execAsync(
+          `"${tizenCmd}" uninstall -p ${appId} -s ${deviceSerial}`
+        );
+      } catch (uninstallError) {
+        logger.warn(
+          "Failed to uninstall existing app before reinstall",
+          uninstallError
+        );
+      }
+
+      await execAsync(installCommand);
+    }
+    sendLog(getTimeLog(`Installation complete`));
 
     // Optional: Register as target for easier CLI usage
     await registerRemoteDevice(tizenCmd, tvIp, sendLog);

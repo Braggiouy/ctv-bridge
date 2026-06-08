@@ -17,6 +17,7 @@ interface ProjectPathInputProps {
   onBrowse: () => void;
   onSavePath: () => void;
   savedPathsCount: number;
+  savedPathsEnabled?: boolean;
 }
 
 /**
@@ -29,6 +30,7 @@ export const ProjectPathInput = ({
   onBrowse,
   onSavePath,
   savedPathsCount,
+  savedPathsEnabled = true,
 }: ProjectPathInputProps) => {
   const getLabel = () => {
     switch (platform) {
@@ -94,24 +96,26 @@ export const ProjectPathInput = ({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={onSavePath}
-                disabled={!projectPath || savedPathsCount >= 3}
-                aria-label="Save path"
-              >
-                <Bookmark className="h-4 w-4 text-primary" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              <span>Save the current path for quick access</span>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        {savedPathsEnabled && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={onSavePath}
+                  disabled={!projectPath || savedPathsCount >= 3}
+                  aria-label="Save path"
+                >
+                  <Bookmark className="h-4 w-4 text-primary" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <span>Save the current path for quick access</span>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
       <p className="text-xs text-muted-foreground">
         Path to your pre-built{" "}
