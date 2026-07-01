@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.6.1](https://github.com/Braggiouy/ctv-bridge/compare/v1.6.0...v1.6.1) (2026-07-01)
+
+### Bug Fixes
+
+* fallback when openssl pkcs12 does not support `-legacy` ([95d724f](https://github.com/Braggiouy/ctv-bridge/commit/95d724f))
+* silence baseUrl deprecation warnings in tsconfig ([9eb99b7](https://github.com/Braggiouy/ctv-bridge/commit/9eb99b7))
+
 ## [1.6.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.5.1...v1.6.0) (2026-06-08)
 
 
