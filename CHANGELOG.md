@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.7.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.6.1...v1.7.0) (2026-07-01)
+
+
+### Features
+
+* improve deploy debugging and align CI/release with bun ([e69fc7f](https://github.com/Braggiouy/ctv-bridge/commit/e69fc7fcd84335544ebf5c843e4d9821e0485c37))
+
 ### [1.6.1](https://github.com/Braggiouy/ctv-bridge/compare/v1.6.0...v1.6.1) (2026-07-01)
 
 ### Bug Fixes
