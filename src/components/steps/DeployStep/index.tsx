@@ -15,8 +15,9 @@ import { useGlobalLogs } from "@/utils";
 
 interface DeployStepProps {
   onBack: () => void;
-  // Removed addLog prop
 }
+
+const LOG_DRAIN_DELAY_MS = 1000;
 
 export const DeployStep = (props: DeployStepProps) => {
   const { onBack } = props;
@@ -65,9 +66,6 @@ export const DeployStep = (props: DeployStepProps) => {
         mode
       );
 
-      setDeploying(false);
-      setDeployMode(null);
-
       if (result.success) {
         toast.success("Deployment Successful", {
           description: result.message,
@@ -83,18 +81,18 @@ export const DeployStep = (props: DeployStepProps) => {
       }
     } catch (error: unknown) {
       const err = error as Error;
-      setDeploying(false);
-      setDeployMode(null);
       const msg = `Deployment failed: ${
         err.message || "An error occurred during deployment"
       }`;
       toast.error("Deployment Failed", {
-        description:
-          (error as Error).message || "An error occurred during deployment",
+        description: err.message || "An error occurred during deployment",
         duration: TOAST_DURATION,
       });
       addLog("error", msg);
     } finally {
+      setDeploying(false);
+      setDeployMode(null);
+      await new Promise((resolve) => setTimeout(resolve, LOG_DRAIN_DELAY_MS));
       unsubscribe();
     }
   };

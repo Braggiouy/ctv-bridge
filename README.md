@@ -49,6 +49,7 @@ while keeping all execution local to the developer machine.
 - **Samsung Login Wizard**: Sign in with Samsung directly in-app, cancel login anytime, and sign out cleanly.
 - **Guided Certificate Creation**: Generate `author.p12` and `distributor.p12` with clear, step-by-step validation.
 - **DUID Validation**: Enforces one DUID per line and explains disabled CTA reasons via tooltips.
+- **Field Guidance**: Explains when to use `Public` vs `Partner`/`Platform` privilege and `Individual` vs `Corporation` developer type.
 - **Profile Management**: Refresh, select, and delete Tizen security profiles from the Build step.
 
 ### 🛠️ Advanced Debugging
@@ -250,6 +251,10 @@ A: Yes. CTV Bridge stores all data locally on your machine. No data is sent to e
 ---
 
 ## 👨‍💻 Development
+
+### Package Manager
+
+- Bun is the package manager used for local development, CI, and release workflows.
 
 ### Running Locally
 

@@ -20,6 +20,7 @@ process.env.VITE_PUBLIC = app.isPackaged
 
 let win: BrowserWindow | null = null;
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
+const OPEN_DEVTOOLS = process.env["ELECTRON_OPEN_DEVTOOLS"] === "1";
 
 function setupIpcHandlers() {
   // Register IPC handlers
@@ -151,7 +152,9 @@ function createWindow() {
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
-    win.webContents.openDevTools();
+    if (OPEN_DEVTOOLS) {
+      win.webContents.openDevTools();
+    }
   } else {
     win.loadFile(path.join(process.env.DIST!, "index.html"));
   }

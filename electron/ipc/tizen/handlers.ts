@@ -638,40 +638,47 @@ async function startTizenDebugSession(
     );
     processManager.track(debugProcess);
 
-    let urlFound = false;
+    let completed = false;
+    let portDetected = false;
     let outputBuffer = "";
 
+    const settle = (result: { success: boolean; message: string }) => {
+      if (completed) return;
+      completed = true;
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      resolve(result);
+    };
+
+    const sendChromeInspectorSteps = (debugPort: string) => {
+      sendLog(getTimeLog(`Debug port detected: ${debugPort}`));
+      sendLog(getTimeLog(`Inspector URL:`));
+      sendLog(`  1. Open Chrome and navigate to: chrome://inspect/#devices`);
+      sendLog(`  2. Click "Configure..." and add: localhost:${debugPort}`);
+      sendLog(`  3. Your app should appear - click "inspect" to debug`);
+      sendLog(getTimeLog(`Chrome DevTools connection ready`));
+    };
+
     const checkForDebugPort = (text: string) => {
-      if (urlFound) return;
+      if (completed || portDetected) return;
       outputBuffer += text;
 
+      // Capture common sdb debug outputs such as:
+      // "port: 7011", "debug 7011", "ws://127.0.0.1:7011/devtools/..."
       const portMatch = outputBuffer.match(
-        /(?:port[:\s]+|:)(\d{4,5})|^(\d{4,5})$/m
+        /(?:\b(?:port|debug)\b\s*[:=]?\s*|localhost:|127\.0\.0\.1:)(\d{4,5})\b/i
       );
 
       if (portMatch) {
-        const debugPort = portMatch[1] || portMatch[2];
-        urlFound = true;
-
-        sendLog(getTimeLog(`Debug port detected: ${debugPort}`));
+        const debugPort = portMatch[1];
+        portDetected = true;
 
         execAsync(
           `"${sdbCmd}" -s ${deviceSerial} forward tcp:${debugPort} tcp:${debugPort}`
         )
           .then(() => {
-            sendLog(getTimeLog(`✓ Port forwarded successfully`));
-            sendLog(getTimeLog(`✓ Inspector URL:`));
-            sendLog(
-              `  1. Open Chrome and navigate to: chrome://inspect/#devices`
-            );
-            sendLog(
-              `  2. Click "Configure..." and add: localhost:${debugPort}`
-            );
-            sendLog(`  3. Your app should appear - click "inspect" to debug`);
-            sendLog(getTimeLog(`🔍 Chrome DevTools connection ready!`));
-
-            if (timeoutHandle) clearTimeout(timeoutHandle);
-            resolve({
+            sendLog(getTimeLog(`Port forwarded successfully`));
+            sendChromeInspectorSteps(debugPort);
+            settle({
               success: true,
               message: "Deployment completed successfully",
             });
@@ -680,13 +687,13 @@ async function startTizenDebugSession(
             sendLog(
               getTimeLog(`Warning: Port forwarding failed: ${err.message}`)
             );
+            sendChromeInspectorSteps(debugPort);
             sendLog(
               getTimeLog(
                 `You may need to manually run: sdb forward tcp:${debugPort} tcp:${debugPort}`
               )
             );
-            if (timeoutHandle) clearTimeout(timeoutHandle);
-            resolve({
+            settle({
               success: true,
               message: "Deployment completed (manual port forwarding needed)",
             });
@@ -707,25 +714,29 @@ async function startTizenDebugSession(
     });
 
     debugProcess.on("error", (err) => {
+      if (completed) return;
       logger.error("sdb debug process error", err);
       sendLog(getTimeLog(`Error: ${err.message}`));
-      if (timeoutHandle) clearTimeout(timeoutHandle);
-      resolve({
+      settle({
         success: false,
         message: "Failed to start debug session: " + err.message,
       });
     });
 
     const timeoutHandle = setTimeout(() => {
-      if (!urlFound) {
-        logger.warn("Debug port timeout: Port not detected within 15 seconds");
-        sendLog(getTimeLog(`⚠️ Application launched in debug mode`));
+      if (!portDetected) {
+        logger.warn(
+          `Debug port timeout: Port not detected within ${DEPLOY_CONSTANTS.DEBUG_PORT_TIMEOUT_MS / 1000} seconds`
+        );
+        sendLog(getTimeLog(`Application launched in debug mode`));
         sendLog(
           getTimeLog(
             `Debug port not detected automatically. Check the logs above for port information.`
           )
         );
-        resolve({
+        sendLog(getTimeLog(`If a port appears, run: sdb -s ${deviceSerial} forward tcp:<PORT> tcp:<PORT>`));
+        sendLog(getTimeLog(`Then open Chrome: chrome://inspect/#devices and add localhost:<PORT>`));
+        settle({
           success: true,
           message: "Deployment completed (debug port not detected)",
         });

@@ -45,7 +45,7 @@ export const BUILD_CONSTANTS = {
 
 // Deployment configuration
 export const DEPLOY_CONSTANTS = {
-  DEBUG_PORT_TIMEOUT_MS: 15000,
+  DEBUG_PORT_TIMEOUT_MS: 30000,
   CONNECTION_TIMEOUT_MS: 30000,
   UPDATE_CHECK_DELAY_MS: 3000,
 } as const;
