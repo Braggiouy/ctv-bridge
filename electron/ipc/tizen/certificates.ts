@@ -362,26 +362,34 @@ async function exportPkcs12(
   type: "author" | "distributor",
   password: string
 ) {
-  await runOpenssl(
-    opensslBin,
-    [
-      "pkcs12",
-      "-export",
-      "-out",
-      `${type}.p12`,
-      "-inkey",
-      `${type}.key.pem`,
-      "-in",
-      `${type}-chain.crt`,
-      "-name",
-      "usercertificate",
-      "-legacy",
-      "-passout",
-      "stdin",
-    ],
-    workDir,
-    `${password}\n`
-  );
+  const passoutStdin = `${password}\n`;
+  const baseArgs = [
+    "pkcs12",
+    "-export",
+    "-out",
+    `${type}.p12`,
+    "-inkey",
+    `${type}.key.pem`,
+    "-in",
+    `${type}-chain.crt`,
+    "-name",
+    "usercertificate",
+    "-passout",
+    "stdin",
+  ];
+  const runExport = (args: string[]) =>
+    runOpenssl(opensslBin, args, workDir, passoutStdin);
+
+  try {
+    await runExport([...baseArgs, "-legacy"]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/unknown option\s+'?-legacy'?/i.test(message)) {
+      await runExport(baseArgs);
+    } else {
+      throw error;
+    }
+  }
 }
 
 // ── Samsung API ──────────────────────────────────────────────────────────────
