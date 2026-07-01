@@ -734,8 +734,16 @@ async function startTizenDebugSession(
             `Debug port not detected automatically. Check the logs above for port information.`
           )
         );
-        sendLog(getTimeLog(`If a port appears, run: sdb -s ${deviceSerial} forward tcp:<PORT> tcp:<PORT>`));
-        sendLog(getTimeLog(`Then open Chrome: chrome://inspect/#devices and add localhost:<PORT>`));
+        sendLog(
+          getTimeLog(
+            `If a port appears, run: sdb -s ${deviceSerial} forward tcp:<PORT> tcp:<PORT>`
+          )
+        );
+        sendLog(
+          getTimeLog(
+            `Then open Chrome: chrome://inspect/#devices and add localhost:<PORT>`
+          )
+        );
         settle({
           success: true,
           message: "Deployment completed (debug port not detected)",
