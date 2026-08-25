@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Tv2, Github } from "lucide-react";
+import { Tv2, Github, House } from "lucide-react";
 import { StepIndicator } from "@/components/shared/StepIndicator";
 import { InstallationStep } from "@/components/steps/InstallationStep";
 import { DeviceSetupStep } from "@/components/steps/DeviceSetupStep";
@@ -9,6 +9,7 @@ import { LogViewer } from "@/components/shared/LogViewer";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { UpdateButton } from "@/components/shared/UpdateButton";
 import { Footer } from "@/components/shared/Footer";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -28,6 +29,21 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col pt-4">
       <div className="fixed top-4 right-4 flex items-center gap-2 z-50">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentStep(1)}
+              disabled={currentStep === 1}
+              className="bg-card/50 backdrop-blur-sm"
+            >
+              <House className="h-4 w-4" />
+              Home
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Back to step 1</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <a
@@ -63,6 +79,7 @@ const Index = () => {
             <DeviceSetupStep
               onNext={() => setCurrentStep(3)}
               onBack={() => setCurrentStep(1)}
+              onHome={() => setCurrentStep(1)}
             />
           )}
 
@@ -70,10 +87,16 @@ const Index = () => {
             <BuildStep
               onNext={() => setCurrentStep(4)}
               onBack={() => setCurrentStep(2)}
+              onHome={() => setCurrentStep(1)}
             />
           )}
 
-          {currentStep === 4 && <DeployStep onBack={() => setCurrentStep(3)} />}
+          {currentStep === 4 && (
+            <DeployStep
+              onBack={() => setCurrentStep(3)}
+              onHome={() => setCurrentStep(1)}
+            />
+          )}
 
           <LogViewer />
         </div>

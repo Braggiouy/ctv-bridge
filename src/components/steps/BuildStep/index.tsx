@@ -50,13 +50,14 @@ interface SavedPath {
 interface BuildStepProps {
   onNext: () => void;
   onBack: () => void;
+  onHome: () => void;
 }
 
 /**
  * Main BuildStep component (refactored)
  * Orchestrates the build process
  */
-export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
+export const BuildStep = ({ onNext, onBack, onHome }: BuildStepProps) => {
   const { addLog } = useGlobalLogs();
   const platform =
     (localStorage.getItem("platform") as "tizen" | "webos" | "android") ||
@@ -439,6 +440,9 @@ export const BuildStep = ({ onNext, onBack }: BuildStepProps) => {
         <div className="flex gap-3 pt-4">
           <Button onClick={onBack} variant="outline">
             <span className="mr-2">&lt;</span> Back
+          </Button>
+          <Button onClick={onHome} variant="outline">
+            Go Home
           </Button>
           <Button
             onClick={handleExecuteBuild}

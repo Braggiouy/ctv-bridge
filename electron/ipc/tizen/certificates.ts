@@ -153,7 +153,7 @@ export function registerTizenCertHandlers() {
         sendLog("Configuration ready.");
         sendLog("Using active Samsung login session.");
 
-        const certDir = path.join(app.getPath("userData"), "certificates");
+        const certDir = resolveSamsungCertificateDir(params);
         await fs.mkdir(certDir, { recursive: true });
 
         const exportPassword = params.password?.trim() || DEFAULT_P12_PASSWORD;
@@ -226,6 +226,22 @@ export interface CertificateParams {
 interface DistributorOptions {
   privilegeLevel: string;
   developerType: string;
+}
+
+function sanitizeFolderSegment(value: string): string {
+  return value
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function resolveSamsungCertificateDir(params: CertificateParams): string {
+  const homeDir = app.getPath("home");
+  const emailPrefix = params.email.split("@")[0] || "default";
+  const preferredName = params.profileName?.trim() || emailPrefix;
+  const folderName = sanitizeFolderSegment(preferredName) || "default";
+  return path.join(homeDir, "SamsungCertificate", folderName);
 }
 
 // ── OAuth ────────────────────────────────────────────────────────────────────

@@ -15,12 +15,13 @@ import { useGlobalLogs } from "@/utils";
 
 interface DeployStepProps {
   onBack: () => void;
+  onHome: () => void;
 }
 
 const LOG_DRAIN_DELAY_MS = 1000;
 
 export const DeployStep = (props: DeployStepProps) => {
-  const { onBack } = props;
+  const { onBack, onHome } = props;
   const { addLog } = useGlobalLogs();
   const platform =
     (localStorage.getItem("platform") as "tizen" | "webos" | "android") ||
@@ -178,6 +179,9 @@ export const DeployStep = (props: DeployStepProps) => {
         <div className="flex gap-3 pt-4">
           <Button onClick={onBack} variant="outline" disabled={deploying}>
             <span className="mr-2">&lt;</span> Back
+          </Button>
+          <Button onClick={onHome} variant="outline" disabled={deploying}>
+            Go Home
           </Button>
         </div>
       </CardContent>

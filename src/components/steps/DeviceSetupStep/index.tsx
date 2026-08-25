@@ -13,13 +13,18 @@ import { useDevices } from "@/hooks/steps/useDevices";
 interface DeviceSetupStepProps {
   onNext: () => void;
   onBack: () => void;
+  onHome: () => void;
 }
 
 /**
  * Main DeviceSetupStep component (refactored)
  * Orchestrates device management flow
  */
-export const DeviceSetupStep = ({ onNext, onBack }: DeviceSetupStepProps) => {
+export const DeviceSetupStep = ({
+  onNext,
+  onBack,
+  onHome,
+}: DeviceSetupStepProps) => {
   const platform =
     (localStorage.getItem("platform") as "tizen" | "webos" | "android") ||
     "tizen";
@@ -116,6 +121,9 @@ export const DeviceSetupStep = ({ onNext, onBack }: DeviceSetupStepProps) => {
         <div className="flex gap-3 pt-4">
           <Button onClick={onBack} variant="outline">
             <span className="mr-2">&lt;</span> Back
+          </Button>
+          <Button onClick={onHome} variant="outline" className="ml-auto">
+            Go Home
           </Button>
         </div>
       </CardContent>

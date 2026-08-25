@@ -96,13 +96,14 @@ export function registerWebOsHandlers() {
         devices: parseWebOsDevices(listOut),
       };
     } catch (error) {
-      if (error.message?.includes("already exists")) {
+      const errorMessage = getErrorMessage(error);
+      if (errorMessage.includes("already exists")) {
         const { stdout: listOut } = await execAsync(
           `${getAresCommand("-setup-device")} --list`
         );
         return {
           success: true,
-          message: error.message,
+          message: errorMessage,
           devices: parseWebOsDevices(listOut),
         };
       }
@@ -198,10 +199,12 @@ export async function testWebOsConnection(
       message: `Successfully connected to webOS device: ${deviceName}`,
     };
   } catch (error) {
+    const errorMessage = getErrorMessage(error);
+
     // Check for SSH authentication failure - try to set up SSH keys automatically
     if (
-      error.message.includes("All configured authentication methods failed") ||
-      error.message.includes("ssh exec failure")
+      errorMessage.includes("All configured authentication methods failed") ||
+      errorMessage.includes("ssh exec failure")
     ) {
       // If we have a passphrase, try to set up SSH keys automatically
       if (passphrase) {
@@ -306,7 +309,7 @@ export async function testWebOsConnection(
     }
 
     // Check for common error messages
-    if (error.message.includes("command not found")) {
+    if (errorMessage.includes("command not found")) {
       return {
         success: false,
         message:
@@ -314,7 +317,7 @@ export async function testWebOsConnection(
       };
     }
 
-    if (error.message.includes("Invalid value")) {
+    if (errorMessage.includes("Invalid value")) {
       return {
         success: false,
         message: `Device "${deviceName}" not found. Please register the device first using Device Management.`,
@@ -467,17 +470,40 @@ async function startWebOsDebugSession(
     );
     processManager.track(proc);
 
+    let settled = false;
     let urlFound = false;
     let outputBuffer = "";
+    let fallbackInspectorPort: string | null = null;
+
+    const nonFatalForwardPattern =
+      /session#forward\(\) failed forwarding client localPort:\s*0\s*=>\s*devicePort:\s*\d+/i;
+
+    const finalize = (result: { success: boolean; message: string }) => {
+      if (settled) return;
+      settled = true;
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      resolve(result);
+    };
+
+    const detectFallbackPort = (text: string) => {
+      const portMatch = text.match(/devicePort:\s*(\d{4,5})/i);
+      if (portMatch?.[1]) {
+        fallbackInspectorPort = portMatch[1];
+      }
+    };
 
     const checkForUrl = (text: string) => {
       if (urlFound) return;
       outputBuffer += text;
 
+      detectFallbackPort(text);
+
       const patterns = [
         /(https?:\/\/localhost:\d+\/[^\s"'<>]+)/,
+        /(https?:\/\/127\.0\.0\.1:\d+\/[^\s"'<>]+)/,
         /(chrome-devtools:\/\/[^\s"'<>]+)/,
         /(ws:\/\/localhost:\d+\/[^\s"'<>]+)/,
+        /(ws:\/\/127\.0\.0\.1:\d+\/[^\s"'<>]+)/,
       ];
 
       for (const pattern of patterns) {
@@ -487,8 +513,7 @@ async function startWebOsDebugSession(
           const url = match[1];
           sendLog(logger.getTimeLog(`✓ Inspector URL captured: ${url}`));
           sendLog("Copy and paste the URL above into Chrome to debug");
-          if (timeoutHandle) clearTimeout(timeoutHandle);
-          resolve({
+          finalize({
             success: true,
             message: "Deployment completed successfully",
           });
@@ -499,17 +524,23 @@ async function startWebOsDebugSession(
 
     proc.stdout.on("data", (data) => {
       const text = data.toString();
-      if (text.trim() && !text.includes("http"))
+      if (
+        text.trim() &&
+        !text.includes("http") &&
+        !nonFatalForwardPattern.test(text)
+      )
         sendLog(logger.getTimeLog(text.trim()));
       checkForUrl(text);
     });
 
     proc.stderr.on("data", (data) => {
       const text = data.toString();
+      detectFallbackPort(text);
       if (
         text.trim() &&
         !text.includes("http") &&
-        !text.toLowerCase().includes("deprecat")
+        !text.toLowerCase().includes("deprecat") &&
+        !nonFatalForwardPattern.test(text)
       ) {
         sendLog(logger.getTimeLog(text.trim()));
       }
@@ -519,19 +550,39 @@ async function startWebOsDebugSession(
     proc.on("error", (err) => {
       logger.error("ares-inspect process error", err);
       sendLog(logger.getTimeLog(`Error starting inspector: ${err.message}`));
-      if (timeoutHandle) clearTimeout(timeoutHandle);
-      resolve({ success: false, message: "Failed to start inspector" });
+      finalize({ success: false, message: "Failed to start inspector" });
     });
 
     const timeoutHandle = setTimeout(() => {
       if (!urlFound) {
-        sendLog(
-          logger.getTimeLog(
-            "⚠️ Application launched in debug mode (URL not captured)"
-          )
-        );
-        resolve({ success: true, message: "Deployment completed" });
+        if (fallbackInspectorPort) {
+          const fallbackUrl = `http://localhost:${fallbackInspectorPort}`;
+          sendLog(
+            logger.getTimeLog(
+              `⚠️ Inspector URL not auto-captured. Try opening: ${fallbackUrl}`
+            )
+          );
+        } else {
+          sendLog(
+            logger.getTimeLog(
+              "⚠️ Application launched in debug mode (inspector URL not captured)"
+            )
+          );
+        }
+        finalize({ success: true, message: "Deployment completed" });
       }
     }, DEPLOY_CONSTANTS.DEBUG_PORT_TIMEOUT_MS);
+
+    proc.on("close", (code) => {
+      if (settled) return;
+      if (code === 0) {
+        finalize({ success: true, message: "Deployment completed" });
+      } else {
+        finalize({
+          success: false,
+          message: "Inspector process exited unexpectedly",
+        });
+      }
+    });
   });
 }
