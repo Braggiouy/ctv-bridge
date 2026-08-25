@@ -8,6 +8,7 @@ import { WEBOS_CONSTANTS, DEPLOY_CONSTANTS } from "../../utils/constants";
 import { processManager } from "../../utils/process-manager";
 
 const execAsync = promisify(exec);
+const INSPECT_RETRY_TIMEOUT_MS = 15000;
 
 // Helper to get ares command with SDK path
 function getAresCommand(suffix: string): string {
@@ -107,7 +108,7 @@ export function registerWebOsHandlers() {
           devices: parseWebOsDevices(listOut),
         };
       }
-      return { success: false, message: getErrorMessage(error) };
+      return { success: false, message: errorMessage };
     }
   });
 
@@ -427,6 +428,13 @@ export async function deployWebOsApp(
 
     if (mode === "debug") {
       sendLog(logger.getTimeLog("Launching application in debug mode..."));
+      const { stderr: debugLaunchErr } = await execAsync(
+        `${getAresCommand("-launch")} -d ${deviceName} ${appId}`
+      );
+      if (debugLaunchErr && debugLaunchErr.toLowerCase().includes("error")) {
+        throw new Error(debugLaunchErr);
+      }
+      sendLog(logger.getTimeLog("App launched. Starting webOS inspector..."));
       return await startWebOsDebugSession(deviceName, appId, sendLog);
     } else {
       sendLog(logger.getTimeLog("Launching application..."));
@@ -460,129 +468,139 @@ async function startWebOsDebugSession(
 ): Promise<{ success: boolean; message: string }> {
   const { spawn } = await import("child_process");
 
-  return new Promise((resolve) => {
-    const proc = spawn(
-      getAresCommand("-inspect").replace(/"/g, ""),
-      ["-d", deviceName, appId],
-      {
-        shell: true,
+  const inspectBinary = getAresCommand("-inspect").replace(/"/g, "");
+  const urlPatterns = [
+    /(https?:\/\/localhost:\d+\/[^\s"'<>]+)/,
+    /(https?:\/\/localhost:\d+\b)/,
+    /(https?:\/\/127\.0\.0\.1:\d+\/[^\s"'<>]+)/,
+    /(https?:\/\/127\.0\.0\.1:\d+\b)/,
+    /(chrome-devtools:\/\/[^\s"'<>]+)/,
+    /(ws:\/\/localhost:\d+\/[^\s"'<>]+)/,
+    /(ws:\/\/127\.0\.0\.1:\d+\/[^\s"'<>]+)/,
+  ];
+  const nonFatalForwardPattern =
+    /session#forward\(\) failed forwarding client localPort:\s*0(?:\s*\([^)]*\))?\s*=>\s*devicePort:\s*\d+/i;
+  const nonActionableInspectWarnPattern = /^ares-inspect\s+warn\b/i;
+
+  const findInspectorUrl = (text: string): string | null => {
+    for (const pattern of urlPatterns) {
+      const match = text.match(pattern);
+      if (match?.[1]) {
+        return match[1];
       }
-    );
-    processManager.track(proc);
+    }
+    return null;
+  };
 
-    let settled = false;
-    let urlFound = false;
-    let outputBuffer = "";
-    let fallbackInspectorPort: string | null = null;
+  const shouldLogInspectLine = (text: string): boolean => {
+    const trimmed = text.trim();
+    if (!trimmed) return false;
+    if (trimmed.toLowerCase().includes("deprecat")) return false;
+    if (trimmed.includes("http")) return false;
+    if (nonFatalForwardPattern.test(trimmed)) return false;
+    if (nonActionableInspectWarnPattern.test(trimmed)) return false;
+    return true;
+  };
 
-    const nonFatalForwardPattern =
-      /session#forward\(\) failed forwarding client localPort:\s*0\s*=>\s*devicePort:\s*\d+/i;
+  const runInspectAttempt = (
+    args: string[],
+    timeoutMs: number
+  ): Promise<string | null> => {
+    return new Promise((resolve) => {
+      const proc = spawn(inspectBinary, args, { shell: true });
+      processManager.track(proc);
 
-    const finalize = (result: { success: boolean; message: string }) => {
-      if (settled) return;
-      settled = true;
-      if (timeoutHandle) clearTimeout(timeoutHandle);
-      resolve(result);
-    };
+      let settled = false;
+      let outputBuffer = "";
 
-    const detectFallbackPort = (text: string) => {
-      const portMatch = text.match(/devicePort:\s*(\d{4,5})/i);
-      if (portMatch?.[1]) {
-        fallbackInspectorPort = portMatch[1];
-      }
-    };
+      const finalize = (url: string | null) => {
+        if (settled) return;
+        settled = true;
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+        resolve(url);
+      };
 
-    const checkForUrl = (text: string) => {
-      if (urlFound) return;
-      outputBuffer += text;
-
-      detectFallbackPort(text);
-
-      const patterns = [
-        /(https?:\/\/localhost:\d+\/[^\s"'<>]+)/,
-        /(https?:\/\/127\.0\.0\.1:\d+\/[^\s"'<>]+)/,
-        /(chrome-devtools:\/\/[^\s"'<>]+)/,
-        /(ws:\/\/localhost:\d+\/[^\s"'<>]+)/,
-        /(ws:\/\/127\.0\.0\.1:\d+\/[^\s"'<>]+)/,
-      ];
-
-      for (const pattern of patterns) {
-        const match = outputBuffer.match(pattern);
-        if (match) {
-          urlFound = true;
-          const url = match[1];
-          sendLog(logger.getTimeLog(`✓ Inspector URL captured: ${url}`));
-          sendLog("Copy and paste the URL above into Chrome to debug");
-          finalize({
-            success: true,
-            message: "Deployment completed successfully",
-          });
-          return;
+      const checkForUrl = (text: string) => {
+        outputBuffer += text;
+        const capturedUrl = findInspectorUrl(outputBuffer);
+        if (capturedUrl) {
+          finalize(capturedUrl);
         }
-      }
-    };
+      };
 
-    proc.stdout.on("data", (data) => {
-      const text = data.toString();
-      if (
-        text.trim() &&
-        !text.includes("http") &&
-        !nonFatalForwardPattern.test(text)
-      )
-        sendLog(logger.getTimeLog(text.trim()));
-      checkForUrl(text);
-    });
-
-    proc.stderr.on("data", (data) => {
-      const text = data.toString();
-      detectFallbackPort(text);
-      if (
-        text.trim() &&
-        !text.includes("http") &&
-        !text.toLowerCase().includes("deprecat") &&
-        !nonFatalForwardPattern.test(text)
-      ) {
-        sendLog(logger.getTimeLog(text.trim()));
-      }
-      checkForUrl(text);
-    });
-
-    proc.on("error", (err) => {
-      logger.error("ares-inspect process error", err);
-      sendLog(logger.getTimeLog(`Error starting inspector: ${err.message}`));
-      finalize({ success: false, message: "Failed to start inspector" });
-    });
-
-    const timeoutHandle = setTimeout(() => {
-      if (!urlFound) {
-        if (fallbackInspectorPort) {
-          const fallbackUrl = `http://localhost:${fallbackInspectorPort}`;
-          sendLog(
-            logger.getTimeLog(
-              `⚠️ Inspector URL not auto-captured. Try opening: ${fallbackUrl}`
-            )
-          );
-        } else {
-          sendLog(
-            logger.getTimeLog(
-              "⚠️ Application launched in debug mode (inspector URL not captured)"
-            )
-          );
+      proc.stdout.on("data", (data) => {
+        const text = data.toString();
+        if (shouldLogInspectLine(text)) {
+          sendLog(logger.getTimeLog(text.trim()));
         }
-        finalize({ success: true, message: "Deployment completed" });
-      }
-    }, DEPLOY_CONSTANTS.DEBUG_PORT_TIMEOUT_MS);
+        checkForUrl(text);
+      });
 
-    proc.on("close", (code) => {
-      if (settled) return;
-      if (code === 0) {
-        finalize({ success: true, message: "Deployment completed" });
-      } else {
-        finalize({
-          success: false,
-          message: "Inspector process exited unexpectedly",
-        });
-      }
+      proc.stderr.on("data", (data) => {
+        const text = data.toString();
+        if (shouldLogInspectLine(text)) {
+          sendLog(logger.getTimeLog(text.trim()));
+        }
+        checkForUrl(text);
+      });
+
+      proc.on("error", (err) => {
+        logger.error("ares-inspect process error", err);
+        sendLog(logger.getTimeLog(`Inspector error: ${err.message}`));
+        finalize(null);
+      });
+
+      const timeoutHandle = setTimeout(() => {
+        if (!settled) {
+          // First attempt failed to provide a URL; stop this process before retry.
+          proc.kill();
+          finalize(null);
+        }
+      }, timeoutMs);
+
+      proc.on("close", () => {
+        if (!settled) {
+          finalize(findInspectorUrl(outputBuffer));
+        }
+      });
     });
-  });
+  };
+
+  const initialUrl = await runInspectAttempt(
+    ["--device", deviceName, "--app", appId],
+    DEPLOY_CONSTANTS.DEBUG_PORT_TIMEOUT_MS
+  );
+
+  if (initialUrl) {
+    sendLog(logger.getTimeLog(`✓ Inspector URL captured: ${initialUrl}`));
+    sendLog("Debug link ready. Open it in Chrome to inspect your app.");
+    return { success: true, message: "Deployment completed successfully" };
+  }
+
+  sendLog(
+    logger.getTimeLog(
+      "Inspector URL not detected. Retrying automatically with browser-open mode..."
+    )
+  );
+
+  const retryUrl = await runInspectAttempt(
+    ["--device", deviceName, "--app", appId, "--open"],
+    INSPECT_RETRY_TIMEOUT_MS
+  );
+
+  if (retryUrl) {
+    sendLog(logger.getTimeLog(`✓ Inspector URL captured: ${retryUrl}`));
+    sendLog("Inspector opened. If no browser appeared, open the URL above.");
+    return { success: true, message: "Deployment completed successfully" };
+  }
+
+  sendLog(
+    logger.getTimeLog(
+      "⚠️ Debug inspector could not be opened automatically on this setup."
+    )
+  );
+  sendLog(
+    "Please ask a developer to verify local webOS CLI/Chrome compatibility for this machine."
+  );
+  return { success: true, message: "Deployment completed" };
 }
