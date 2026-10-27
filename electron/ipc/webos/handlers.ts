@@ -53,6 +53,46 @@ function parseWebOsDevices(
   return devices;
 }
 
+type WebOsDeviceInput = {
+  name: string;
+  ip: string;
+  port: string;
+  username: string;
+};
+
+// ares-setup-device has no upsert, so replace any existing entry with the same name
+async function registerDevice(device: WebOsDeviceInput) {
+  try {
+    await execAsync(
+      `${getAresCommand("-setup-device")} --remove ${device.name}`
+    );
+  } catch {
+    logger.debug(`Device removal (may not exist)`, { name: device.name });
+  }
+  return execAsync(
+    `${getAresCommand("-setup-device")} -a ${device.name} -i "username=${device.username}" -i "host=${device.ip}" -i "port=${device.port}"`
+  );
+}
+
+async function findNewestIpk(dir: string): Promise<string | null> {
+  const fs = await import("fs/promises");
+  const path = await import("path");
+  const ipkFiles = (await fs.readdir(dir)).filter((f) =>
+    f.endsWith(WEBOS_CONSTANTS.PACKAGE_EXTENSION)
+  );
+
+  let newestIpk: string | null = null;
+  let newestTime = 0;
+  for (const ipkFile of ipkFiles) {
+    const { mtimeMs } = await fs.stat(path.join(dir, ipkFile));
+    if (mtimeMs > newestTime) {
+      newestTime = mtimeMs;
+      newestIpk = ipkFile;
+    }
+  }
+  return newestIpk;
+}
+
 export function registerWebOsHandlers() {
   // List registered webOS devices
   ipcMain.handle("list-devices", async () => {
@@ -76,17 +116,7 @@ export function registerWebOsHandlers() {
         };
       }
 
-      // Always remove any existing device with the same name before adding
-      try {
-        await execAsync(
-          `${getAresCommand("-setup-device")} --remove ${device.name}`
-        );
-      } catch {
-        // Ignore error if device does not exist or remove fails
-      }
-
-      const cmd = `${getAresCommand("-setup-device")} -a ${device.name} -i "username=${device.username}" -i "host=${device.ip}" -i "port=${device.port}"`;
-      await execAsync(cmd);
+      await registerDevice(device);
 
       const { stdout: listOut } = await execAsync(
         `${getAresCommand("-setup-device")} --list`
@@ -131,22 +161,7 @@ export function registerWebOsHandlers() {
           message: "Device port is invalid or missing.",
         };
       }
-      // Remove existing device
-      try {
-        await execAsync(
-          `${getAresCommand("-setup-device")} --remove ${device.name}`
-        );
-      } catch {
-        // Ignore error if device does not exist
-        logger.debug(`Device removal (may not exist)`, { name: device.name });
-      }
-      // Add device with updated info
-      const cmd = `${getAresCommand("-setup-device")} -a ${
-        device.name
-      } -i "username=${device.username}" -i "host=${device.ip}" -i "port=${
-        device.port
-      }"`;
-      const { stdout } = await execAsync(cmd);
+      const { stdout } = await registerDevice(device);
       return { success: true, message: stdout };
     } catch (error) {
       return { success: false, message: getErrorMessage(error) };
@@ -220,7 +235,7 @@ export async function testWebOsConnection(
           const { spawn } = await import("child_process");
 
           return await new Promise((resolve) => {
-            const aresNovacom = getAresCommand("-novacom").replace(/"/g, "");
+            const aresNovacom = getAresCommand("-novacom");
             const proc = spawn(aresNovacom, ["--getkey", "-d", deviceName], {
               shell: true,
             });
@@ -318,6 +333,16 @@ export async function testWebOsConnection(
       };
     }
 
+    if (errorMessage.includes("EHOSTUNREACH")) {
+      return {
+        success: false,
+        message:
+          process.platform === "darwin"
+            ? "TV is unreachable from CTV Bridge. If the TV responds to ping, allow CTV Bridge in System Settings → Privacy & Security → Local Network, then restart the app."
+            : "TV is unreachable. Check that it is on, on the same network, and that the IP is correct.",
+      };
+    }
+
     if (errorMessage.includes("Invalid value")) {
       return {
         success: false,
@@ -347,25 +372,9 @@ export async function buildWebOsPackage(projectPath: string) {
       cwd: parentDir,
     });
 
-    const files = await fs.readdir(parentDir);
-    const ipkFiles = files.filter((f) =>
-      f.endsWith(WEBOS_CONSTANTS.PACKAGE_EXTENSION)
-    );
-
-    if (ipkFiles.length === 0) {
+    const newestIpk = await findNewestIpk(parentDir);
+    if (!newestIpk) {
       throw new Error("IPK file not found after build.");
-    }
-
-    // Get newest IPK
-    let newestIpk = ipkFiles[0];
-    let newestTime = 0;
-
-    for (const ipkFile of ipkFiles) {
-      const stats = await fs.stat(path.join(parentDir, ipkFile));
-      if (stats.mtimeMs > newestTime) {
-        newestTime = stats.mtimeMs;
-        newestIpk = ipkFile;
-      }
     }
 
     const ipkInProject = path.join(projectPath, newestIpk);
@@ -398,16 +407,12 @@ export async function deployWebOsApp(
   sendLog: (message: string) => void
 ) {
   try {
-    const fs = await import("fs/promises");
     const path = await import("path");
 
     sendLog(logger.getTimeLog(`Connecting to device: ${deviceName}...`));
 
-    // Find IPK
-    const files = await fs.readdir(projectPath);
-    const ipkFile = files.find((f) =>
-      f.endsWith(WEBOS_CONSTANTS.PACKAGE_EXTENSION)
-    );
+    // Older builds stay in the project folder, so pick the latest one
+    const ipkFile = await findNewestIpk(projectPath);
     if (!ipkFile)
       throw new Error("IPK file not found. Please build the package first.");
 
@@ -426,25 +431,24 @@ export async function deployWebOsApp(
     const appId = await getAppIdFromInfo(projectPath);
     sendLog(logger.getTimeLog(`App ID: ${appId}`));
 
+    sendLog(
+      logger.getTimeLog(
+        mode === "debug"
+          ? "Launching application in debug mode..."
+          : "Launching application..."
+      )
+    );
+    const { stderr: launchErr } = await execAsync(
+      `${getAresCommand("-launch")} -d ${deviceName} ${appId}`
+    );
+    if (launchErr && launchErr.toLowerCase().includes("error"))
+      throw new Error(launchErr);
+
     if (mode === "debug") {
-      sendLog(logger.getTimeLog("Launching application in debug mode..."));
-      const { stderr: debugLaunchErr } = await execAsync(
-        `${getAresCommand("-launch")} -d ${deviceName} ${appId}`
-      );
-      if (debugLaunchErr && debugLaunchErr.toLowerCase().includes("error")) {
-        throw new Error(debugLaunchErr);
-      }
       sendLog(logger.getTimeLog("App launched. Starting webOS inspector..."));
       return await startWebOsDebugSession(deviceName, appId, sendLog);
-    } else {
-      sendLog(logger.getTimeLog("Launching application..."));
-      const { stderr: launchErr } = await execAsync(
-        `${getAresCommand("-launch")} -d ${deviceName} ${appId}`
-      );
-      if (launchErr && launchErr.toLowerCase().includes("error"))
-        throw new Error(launchErr);
-      sendLog(logger.getTimeLog("Application launched successfully"));
     }
+    sendLog(logger.getTimeLog("Application launched successfully"));
 
     return { success: true, message: "Deployment completed successfully" };
   } catch (error) {
@@ -468,7 +472,7 @@ async function startWebOsDebugSession(
 ): Promise<{ success: boolean; message: string }> {
   const { spawn } = await import("child_process");
 
-  const inspectBinary = getAresCommand("-inspect").replace(/"/g, "");
+  const inspectBinary = getAresCommand("-inspect");
   const urlPatterns = [
     /(https?:\/\/localhost:\d+\/[^\s"'<>]+)/,
     /(https?:\/\/localhost:\d+\b)/,
