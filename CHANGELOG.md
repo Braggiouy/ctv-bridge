@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.8.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.7.2...v1.8.0) (2026-10-27)
+
+
+### Features
+
+* **updater:** install updates in-app on windows/linux and open the dmg on macos ([5d0e170](https://github.com/Braggiouy/ctv-bridge/commit/5d0e1704b87148a78e16ad16310926a0e9fc82b9))
+
+
+### Bug Fixes
+
+* **macos:** sign app ad-hoc, declare local network usage and add app icon ([c1eca40](https://github.com/Braggiouy/ctv-bridge/commit/c1eca405b42a5be6519b428f32d436cc8bc7ba6a))
+* **webos:** deploy newest ipk, support sdk paths with spaces and explain EHOSTUNREACH ([9416fb8](https://github.com/Braggiouy/ctv-bridge/commit/9416fb8d62c9077a18e20a0dd12c74cf4b2ef37a))
+
 ### [1.7.2](https://github.com/Braggiouy/ctv-bridge/compare/v1.7.1...v1.7.2) (2026-08-25)
 
 
