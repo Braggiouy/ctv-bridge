@@ -20,11 +20,17 @@
   asarUnpack: [],
   extraResources: [],
   compression: "maximum", // Enable maximum compression
+  icon: "build/icon.png", // 1024x1024; converted to .icns/.ico per platform
   mac: {
     target: ["dmg"], // Only DMG (most common for Mac)
     category: "public.app-category.developer-tools",
-    icon: "public/icon.icns",
-    identity: null,
+    // Ad-hoc sign the whole bundle so it gets a stable com.ctv.bridge identity instead of
+    // Electron's linker signature; macOS Local Network privacy keys off this (EHOSTUNREACH otherwise).
+    identity: "-",
+    hardenedRuntime: false,
+    extendInfo: {
+      NSLocalNetworkUsageDescription: "CTV Bridge connects to TVs on your local network to install and debug apps.",
+    },
     artifactName: "${name}-${version}-${arch}.${ext}",
   },
   dmg: {
@@ -32,7 +38,6 @@
   },
   win: {
     target: ["nsis"], // Only NSIS installer (most common for Windows)
-    icon: "public/icon.ico",
     artifactName: "${name}-${version}.${ext}",
   },
   nsis: {
@@ -45,7 +50,6 @@
   linux: {
     target: ["AppImage"], // Only AppImage (most portable for Linux)
     category: "Development",
-    icon: "public/icon.png",
     artifactName: "${name}-${version}-${arch}.${ext}",
   },
 }
