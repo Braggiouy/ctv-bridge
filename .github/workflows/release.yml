@@ -42,6 +42,15 @@ jobs:
     needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Release notes come from the CHANGELOG.md section standard-version wrote for this tag
+      - name: Extract release notes
+        run: |
+          awk -v ver="${GITHUB_REF_NAME#v}" '/^##+ \[/{ if (found) exit; if (index($0, "[" ver "]")) found=1 } found' CHANGELOG.md > release-notes.md
+          test -s release-notes.md
+
       - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
@@ -73,6 +82,6 @@ jobs:
             release-artifacts/windows/**/latest.yml
             release-artifacts/linux/**/*.AppImage
             release-artifacts/linux/**/latest-linux.yml
-          generate_release_notes: true
+          body_path: release-notes.md
           draft: false
           prerelease: false
