@@ -108,7 +108,11 @@ interface ElectronAPI {
 
   // ── Auto-updater ──────────────────────────────────────────────────────────
   checkForUpdates: () => Promise<{ version: string } | null>;
-  downloadUpdate: () => Promise<{ success: boolean; error?: string }>;
+  downloadUpdate: () => Promise<{
+    success: boolean;
+    installerOpened?: boolean;
+    error?: string;
+  }>;
   installUpdate: () => void;
   getAppVersion: () => Promise<string>;
   onUpdateAvailable: (

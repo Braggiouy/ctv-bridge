@@ -56,12 +56,6 @@ function setupAutoUpdater() {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
-  // Disable code signing validation on macOS (since we don't have a paid cert)
-  if (process.platform === "darwin") {
-    // @ts-expect-error - Property exists at runtime but might be missing in types
-    autoUpdater.forceCodeSigning = false;
-  }
-
   // Auto-updater event handlers
   autoUpdater.on("update-available", (info) => {
     if (win && !win.isDestroyed()) {
@@ -77,18 +71,8 @@ function setupAutoUpdater() {
 
   autoUpdater.on("error", (err) => {
     logger.error("Auto-updater error", err);
-    let message = err.message;
-    // Handle macOS code signing errors
-    if (
-      message.includes("Code signature") ||
-      message.includes("did not pass validation") ||
-      message.includes("firma indica que deben estar presentes")
-    ) {
-      message =
-        "Update failed due to macOS security. Please download the new version manually.";
-    }
     if (win && !win.isDestroyed()) {
-      win.webContents.send("update-error", message);
+      win.webContents.send("update-error", err.message);
     }
   });
 }

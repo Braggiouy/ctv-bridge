@@ -71,13 +71,22 @@ export function UpdateButton() {
     }
   };
 
-  const handleDownloadUpdate = () => {
-    // Open GitHub releases page instead of auto-downloading
-    // (auto-update doesn't work without code signing on macOS)
-    const repoUrl = "https://github.com/Braggiouy/ctv-bridge/releases/latest";
-    window.open(repoUrl, "_blank");
-    setUpdateAvailable(false);
-    toast.info("Opening releases page in browser...");
+  const handleDownloadUpdate = async () => {
+    const toastId = toast.loading(`Downloading v${updateInfo?.version}...`);
+    const result = await window.electron.downloadUpdate();
+    toast.dismiss(toastId);
+
+    if (!result.success) {
+      toast.error(`Update failed: ${result.error}`);
+      return;
+    }
+    if (result.installerOpened) {
+      toast.success(
+        "Installer opened. Drag CTV Bridge into Applications to finish updating."
+      );
+      return;
+    }
+    window.electron.installUpdate();
   };
 
   const getButtonContent = () => {
@@ -154,8 +163,8 @@ export function UpdateButton() {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                Click "Update Now" to open the releases page and download the
-                latest version.
+                Click "Update Now" to download the new version. CTV Bridge
+                restarts to finish (on macOS, the installer opens instead).
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
