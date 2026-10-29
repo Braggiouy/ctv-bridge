@@ -51,6 +51,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bunx vite build && bunx electron-builder ${{ inputs.platform-arg }} -p never
 
+      # Without a real com.ctv.bridge signature macOS Local Network privacy blocks TV connections (EHOSTUNREACH).
+      - name: Verify macOS signature
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          for app in release/*/mac*/*.app; do
+            info=$(codesign -dv "$app" 2>&1)
+            echo "$info"
+            echo "$info" | grep -q "^Identifier=com.ctv.bridge$" || { echo "::error::$app is not signed as com.ctv.bridge"; exit 1; }
+            codesign --verify --deep --strict "$app"
+          done
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
