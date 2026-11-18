@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.9.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.8.1...v1.9.0) (2026-11-18)
+
+
+### Bug Fixes
+
+* **webos:** stop duplicating passphrases in the keychain; kill SDK process trees ([42fc7b6](https://github.com/Braggiouy/ctv-bridge/commit/42fc7b65484b1d49ee0e0fcd8b389c3660ab39a7))
+
 ### [1.8.1](https://github.com/Braggiouy/ctv-bridge/compare/v1.8.0...v1.8.1) (2026-10-29)
 
 
