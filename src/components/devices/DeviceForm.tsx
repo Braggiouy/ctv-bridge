@@ -84,13 +84,7 @@ export const DeviceForm = ({
   const nameRequired = PLATFORMS[platform].deviceNameRequired;
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-4 rounded-lg border bg-muted/30 p-4"
-    >
-      <h3 className="font-medium">
-        {device ? `Edit ${device.name || device.ip}` : "Add a TV"}
-      </h3>
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           id="device-name"
@@ -171,7 +165,7 @@ export const DeviceForm = ({
         </Button>
         <Button type="submit" disabled={submitting}>
           {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          {device ? "Save" : isWebos ? "Add TV" : "Connect"}
+          {device ? "Save" : "Add TV"}
         </Button>
       </div>
     </form>
