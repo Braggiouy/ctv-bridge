@@ -1,4 +1,4 @@
-import { mergeClassNames } from "@/utils";
+import { cn } from "@/utils";
 
 function Skeleton({
   className,
@@ -6,10 +6,7 @@ function Skeleton({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={mergeClassNames(
-        "animate-pulse rounded-md bg-muted",
-        className
-      )}
+      className={cn("animate-pulse rounded-md bg-muted", className)}
       {...props}
     />
   );

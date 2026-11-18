@@ -1,119 +1,126 @@
-import { Device, WebOSDevice, TizenDevice } from "@/types";
-import { Button } from "@/components/ui/button";
-import { DeviceEditForm } from "./DeviceEditForm";
+import { useState } from "react";
 import {
-  getConnectionStatusIcon,
-  getConnectionStatusClass,
-  getConnectionStatusText,
-  formatDeviceDisplayName,
-  maskPassphrase,
-} from "./helpers";
+  CheckCircle2,
+  Loader2,
+  Pencil,
+  Trash2,
+  Tv,
+  XCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { Device, Platform } from "@/types";
+import { addLog, cn } from "@/utils";
 
 interface DeviceCardProps {
   device: Device;
-  platform: "tizen" | "webos" | "android";
-  isEditing: boolean;
-  isTesting: boolean;
-  onTest: (device: Device) => Promise<boolean>;
-  onSelect: (device: Device) => void;
+  platform: Platform;
+  selected: boolean;
+  onUse: (device: Device) => void;
   onEdit: () => void;
-  onRemove: (device: Device) => void;
-  onSaveEdit: (device: Device) => void;
-  onCancelEdit: () => void;
+  onRemove: () => void;
 }
 
+function describe(device: Device, platform: Platform): string {
+  if (platform === "webos") {
+    return `${device.username}@${device.ip}:${device.port}${device.hasPassphrase ? " · passphrase saved" : ""}`;
+  }
+  return `${device.ip} · ${device.connected ? "connected" : "not connected"}`;
+}
+
+/** One TV. "Use this TV" checks the connection and selects it in a single step. */
 export const DeviceCard = ({
   device,
   platform,
-  isEditing,
-  isTesting,
-  onTest,
-  onSelect,
+  selected,
+  onUse,
   onEdit,
   onRemove,
-  onSaveEdit,
-  onCancelEdit,
 }: DeviceCardProps) => {
-  if (isEditing) {
-    return (
-      <div className="flex items-center gap-3 p-3 rounded border bg-card">
-        <div className="flex-1">
-          <DeviceEditForm
-            device={device}
-            platform={platform}
-            onSave={onSaveEdit}
-            onCancel={onCancelEdit}
-          />
-        </div>
-      </div>
-    );
-  }
+  const [testing, setTesting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleUse = async () => {
+    setTesting(true);
+    setError(null);
+    const result = await window.electron.devices.test(platform, device);
+    setTesting(false);
+    if (result.success) {
+      addLog("step", result.message ?? `Connected to ${device.name}`);
+      onUse({ ...device, duid: result.duid ?? device.duid });
+    } else {
+      setError(result.message ?? "Connection failed");
+      addLog(
+        "error",
+        `Connection to ${device.name || device.ip} failed: ${result.message}`
+      );
+    }
+  };
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded border bg-card">
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <div className="font-semibold text-base">
-            {formatDeviceDisplayName(device, platform)}
-          </div>
-          {getConnectionStatusIcon(device.connectionStatus, isTesting)}
-        </div>
-        <div className="text-xs text-muted-foreground">
-          IP: {device.ip}
-          {platform === "webos" && (
-            <>
-              {" "}
-              | Port: {(device as WebOSDevice).port} | User:{" "}
-              {(device as WebOSDevice).username}
-              {(device as WebOSDevice).passphrase && (
-                <>
-                  {" "}
-                  | Passphrase:{" "}
-                  {maskPassphrase((device as WebOSDevice).passphrase!)}
-                </>
-              )}
-            </>
-          )}
-          {platform === "tizen" && (device as TizenDevice).sdbStatus && (
-            <> | Status: {(device as TizenDevice).sdbStatus}</>
+    <div
+      className={cn(
+        "rounded-lg border p-3 transition-colors",
+        selected && "border-primary bg-primary/5",
+        error && "border-red-500/50"
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <Tv className="h-8 w-8 text-muted-foreground" />
+          {(device.connected || selected) && !error && (
+            <CheckCircle2 className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-card text-green-500" />
           )}
         </div>
-        {device.connectionStatus && (
-          <div className="text-xs mt-1">
-            <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getConnectionStatusClass(
-                device.connectionStatus
-              )}`}
-            >
-              {getConnectionStatusText(device, platform)}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="truncate font-medium">
+              {device.name || device.ip}
             </span>
+            {selected && (
+              <span className="rounded-full bg-primary/10 px-2 text-xs text-primary">
+                Selected
+              </span>
+            )}
           </div>
-        )}
-      </div>
-
-      <div className="flex gap-2">
+          <p className="truncate text-xs text-muted-foreground">
+            {describe(device, platform)}
+          </p>
+        </div>
         <Button
-          size="sm"
-          variant="outline"
-          onClick={() => onTest(device)}
-          disabled={isTesting}
+          size="icon"
+          variant="ghost"
+          onClick={onEdit}
+          title="Edit"
+          aria-label="Edit"
         >
-          {isTesting ? "Testing..." : "Test"}
+          <Pencil className="h-4 w-4" />
         </Button>
         <Button
-          size="sm"
-          onClick={() => onSelect(device)}
-          disabled={device.connectionStatus !== "connected"}
+          size="icon"
+          variant="ghost"
+          onClick={onRemove}
+          title="Remove"
+          aria-label="Remove"
         >
-          Select
+          <Trash2 className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="ghost" onClick={onEdit}>
-          Edit
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => onRemove(device)}>
-          Remove
+        <Button onClick={handleUse} disabled={testing} className="min-w-32">
+          {testing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Connecting…
+            </>
+          ) : (
+            "Use this TV"
+          )}
         </Button>
       </div>
+      {error && (
+        <p className="mt-2 flex gap-2 text-sm text-red-600 dark:text-red-400">
+          <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          {error}
+        </p>
+      )}
     </div>
   );
 };

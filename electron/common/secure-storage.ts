@@ -143,10 +143,3 @@ export async function getAllDeviceNames(): Promise<string[]> {
   const store = await loadStore();
   return Object.keys(store);
 }
-
-/**
- * Clear all saved passphrases (useful for testing or reset functionality)
- */
-export async function clearAllPassphrases(): Promise<void> {
-  await saveStore({});
-}

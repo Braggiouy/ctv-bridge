@@ -1,0 +1,127 @@
+/** Types shared by the Electron main process and the renderer. */
+
+export type Platform = "tizen" | "webos" | "android";
+export type DeployMode = "debug" | "run";
+
+export interface Device {
+  name: string;
+  ip: string;
+  /** webOS only: SSH port and user registered with ares-setup-device. */
+  port?: string;
+  username?: string;
+  /** webOS only: write-only, sent when saving and never returned. */
+  passphrase?: string;
+  hasPassphrase?: boolean;
+  /** Tizen/Android: currently attached in sdb/adb. */
+  connected?: boolean;
+  /** Tizen: unique device ID, read from the TV on a successful connection. */
+  duid?: string;
+}
+
+export interface Result {
+  success: boolean;
+  message?: string;
+}
+
+export interface DeviceListResult extends Result {
+  devices: Device[];
+}
+
+export interface TestConnectionResult extends Result {
+  duid?: string;
+}
+
+export interface BuildResult extends Result {
+  packagePath?: string;
+}
+
+export interface DeployTarget {
+  projectPath: string;
+  /** The package produced by the last build; deploy falls back to the newest one. */
+  packagePath?: string;
+}
+
+export interface SdkPaths {
+  sdbPath?: string;
+  tizenPath?: string;
+  aresPath?: string;
+  adbPath?: string;
+}
+
+export interface ToolCheck {
+  key: keyof SdkPaths;
+  tool: string;
+  ok: boolean;
+  detail: string;
+}
+
+export interface SdkVerifyResult extends Result {
+  tools: ToolCheck[];
+}
+
+export interface TizenProfile {
+  name: string;
+  active: boolean;
+}
+
+export interface TizenCertificateParams {
+  email: string;
+  deviceIds?: string[];
+  password?: string;
+  privilegeLevel?: "Public" | "Partner" | "Platform";
+  developerType?: "Individual" | "Corporation";
+  profileName?: string;
+}
+
+type Unsubscribe = () => void;
+
+/** The `window.electron` bridge exposed by the preload script. */
+export interface ElectronApi {
+  devices: {
+    list(platform: Platform): Promise<DeviceListResult>;
+    add(platform: Platform, device: Device): Promise<Result>;
+    update(platform: Platform, previous: Device, next: Device): Promise<Result>;
+    remove(platform: Platform, device: Device): Promise<Result>;
+    test(platform: Platform, device: Device): Promise<TestConnectionResult>;
+  };
+  sdk: {
+    getPaths(): Promise<SdkPaths>;
+    savePaths(paths: SdkPaths): Promise<Result>;
+    verify(platform: Platform): Promise<SdkVerifyResult>;
+  };
+  build(
+    platform: Platform,
+    projectPath: string,
+    profileName?: string
+  ): Promise<BuildResult>;
+  deploy(
+    platform: Platform,
+    device: Device,
+    target: DeployTarget,
+    mode: DeployMode
+  ): Promise<Result>;
+  onDeployLog(callback: (line: string) => void): Unsubscribe;
+  tizen: {
+    listProfiles(): Promise<Result & { profiles?: TizenProfile[] }>;
+    deleteProfile(name: string): Promise<Result>;
+    login(): Promise<Result & { cancelled?: boolean; email?: string }>;
+    cancelLogin(): Promise<Result>;
+    logout(): Promise<Result>;
+    generateCertificates(
+      params: TizenCertificateParams
+    ): Promise<Result & { path?: string }>;
+    onCertificateLog(callback: (line: string) => void): Unsubscribe;
+  };
+  updater: {
+    check(): Promise<{ version: string } | null>;
+    download(): Promise<Result & { installerOpened?: boolean }>;
+    install(): Promise<void>;
+    getVersion(): Promise<string>;
+    onAvailable(callback: (info: { version: string }) => void): Unsubscribe;
+    onError(callback: (message: string) => void): Unsubscribe;
+  };
+  selectDirectory(): Promise<string | null>;
+  selectFile(extensions?: string[]): Promise<string | null>;
+  openExternal(url: string): Promise<void>;
+  showInFolder(target: string): Promise<void>;
+}

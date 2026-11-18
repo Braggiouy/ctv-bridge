@@ -1,190 +1,195 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Loader2, Rocket, Bug, Play } from "lucide-react";
-import { toast } from "sonner";
-import { TOAST_DURATION } from "@/utils";
-import { mergeClassNames } from "@/utils";
-import { useGlobalLogs } from "@/utils";
+  Bug,
+  CheckCircle2,
+  Loader2,
+  Package,
+  Play,
+  Tv,
+  XCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { StepCard } from "@/components/shared/StepCard";
+import { PLATFORMS } from "@/lib/platforms";
+import type { Workflow } from "@/lib/workflow";
+import type { DeployMode, Platform } from "@/types";
+import { addLog, cn, notify } from "@/utils";
 
 interface DeployStepProps {
+  platform: Platform;
+  workflow: Workflow;
+  onChangeDevice: () => void;
+  onChangePackage: () => void;
   onBack: () => void;
-  onHome: () => void;
 }
 
-const LOG_DRAIN_DELAY_MS = 1000;
+const MODES: {
+  mode: DeployMode;
+  title: string;
+  description: string;
+  icon: typeof Play;
+}[] = [
+  {
+    mode: "run",
+    title: "Install & run",
+    description: "Install the package and launch it on the TV.",
+    icon: Play,
+  },
+  {
+    mode: "debug",
+    title: "Install & debug",
+    description:
+      "Launch with the web inspector attached so you can debug in Chrome.",
+    icon: Bug,
+  },
+];
 
-export const DeployStep = (props: DeployStepProps) => {
-  const { onBack, onHome } = props;
-  const { addLog } = useGlobalLogs();
-  const platform =
-    (localStorage.getItem("platform") as "tizen" | "webos" | "android") ||
-    "tizen";
-  const [deploying, setDeploying] = useState(false);
-  const [deployMode, setDeployMode] = useState<"debug" | "run" | null>(null);
+const SummaryRow = ({
+  icon: Icon,
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  icon: typeof Tv;
+  label: string;
+  value: string;
+  onChange: () => void;
+  disabled: boolean;
+}) => (
+  <div className="flex items-center gap-3">
+    <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
+    <div className="min-w-0 flex-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="truncate text-sm font-medium" title={value}>
+        {value}
+      </p>
+    </div>
+    <Button variant="ghost" size="sm" onClick={onChange} disabled={disabled}>
+      Change
+    </Button>
+  </div>
+);
 
-  const handleDeploy = async (mode: "debug" | "run") => {
-    setDeploying(true);
-    setDeployMode(mode);
-    addLog("step", `Deploy started: mode=${mode}`);
+export const DeployStep = ({
+  platform,
+  workflow,
+  onChangeDevice,
+  onChangePackage,
+  onBack,
+}: DeployStepProps) => {
+  const info = PLATFORMS[platform];
+  const { device, projectPath, packagePath } = workflow;
+  const [deploying, setDeploying] = useState<DeployMode | null>(null);
+  const [outcome, setOutcome] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
-    const tvIp = localStorage.getItem(`${platform}_tvIp`) || "";
-    const deviceName = localStorage.getItem(`${platform}_deviceName`) || "";
-    const projectPath = localStorage.getItem(`${platform}_projectPath`) || "";
-
-    // For webOS, require deviceName; for Tizen and Android, use tvIp (or ID)
-    const deviceArg = platform === "webos" ? deviceName : tvIp;
-
-    if (!deviceArg || !projectPath) {
-      const msg =
-        "Missing Configuration: Please complete the previous steps first.";
-      toast.error("Missing Configuration", {
-        description: "Please complete the previous steps first.",
-        duration: TOAST_DURATION,
-      });
-      addLog("error", msg);
-      setDeploying(false);
-      setDeployMode(null);
-      return;
-    }
-
-    // Set up log listener
-    const unsubscribe = window.electron.onDeployLog((log) => {
-      addLog("log", log);
-    });
+  const deploy = async (mode: DeployMode) => {
+    if (!device || !packagePath) return;
+    setDeploying(mode);
+    setOutcome(null);
+    addLog("info", `Deploying to ${device.name || device.ip} (${mode})…`, true);
 
     try {
-      const result = await window.electron.deployApp(
+      const result = await window.electron.deploy(
         platform,
-        deviceArg,
-        projectPath,
+        device,
+        { projectPath, packagePath },
         mode
       );
-
-      if (result.success) {
-        toast.success("Deployment Successful", {
-          description: result.message,
-          duration: TOAST_DURATION,
-        });
-        addLog("step", `Deployment successful: ${result.message}`);
-      } else {
-        toast.error("Deployment Failed", {
-          description: result.message,
-          duration: TOAST_DURATION,
-        });
-        addLog("error", `Deployment failed: ${result.message}`);
-      }
-    } catch (error: unknown) {
-      const err = error as Error;
-      const msg = `Deployment failed: ${
-        err.message || "An error occurred during deployment"
-      }`;
-      toast.error("Deployment Failed", {
-        description: err.message || "An error occurred during deployment",
-        duration: TOAST_DURATION,
-      });
-      addLog("error", msg);
+      const message =
+        result.message ?? (result.success ? "Done" : "Deployment failed");
+      setOutcome({ success: result.success, message });
+      if (result.success) notify.success("Deployed", message);
+      else notify.error("Deployment failed", message);
     } finally {
-      setDeploying(false);
-      setDeployMode(null);
-      await new Promise((resolve) => setTimeout(resolve, LOG_DRAIN_DELAY_MS));
-      unsubscribe();
+      setDeploying(null);
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Rocket className="h-5 w-5" />
-          Deploy to TV
-        </CardTitle>
-        <CardDescription>
-          Choose your deployment mode and launch the application on your{" "}
-          {platform === "tizen"
-            ? "Samsung"
-            : platform === "webos"
-              ? "LG"
-              : "Android"}{" "}
-          TV
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2">
+    <StepCard
+      title={`Deploy to your ${info.tvName}`}
+      description="Install the package on the TV. Deploy again any time after rebuilding."
+      onBack={onBack}
+      busy={!!deploying}
+    >
+      <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+        <SummaryRow
+          icon={Tv}
+          label="TV"
+          value={
+            device
+              ? `${device.name || device.ip} (${device.ip})`
+              : "None selected"
+          }
+          onChange={onChangeDevice}
+          disabled={!!deploying}
+        />
+        <SummaryRow
+          icon={Package}
+          label="Package"
+          value={packagePath ?? "Not built yet"}
+          onChange={onChangePackage}
+          disabled={!!deploying}
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {MODES.map(({ mode, title, description, icon: Icon }) => (
           <button
-            onClick={() => handleDeploy("debug")}
-            disabled={deploying}
-            className={mergeClassNames(
-              "group relative overflow-hidden rounded-lg border-2 p-6 text-left transition-all hover:border-primary focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50",
-              deployMode === "debug" && deploying
+            key={mode}
+            type="button"
+            onClick={() => deploy(mode)}
+            disabled={!!deploying || !device || !packagePath}
+            className={cn(
+              "flex items-start gap-4 rounded-lg border-2 p-5 text-left transition-colors hover:border-primary focus:outline-none focus:ring-2 focus:ring-ring disabled:pointer-events-none disabled:opacity-50",
+              deploying === mode
                 ? "border-primary bg-primary/5"
                 : "border-border bg-card"
             )}
           >
-            <div className="flex items-start gap-4">
-              <div className="rounded-full bg-orange-100 p-3 dark:bg-orange-950">
-                <Bug className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-foreground">Debug Mode</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Deploy with debugging enabled for development
-                </p>
-              </div>
+            <div className="rounded-full bg-primary/10 p-3">
+              {deploying === mode ? (
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              ) : (
+                <Icon className="h-5 w-5 text-primary" />
+              )}
             </div>
-            {deployMode === "debug" && deploying && (
-              <div className="mt-4 flex items-center gap-2 text-sm text-primary">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Deploying...</span>
-              </div>
-            )}
-          </button>
-
-          <button
-            onClick={() => handleDeploy("run")}
-            disabled={deploying}
-            className={mergeClassNames(
-              "group relative overflow-hidden rounded-lg border-2 p-6 text-left transition-all hover:border-primary focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50",
-              deployMode === "run" && deploying
-                ? "border-primary bg-primary/5"
-                : "border-border bg-card"
-            )}
-          >
-            <div className="flex items-start gap-4">
-              <div className="rounded-full bg-green-100 p-3 dark:bg-green-950">
-                <Play className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-foreground">Run Mode</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Deploy and run the application in production mode
-                </p>
-              </div>
+            <div>
+              <h3 className="font-medium">
+                {deploying === mode ? "Deploying…" : title}
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {description}
+              </p>
             </div>
-            {deployMode === "run" && deploying && (
-              <div className="mt-4 flex items-center gap-2 text-sm text-primary">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Deploying...</span>
-              </div>
-            )}
           </button>
-        </div>
+        ))}
+      </div>
 
-        <div className="flex gap-3 pt-4">
-          <Button onClick={onBack} variant="outline" disabled={deploying}>
-            <span className="mr-2">&lt;</span> Back
-          </Button>
-          <Button onClick={onHome} variant="outline" disabled={deploying}>
-            Go Home
-          </Button>
+      {outcome && (
+        <div
+          className={cn(
+            "flex gap-2 rounded-lg border p-3 text-sm",
+            outcome.success
+              ? "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400"
+              : "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400"
+          )}
+        >
+          {outcome.success ? (
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          ) : (
+            <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          )}
+          <span className="whitespace-pre-wrap">
+            {outcome.message}
+            {!outcome.success && " See the activity log below for details."}
+          </span>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </StepCard>
   );
 };

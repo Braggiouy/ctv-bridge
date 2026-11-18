@@ -1,50 +1,24 @@
-/**
- * Simple structured logging utility for Electron main process
- * Provides consistent logging with timestamps and severity levels
- */
+type Level = "DEBUG" | "INFO" | "WARN" | "ERROR";
 
-export enum LogLevel {
-  DEBUG = "DEBUG",
-  INFO = "INFO",
-  WARN = "WARN",
-  ERROR = "ERROR",
+function format(level: Level, message: string, args: unknown[]): string {
+  const details = args.length > 0 ? ` ${JSON.stringify(args)}` : "";
+  return `[${new Date().toISOString()}] [${level}] ${message}${details}`;
 }
 
-class Logger {
-  private formatMessage(
-    level: LogLevel,
-    message: string,
-    ...args: unknown[]
-  ): string {
-    const timestamp = new Date().toISOString();
-    const formattedArgs = args.length > 0 ? ` ${JSON.stringify(args)}` : "";
-    return `[${timestamp}] [${level}] ${message}${formattedArgs}`;
-  }
-
-  debug(message: string, ...args: unknown[]): void {
+export const logger = {
+  debug(message: string, ...args: unknown[]) {
     if (process.env.NODE_ENV === "development") {
-      console.log(this.formatMessage(LogLevel.DEBUG, message, ...args));
+      console.log(format("DEBUG", message, args));
     }
-  }
+  },
+  info: (message: string, ...args: unknown[]) =>
+    console.log(format("INFO", message, args)),
+  warn: (message: string, ...args: unknown[]) =>
+    console.warn(format("WARN", message, args)),
+  error: (message: string, ...args: unknown[]) =>
+    console.error(format("ERROR", message, args)),
+};
 
-  info(message: string, ...args: unknown[]): void {
-    console.log(this.formatMessage(LogLevel.INFO, message, ...args));
-  }
-
-  warn(message: string, ...args: unknown[]): void {
-    console.warn(this.formatMessage(LogLevel.WARN, message, ...args));
-  }
-
-  error(message: string, ...args: unknown[]): void {
-    console.error(this.formatMessage(LogLevel.ERROR, message, ...args));
-  }
-
-  /**
-   * Helper for timestamped logging in IPC handlers
-   */
-  getTimeLog(message: string): string {
-    return `[${new Date().toLocaleTimeString()}] ${message}`;
-  }
-}
-
-export const logger = new Logger();
+/** Prefixes a user-facing log line with the local time. */
+export const timestamped = (message: string) =>
+  `[${new Date().toLocaleTimeString()}] ${message}`;

@@ -1,76 +1,70 @@
-import { mergeClassNames } from "@/utils";
-
-interface Step {
-  id: number;
-  name: string;
-  description: string;
-}
+import { Check } from "lucide-react";
+import { cn } from "@/utils";
+import { STEPS } from "@/lib/workflow";
 
 interface StepIndicatorProps {
-  steps: Step[];
   currentStep: number;
+  /** Steps up to this one are clickable. */
+  furthestStep: number;
+  onStepClick: (step: number) => void;
 }
 
-export const StepIndicator = ({ steps, currentStep }: StepIndicatorProps) => {
-  return (
-    <nav aria-label="Progress" className="mb-10 px-2 w-full">
-      <ol className="flex items-center justify-between w-full relative">
-        {/* Background line */}
-        <div className="absolute top-4 left-0 w-full h-0.5 bg-border -z-10" />
-
-        {steps.map((step) => {
-          const isCompleted = step.id < currentStep;
-          const isActive = step.id === currentStep;
-
-          return (
-            <li
-              key={step.id}
-              className="relative flex flex-col items-center group flex-1"
+export const StepIndicator = ({
+  currentStep,
+  furthestStep,
+  onStepClick,
+}: StepIndicatorProps) => (
+  <nav aria-label="Progress">
+    <ol className="flex items-center">
+      {STEPS.map((step, index) => {
+        const isActive = step.id === currentStep;
+        const isDone = step.id < currentStep || step.id < furthestStep;
+        const isReachable = step.id <= furthestStep;
+        return (
+          <li key={step.id} className="flex flex-1 items-center last:flex-none">
+            <button
+              type="button"
+              onClick={() => onStepClick(step.id)}
+              disabled={!isReachable || isActive}
+              aria-current={isActive ? "step" : undefined}
+              className="group flex items-center gap-2 rounded-md px-1 py-1 disabled:cursor-default"
             >
-              <div
-                className={mergeClassNames(
-                  "flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all duration-300 bg-background",
-                  isCompleted &&
-                    "border-primary bg-primary text-primary-foreground",
+              <span
+                className={cn(
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-semibold transition-colors",
                   isActive &&
                     "border-primary text-primary ring-4 ring-primary/10",
-                  !isCompleted &&
+                  !isActive &&
+                    isDone &&
+                    "border-primary bg-primary text-primary-foreground",
+                  !isActive && !isDone && "border-border text-muted-foreground",
+                  isReachable &&
                     !isActive &&
-                    "border-border text-muted-foreground opacity-60"
+                    "group-hover:ring-4 group-hover:ring-primary/10"
                 )}
               >
-                {isCompleted ? (
-                  <svg
-                    className="h-5 w-5"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                ) : (
-                  <span className="text-xs font-bold">{step.id}</span>
+                {isDone && !isActive ? <Check className="h-4 w-4" /> : step.id}
+              </span>
+              <span
+                className={cn(
+                  "text-sm font-medium",
+                  isActive ? "text-foreground" : "text-muted-foreground"
                 )}
-              </div>
-              <div className="mt-2 flex flex-col items-center">
-                <span
-                  className={mergeClassNames(
-                    "text-[11px] font-bold uppercase tracking-wider transition-colors duration-300",
-                    isActive
-                      ? "text-primary"
-                      : "text-muted-foreground opacity-60"
-                  )}
-                >
-                  {step.name}
-                </span>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-};
+              >
+                {step.name}
+              </span>
+            </button>
+            {index < STEPS.length - 1 && (
+              <div
+                className={cn(
+                  "mx-2 h-0.5 flex-1",
+                  step.id < furthestStep ? "bg-primary" : "bg-border"
+                )}
+              />
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  </nav>
+);
