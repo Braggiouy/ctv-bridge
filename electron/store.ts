@@ -1,13 +1,8 @@
 import { app } from "electron";
-import fs from "fs";
-import path from "path";
-
-interface SdkPaths {
-  sdbPath?: string;
-  tizenPath?: string;
-  aresPath?: string;
-  adbPath?: string;
-}
+import fs from "node:fs";
+import path from "node:path";
+import type { SdkPaths } from "../shared/ipc";
+import { logger } from "./utils/logger";
 
 interface StoreData {
   sdkPaths: SdkPaths;
@@ -28,14 +23,14 @@ class Store {
     try {
       if (fs.existsSync(this.storePath)) {
         const raw = JSON.parse(fs.readFileSync(this.storePath, "utf-8"));
-        // Migrate from old flat format (SdkPaths at root) to new nested format
+        // Up to 1.4 the file held SdkPaths at its root.
         if (raw && !raw.sdkPaths && !raw.extras) {
           return { sdkPaths: raw, extras: {} };
         }
         return { sdkPaths: raw.sdkPaths ?? {}, extras: raw.extras ?? {} };
       }
     } catch (error) {
-      console.error("Error loading store:", error);
+      logger.error("Failed to load settings", error);
     }
     return { sdkPaths: {}, extras: {} };
   }
@@ -44,7 +39,7 @@ class Store {
     try {
       fs.writeFileSync(this.storePath, JSON.stringify(this.data, null, 2));
     } catch (error) {
-      console.error("Error saving store:", error);
+      logger.error("Failed to save settings", error);
     }
   }
 
@@ -66,12 +61,10 @@ class Store {
     return { ...this.data.sdkPaths };
   }
 
-  /** Get a cached value from the extras bucket */
   getExtra<T>(key: string): T | undefined {
     return this.data.extras[key] as T | undefined;
   }
 
-  /** Set a cached value in the extras bucket */
   setExtra(key: string, value: unknown) {
     this.data.extras[key] = value;
     this.save();
