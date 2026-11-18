@@ -1,4 +1,5 @@
 import { app, BrowserWindow, session, shell } from "electron";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { registerIpcHandlers } from "./ipc/handlers";
@@ -90,6 +91,11 @@ app.on("activate", () => {
 
 app.whenReady().then(() => {
   if (app.isPackaged) inheritLoginShellPath();
+  // Passphrases used to be duplicated here behind the macOS Keychain; the webOS
+  // CLI already stores them, so drop the obsolete copy.
+  fs.rmSync(path.join(app.getPath("userData"), "secure-credentials.json"), {
+    force: true,
+  });
   registerIpcHandlers();
   registerTizenCertHandlers();
   registerUpdater(!VITE_DEV_SERVER_URL);

@@ -82,7 +82,9 @@ export const BuildStep = ({
       description={
         info.projectIsFile
           ? "Pick the APK you built with Android Studio or Gradle."
-          : `Package your web app as a signed ${info.packageLabel}.`
+          : platform === "tizen"
+            ? "Package your web app as a signed WGT package."
+            : "Package your web app as an IPK package."
       }
       onBack={onBack}
       busy={building}

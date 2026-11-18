@@ -7,7 +7,7 @@ import type {
   SdkPaths,
 } from "../../shared/ipc";
 import { store } from "../store";
-import { logger, timestamped } from "../utils/logger";
+import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/errors";
 import type { PlatformAdapter } from "../platforms/types";
 import {
@@ -102,7 +102,7 @@ export function registerIpcHandlers() {
     ) => {
       const log = (line: string) => {
         if (!event.sender.isDestroyed()) {
-          event.sender.send("deploy-log", timestamped(line));
+          event.sender.send("deploy-log", line);
         }
       };
       return {

@@ -18,7 +18,3 @@ export const logger = {
   error: (message: string, ...args: unknown[]) =>
     console.error(format("ERROR", message, args)),
 };
-
-/** Prefixes a user-facing log line with the local time. */
-export const timestamped = (message: string) =>
-  `[${new Date().toLocaleTimeString()}] ${message}`;

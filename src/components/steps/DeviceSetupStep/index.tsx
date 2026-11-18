@@ -13,7 +13,10 @@ import { DeviceForm } from "./DeviceForm";
 interface DeviceSetupStepProps {
   platform: Platform;
   selectedDevice?: Device;
-  onSelect: (device: Device | undefined) => void;
+  /** Select a TV and move on to the next step. */
+  onSelect: (device: Device) => void;
+  /** Keep the stored selection in sync after an edit or removal, without navigating. */
+  onSelectionChange: (device: Device | undefined) => void;
   onBack: () => void;
 }
 
@@ -24,6 +27,7 @@ export const DeviceSetupStep = ({
   platform,
   selectedDevice,
   onSelect,
+  onSelectionChange,
   onBack,
 }: DeviceSetupStepProps) => {
   const { devices, loading, refresh, add, update, remove } =
@@ -37,13 +41,13 @@ export const DeviceSetupStep = ({
     const device = pendingRemoval;
     setPendingRemoval(null);
     if ((await remove(device)) && sameDevice(device, selectedDevice)) {
-      onSelect(undefined);
+      onSelectionChange(undefined);
     }
   };
 
   const handleUpdate = async (previous: Device, next: Device) => {
     const saved = await update(previous, next);
-    if (saved && sameDevice(previous, selectedDevice)) onSelect(next);
+    if (saved && sameDevice(previous, selectedDevice)) onSelectionChange(next);
     return saved;
   };
 

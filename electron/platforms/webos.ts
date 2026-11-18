@@ -4,9 +4,14 @@ import type { Device } from "../../shared/ipc";
 import { store } from "../store";
 import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/errors";
-import { runCli, spawnCli, cliOutput, describeCliError } from "../utils/cli";
+import {
+  runCli,
+  spawnCli,
+  cliOutput,
+  describeCliError,
+  killTree,
+} from "../utils/cli";
 import { DEPLOY_CONSTANTS, WEBOS_CONSTANTS } from "../utils/constants";
-import * as secureStorage from "../common/secure-storage";
 import {
   findNewestFile,
   replaceDebugSession,
@@ -25,58 +30,45 @@ const ares = (tool: string) => {
   return aresPath ? `${aresPath}-${tool}` : `ares-${tool}`;
 };
 
-function parseDeviceList(stdout: string): Device[] {
-  const lines = stdout.split(/\r?\n/);
-  const header = lines.findIndex(
-    (line) => line.includes("deviceinfo") && line.includes("connection")
-  );
-  // Skip the header and the dashed separator under it.
-  return lines
-    .slice(header >= 0 ? header + 2 : 0)
-    .map((line) => line.trim().split(/\s{2,}/))
-    .map(([name, info]) => ({
-      name: name?.replace(/ \(default\)/, "").trim(),
-      match: info?.match(/([^@]+)@([\d.]+):(\d+)/),
-    }))
-    .filter(({ name, match }) => name && match)
-    .map(({ name, match }) => ({
-      name,
-      username: match[1],
-      ip: match[2],
-      port: match[3],
-    }));
+interface AresDevice {
+  name: string;
+  deviceinfo?: { ip?: string; port?: string; user?: string };
+  details?: { privatekey?: string; passphrase?: string };
 }
 
-// ares-setup-device has no upsert, so replace any entry with the same name.
-async function register(device: Device): Promise<void> {
-  await runCli(ares("setup-device"), ["--remove", device.name]).catch(
-    () => undefined
-  );
+/** Devices as the webOS CLI stores them, including SSH key details. */
+async function listAresDevices(): Promise<AresDevice[]> {
+  const { stdout } = await runCli(ares("setup-device"), ["--listfull"]);
+  return JSON.parse(stdout) as AresDevice[];
+}
+
+const findAresDevice = async (name: string) =>
+  (await listAresDevices()).find((device) => device.name === name);
+
+/**
+ * The webOS CLI keeps each device's SSH key and passphrase in its own config,
+ * so we update entries in place (`--modify`) rather than recreating them,
+ * which would throw that away and force a new key fetch.
+ */
+async function register(device: Device, existing?: AresDevice): Promise<void> {
+  const info: Record<string, string | undefined> = {
+    username: device.username || WEBOS_CONSTANTS.DEFAULT_USERNAME,
+    host: device.ip,
+    port: device.port || WEBOS_CONSTANTS.DEFAULT_PORT,
+    // Carried over on rename; replaced when the user enters a new passphrase.
+    privatekey: existing?.details?.privatekey,
+    passphrase: device.passphrase || existing?.details?.passphrase,
+  };
+  const infoArgs = Object.entries(info)
+    .filter(([, value]) => value)
+    .flatMap(([key, value]) => ["--info", `${key}=${value}`]);
+
+  const modify = existing?.name === device.name;
   await runCli(ares("setup-device"), [
-    "--add",
+    modify ? "--modify" : "--add",
     device.name,
-    "--info",
-    `username=${device.username || WEBOS_CONSTANTS.DEFAULT_USERNAME}`,
-    "--info",
-    `host=${device.ip}`,
-    "--info",
-    `port=${device.port || WEBOS_CONSTANTS.DEFAULT_PORT}`,
+    ...infoArgs,
   ]);
-}
-
-/** Returns a warning instead of failing: the device is already registered at this point. */
-async function storePassphrase(
-  name: string,
-  passphrase?: string | null
-): Promise<string> {
-  if (!passphrase) return "";
-  try {
-    await secureStorage.savePassphrase(name, passphrase);
-    return "";
-  } catch (error) {
-    logger.warn("Could not save passphrase", error);
-    return ` (passphrase not saved: ${getErrorMessage(error)})`;
-  }
 }
 
 /** Fetches the TV's SSH key with the Developer Mode passphrase (answers the interactive prompt). */
@@ -101,7 +93,7 @@ function fetchSshKey(deviceName: string, passphrase: string): Promise<void> {
     proc.stderr?.on("data", onOutput);
 
     const timeout = setTimeout(() => {
-      proc.kill();
+      killTree(proc);
       reject(new Error("Timed out fetching the SSH key from the TV."));
     }, GETKEY_TIMEOUT_MS);
 
@@ -167,7 +159,7 @@ function runInspector(
       settled = true;
       clearTimeout(timeout);
       if (url) replaceDebugSession(proc);
-      else proc.kill();
+      else killTree(proc);
       resolve(url);
     };
 
@@ -216,39 +208,48 @@ async function startDebugSession(
   return "Deployed in debug mode";
 }
 
+/** Fetches the SSH key when a passphrase is known; reports instead of failing. */
+async function trySetUpSshKey(device: Device): Promise<string> {
+  if (!device.passphrase) return "";
+  try {
+    await fetchSshKey(device.name, device.passphrase);
+    return ". SSH key installed";
+  } catch (error) {
+    logger.warn("SSH key fetch failed", error);
+    return `. The SSH key will be fetched when you connect (${getErrorMessage(error)})`;
+  }
+}
+
 export const webosAdapter: PlatformAdapter = {
   async listDevices() {
-    const { stdout } = await runCli(ares("setup-device"), ["--list"]);
-    const withPassphrase = new Set(await secureStorage.getAllDeviceNames());
-    return parseDeviceList(stdout).map((device) => ({
-      ...device,
-      hasPassphrase: withPassphrase.has(device.name),
+    return (await listAresDevices()).map((device) => ({
+      name: device.name,
+      ip: device.deviceinfo?.ip ?? "",
+      port: device.deviceinfo?.port,
+      username: device.deviceinfo?.user,
+      hasPassphrase: !!device.details?.passphrase,
     }));
   },
 
   async addDevice(device) {
+    if (await findAresDevice(device.name)) {
+      throw new Error(`A TV named "${device.name}" already exists.`);
+    }
     await register(device);
-    const warning = await storePassphrase(device.name, device.passphrase);
-    return `Registered ${device.name}${warning}`;
+    return `Registered ${device.name}${await trySetUpSshKey(device)}`;
   },
 
   async updateDevice(previous, next) {
-    await register(next);
+    const existing = await findAresDevice(previous.name);
+    await register(next, existing);
     if (previous.name !== next.name) {
-      await runCli(ares("setup-device"), ["--remove", previous.name]).catch(
-        () => undefined
-      );
-      const oldPassphrase = await secureStorage.getPassphrase(previous.name);
-      await secureStorage.deletePassphrase(previous.name);
-      await storePassphrase(next.name, next.passphrase || oldPassphrase);
-    } else {
-      await storePassphrase(next.name, next.passphrase);
+      await runCli(ares("setup-device"), ["--remove", previous.name]);
     }
+    await trySetUpSshKey(next);
   },
 
   async removeDevice(device) {
     await runCli(ares("setup-device"), ["--remove", device.name]);
-    await secureStorage.deletePassphrase(device.name);
   },
 
   async testConnection(device) {
@@ -259,14 +260,15 @@ export const webosAdapter: PlatformAdapter = {
       const output = cliOutput(error);
 
       if (
-        /All configured authentication methods failed|ssh exec failure/i.test(
+        /All configured authentication methods failed|ssh exec failure|private ?key/i.test(
           output
         )
       ) {
-        const passphrase = await secureStorage.getPassphrase(device.name);
+        const passphrase = (await findAresDevice(device.name))?.details
+          ?.passphrase;
         if (!passphrase) {
           throw new Error(
-            "The TV is reachable but SSH keys aren't set up. Edit the device and add the passphrase shown in the TV's Developer Mode app."
+            "The TV is reachable but its SSH key isn't set up. Edit the TV and enter the passphrase shown in the Developer Mode app."
           );
         }
         await fetchSshKey(device.name, passphrase);

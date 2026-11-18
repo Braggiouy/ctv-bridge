@@ -102,7 +102,7 @@ export const DeployStep = ({
       const message =
         result.message ?? (result.success ? "Done" : "Deployment failed");
       setOutcome({ success: result.success, message });
-      if (result.success) notify.success("Deployed", message);
+      if (result.success) notify.success(message);
       else notify.error("Deployment failed", message);
     } finally {
       setDeploying(null);

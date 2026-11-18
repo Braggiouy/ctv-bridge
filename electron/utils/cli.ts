@@ -7,6 +7,8 @@ import {
 } from "node:child_process";
 import { processManager } from "./process-manager";
 
+export { killTree } from "./process-manager";
+
 const isWindows = process.platform === "win32";
 
 export interface CliResult {
@@ -64,7 +66,9 @@ export function runCli(
 export function spawnCli(command: string, args: string[]): ChildProcess {
   const proc = isWindows
     ? spawn(toWindowsCommand(command, args), { shell: true, windowsHide: true })
-    : spawn(command, args);
+    : // Own process group, so killTree also reaches the node process that
+      // wrapper scripts like ares-inspect start.
+      spawn(command, args, { detached: true });
   processManager.track(proc);
   return proc;
 }

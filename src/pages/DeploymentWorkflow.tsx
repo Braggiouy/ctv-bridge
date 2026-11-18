@@ -59,9 +59,9 @@ const DeploymentWorkflow = () => {
     setStep(Math.min(furthestStep(nextWorkflow ?? EMPTY_WORKFLOW), 3));
   };
 
-  const selectDevice = (device: Device | undefined) => {
+  const selectDevice = (device: Device) => {
     updateWorkflow({ device });
-    if (device) setStep(3);
+    setStep(3);
   };
 
   const knownDuids = workflow.device?.duid ? [workflow.device.duid] : [];
@@ -141,6 +141,7 @@ const DeploymentWorkflow = () => {
             platform={platform}
             selectedDevice={workflow.device}
             onSelect={selectDevice}
+            onSelectionChange={(device) => updateWorkflow({ device })}
             onBack={() => setStep(1)}
           />
         )}

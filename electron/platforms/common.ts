@@ -3,7 +3,7 @@ import path from "node:path";
 import type { ChildProcess } from "node:child_process";
 import type { Device, Platform, SdkPaths, ToolCheck } from "../../shared/ipc";
 import { store } from "../store";
-import { runCli, cliOutput } from "../utils/cli";
+import { runCli, cliOutput, killTree } from "../utils/cli";
 
 interface KnownDevice {
   name: string;
@@ -137,6 +137,6 @@ let debugSession: ChildProcess | null = null;
 
 /** Only one debug bridge runs at a time; a new debug deploy replaces the previous one. */
 export function replaceDebugSession(proc: ChildProcess): void {
-  if (debugSession && !debugSession.killed) debugSession.kill();
+  if (debugSession) killTree(debugSession);
   debugSession = proc;
 }
