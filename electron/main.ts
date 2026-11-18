@@ -1,103 +1,38 @@
-import { app, BrowserWindow, ipcMain, session, shell } from "electron";
+import { app, BrowserWindow, session, shell } from "electron";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { autoUpdater } from "electron-updater";
 import { registerIpcHandlers } from "./ipc/handlers";
-import { registerSdkCheckHandlers } from "./common/sdk-check";
-import { registerUpdaterHandlers } from "./ipc/updater/handlers";
-import { store } from "./store";
-import { WINDOW_CONSTANTS, DEPLOY_CONSTANTS } from "./utils/constants";
-import { logger } from "./utils/logger";
+import { registerTizenCertHandlers } from "./ipc/tizen-certificates";
+import { registerUpdater } from "./ipc/updater";
+import { WINDOW_CONSTANTS } from "./utils/constants";
+import { inheritLoginShellPath } from "./utils/cli";
 import "./utils/process-manager";
-import { registerTizenCertHandlers } from "./ipc/tizen/certificates";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-process.env.DIST = path.join(__dirname, "../dist");
-process.env.VITE_PUBLIC = app.isPackaged
-  ? process.env.DIST
-  : path.join(process.env.DIST, "../public");
-
-let win: BrowserWindow | null = null;
+const DIST = path.join(__dirname, "../dist");
+const PUBLIC_DIR = app.isPackaged ? DIST : path.join(DIST, "../public");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const OPEN_DEVTOOLS = process.env["ELECTRON_OPEN_DEVTOOLS"] === "1";
 
-function setupIpcHandlers() {
-  // Register IPC handlers
-  registerIpcHandlers();
-  registerSdkCheckHandlers();
-  registerUpdaterHandlers();
-  registerTizenCertHandlers();
-
-  // Register SDK paths handlers
-  ipcMain.handle("save-sdk-paths", async (_event, paths) => {
-    store.setAll(paths);
-    return { success: true };
-  });
-
-  ipcMain.handle("get-sdk-paths", async () => {
-    return store.getAll();
-  });
-
-  // Open external URL in system browser
-  ipcMain.handle("open-external", async (_event, url: string) => {
-    await shell.openExternal(url);
-    return { success: true };
-  });
-
-  ipcMain.handle("show-in-folder", async (_event, target: string) => {
-    shell.showItemInFolder(target);
-    return { success: true };
-  });
-}
-
-function setupAutoUpdater() {
-  // Configure auto-updater
-  autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
-
-  // Auto-updater event handlers
-  autoUpdater.on("update-available", (info) => {
-    if (win && !win.isDestroyed()) {
-      win.webContents.send("update-available", info);
-    }
-  });
-
-  autoUpdater.on("update-downloaded", (info) => {
-    if (win && !win.isDestroyed()) {
-      win.webContents.send("update-downloaded", info);
-    }
-  });
-
-  autoUpdater.on("error", (err) => {
-    logger.error("Auto-updater error", err);
-    if (win && !win.isDestroyed()) {
-      win.webContents.send("update-error", err.message);
-    }
-  });
-}
+let win: BrowserWindow | null = null;
 
 function setupCsp() {
-  // Configure Content Security Policy on the default session
+  const isDev = !!VITE_DEV_SERVER_URL;
+  // Vite HMR needs inline/eval scripts and a websocket in development.
+  const scriptSrc = isDev ? "'self' 'unsafe-inline' 'unsafe-eval'" : "'self'";
+  const connectSrc = isDev
+    ? "'self' https://github.com ws://localhost:*"
+    : "'self' https://github.com";
+
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    // In development mode, we need to allow inline scripts for Vite HMR
-    const isDevMode = !!VITE_DEV_SERVER_URL;
-
-    const scriptSrc = isDevMode
-      ? "'self' 'unsafe-inline' 'unsafe-eval'" // Vite needs these for HMR
-      : "'self'"; // Strict for production
-
-    const connectSrc = isDevMode
-      ? "'self' https://github.com ws://localhost:*" // Allow websocket for HMR
-      : "'self' https://github.com"; // Only GitHub for auto-updater in production
-
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         "Content-Security-Policy": [
           `default-src 'self';` +
             `script-src ${scriptSrc};` +
-            `style-src 'self' 'unsafe-inline';` + // unsafe-inline needed for React inline styles
+            `style-src 'self' 'unsafe-inline';` +
             `img-src 'self' data:;` +
             `font-src 'self';` +
             `connect-src ${connectSrc};` +
@@ -117,9 +52,7 @@ function createWindow() {
     minWidth: WINDOW_CONSTANTS.MIN_WIDTH,
     minHeight: WINDOW_CONSTANTS.MIN_HEIGHT,
     title: "CTV Bridge",
-    icon: process.env.VITE_PUBLIC
-      ? path.join(process.env.VITE_PUBLIC, "logo.png")
-      : undefined,
+    icon: path.join(PUBLIC_DIR, "logo.png"),
     webPreferences: {
       preload: path.join(__dirname, "../dist-electron/preload.mjs"),
       nodeIntegration: false,
@@ -127,67 +60,45 @@ function createWindow() {
     },
   });
 
-  // Test active push message to Renderer-process.
-  win.webContents.on("did-finish-load", () => {
-    if (win && !win.isDestroyed()) {
-      win.webContents.send("main-process-message", new Date().toLocaleString());
-    }
-  });
-
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
-    if (OPEN_DEVTOOLS) {
-      win.webContents.openDevTools();
-    }
+    if (OPEN_DEVTOOLS) win.webContents.openDevTools();
   } else {
-    win.loadFile(path.join(process.env.DIST!, "index.html"));
+    win.loadFile(path.join(DIST, "index.html"));
   }
 
-  // Make all outside links open in the default browser
+  // Open external links in the default browser instead of inside the app.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("https:") || url.startsWith("http:")) {
-      shell.openExternal(url);
-    }
+    if (/^https?:/.test(url)) shell.openExternal(url);
     return { action: "deny" };
   });
-
-  // Also handle navigation attempts (standard <a> tags)
   win.webContents.on("will-navigate", (event, url) => {
     if (url !== win?.webContents.getURL()) {
       event.preventDefault();
-      shell.openExternal(url);
+      if (/^https?:/.test(url)) shell.openExternal(url);
     }
   });
 }
 
-// Quit when all windows are closed, except on macOS
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  if (process.platform !== "darwin") app.quit();
   win = null;
 });
 
 app.on("activate", () => {
-  // On macOS it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
 app.whenReady().then(() => {
-  setupIpcHandlers();
-  setupAutoUpdater();
+  if (app.isPackaged) inheritLoginShellPath();
+  // Passphrases used to be duplicated here behind the macOS Keychain; the webOS
+  // CLI already stores them, so drop the obsolete copy.
+  fs.rmSync(path.join(app.getPath("userData"), "secure-credentials.json"), {
+    force: true,
+  });
+  registerIpcHandlers();
+  registerTizenCertHandlers();
+  registerUpdater(!VITE_DEV_SERVER_URL);
   setupCsp();
   createWindow();
-
-  // Check for updates after app is ready (with delay to not slow down startup)
-  if (!VITE_DEV_SERVER_URL) {
-    setTimeout(() => {
-      autoUpdater.checkForUpdates().catch((err) => {
-        logger.error("Failed to check for updates", err);
-      });
-    }, DEPLOY_CONSTANTS.UPDATE_CHECK_DELAY_MS);
-  }
 });

@@ -1,0 +1,142 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import type { ChildProcess } from "node:child_process";
+import type { Device, Platform, SdkPaths, ToolCheck } from "../../shared/ipc";
+import { store } from "../store";
+import { runCli, cliOutput, killTree } from "../utils/cli";
+
+interface KnownDevice {
+  name: string;
+  duid?: string;
+}
+
+type KnownDevices = Record<string, KnownDevice>;
+
+const knownDevicesKey = (platform: Platform) => `known-devices:${platform}`;
+
+/**
+ * sdb/adb only report what is attached right now, so TVs the user added are
+ * remembered here (keyed by IP) and survive SDK server restarts and reboots.
+ */
+export const knownDevices = {
+  get(platform: Platform): KnownDevices {
+    return store.getExtra<KnownDevices>(knownDevicesKey(platform)) ?? {};
+  },
+  remember(platform: Platform, ip: string, entry: Partial<KnownDevice>) {
+    const all = this.get(platform);
+    all[ip] = { name: ip, ...all[ip], ...stripEmpty(entry) };
+    store.setExtra(knownDevicesKey(platform), all);
+  },
+  forget(platform: Platform, ip: string) {
+    const all = this.get(platform);
+    delete all[ip];
+    store.setExtra(knownDevicesKey(platform), all);
+  },
+};
+
+function stripEmpty<T extends object>(entry: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(entry).filter(([, value]) => value)
+  ) as Partial<T>;
+}
+
+/** Remembered devices plus anything currently attached, flagged by connection state. */
+export function mergeWithKnownDevices(
+  platform: Platform,
+  connectedIps: string[]
+): Device[] {
+  const known = knownDevices.get(platform);
+  const connected = new Set(connectedIps);
+  const ips = new Set([...connectedIps, ...Object.keys(known)]);
+  return [...ips].map((ip) => ({
+    ip,
+    name: known[ip]?.name || ip,
+    duid: known[ip]?.duid,
+    connected: connected.has(ip),
+  }));
+}
+
+/** Parses `sdb devices` / `adb devices` output into attached serials. */
+export function parseAttachedSerials(stdout: string): string[] {
+  return stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim().split(/\s+/))
+    .filter(([serial, state]) => serial && state === "device")
+    .map(([serial]) => serial);
+}
+
+export async function findNewestFile(
+  dir: string,
+  extension: string
+): Promise<string | null> {
+  const entries = await fs.readdir(dir);
+  let newest: { file: string; mtime: number } | null = null;
+  for (const file of entries.filter((f) => f.endsWith(extension))) {
+    const { mtimeMs } = await fs.stat(path.join(dir, file));
+    if (!newest || mtimeMs > newest.mtime) newest = { file, mtime: mtimeMs };
+  }
+  return newest ? path.join(dir, newest.file) : null;
+}
+
+/** Uses the package from the last build, falling back to the newest one in the project. */
+export async function resolvePackage(
+  projectPath: string,
+  packagePath: string | undefined,
+  extension: string
+): Promise<string> {
+  if (packagePath) {
+    try {
+      await fs.access(packagePath);
+      return packagePath;
+    } catch {
+      // Package was moved or deleted; fall back to scanning the project.
+    }
+  }
+  const newest = await findNewestFile(projectPath, extension).catch(() => {
+    throw new Error(`Project folder not found: ${projectPath}`);
+  });
+  if (!newest) {
+    throw new Error(
+      `No ${extension} package found in ${projectPath}. Build the package first.`
+    );
+  }
+  return newest;
+}
+
+export async function checkTool(
+  key: keyof SdkPaths,
+  tool: string,
+  command: string,
+  args: string[]
+): Promise<ToolCheck> {
+  try {
+    const { stdout, stderr } = await runCli(command, args, { timeout: 15000 });
+    const firstLine = (stdout || stderr).trim().split(/\r?\n/)[0] ?? "";
+    return { key, tool, ok: true, detail: firstLine || "Available" };
+  } catch (error) {
+    const output = cliOutput(error);
+    const notFound = /ENOENT|not found|not recognized/i.test(output);
+    return {
+      key,
+      tool,
+      ok: false,
+      detail: notFound
+        ? `${command} was not found. Set its full path or add it to your PATH.`
+        : output.trim().split(/\r?\n/)[0],
+    };
+  }
+}
+
+export function unreachableMessage(): string {
+  return process.platform === "darwin"
+    ? "TV unreachable. Check it is on and on the same network. If it answers ping, allow CTV Bridge under System Settings → Privacy & Security → Local Network, then restart the app."
+    : "TV unreachable. Check it is on, on the same network, and that the IP is correct.";
+}
+
+let debugSession: ChildProcess | null = null;
+
+/** Only one debug bridge runs at a time; a new debug deploy replaces the previous one. */
+export function replaceDebugSession(proc: ChildProcess): void {
+  if (debugSession) killTree(debugSession);
+  debugSession = proc;
+}

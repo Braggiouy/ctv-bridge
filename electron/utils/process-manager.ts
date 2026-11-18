@@ -1,6 +1,20 @@
-import { ChildProcess } from "child_process";
+import { execFile, type ChildProcess } from "node:child_process";
 import { app } from "electron";
 import { logger } from "./logger";
+
+/** Kills a spawned process together with anything it started (see spawnCli). */
+export function killTree(proc: ChildProcess): void {
+  if (proc.exitCode !== null || proc.signalCode !== null || !proc.pid) return;
+  try {
+    if (process.platform === "win32") {
+      execFile("taskkill", ["/pid", String(proc.pid), "/T", "/F"]);
+    } else {
+      process.kill(-proc.pid, "SIGTERM");
+    }
+  } catch {
+    // Already gone.
+  }
+}
 
 /**
  * Central registry for spawned child processes.
@@ -48,17 +62,7 @@ class ProcessManager {
 
     logger.info(`Killing ${this.processes.size} child process(es) on shutdown`);
 
-    this.processes.forEach((proc) => {
-      try {
-        if (!proc.killed) {
-          proc.kill();
-        }
-      } catch (err) {
-        // Process may have already exited between our check and kill
-        logger.debug("Failed to kill process (may have already exited)", err);
-      }
-    });
-
+    this.processes.forEach(killTree);
     this.processes.clear();
   }
 }

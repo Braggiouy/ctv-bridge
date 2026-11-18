@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
@@ -28,56 +27,41 @@ export function UpdateButton() {
   );
 
   useEffect(() => {
-    // Get current version
-    if (window.electron?.getAppVersion) {
-      window.electron.getAppVersion().then((version) => {
-        setCurrentVersion(version);
-      });
-    }
+    const { updater } = window.electron;
+    updater.getVersion().then(setCurrentVersion);
 
-    // Listen for update events
-    if (window.electron?.onUpdateAvailable) {
-      const unsubAvailable = window.electron.onUpdateAvailable((info) => {
-        setUpdateInfo(info);
-        setUpdateAvailable(true);
-        setChecking(false);
-      });
-
-      const unsubError = window.electron.onUpdateError((error: unknown) => {
-        const err = error as Error;
-        toast.error(`Update check failed: ${err.message || err}`);
-        setChecking(false);
-      });
-
-      return () => {
-        unsubAvailable();
-        unsubError();
-      };
-    }
+    const unsubscribeAvailable = updater.onAvailable((info) => {
+      setUpdateInfo(info);
+      setUpdateAvailable(true);
+      setChecking(false);
+    });
+    const unsubscribeError = updater.onError((message) => {
+      toast.error(`Update check failed: ${message}`);
+      setChecking(false);
+    });
+    return () => {
+      unsubscribeAvailable();
+      unsubscribeError();
+    };
   }, []);
 
   const handleCheckForUpdates = async () => {
-    if (!window.electron?.checkForUpdates) {
-      toast.error("Updates not available in development mode");
-      return;
-    }
-
     setChecking(true);
-    const result = await window.electron.checkForUpdates();
+    const result = await window.electron.updater.check();
     setChecking(false);
 
-    if (result && result.version === currentVersion) {
-      toast.success("You're already on the latest version.");
+    if (result?.version === currentVersion) {
+      toast.success("You're on the latest version.");
     }
   };
 
   const handleDownloadUpdate = async () => {
     const toastId = toast.loading(`Downloading v${updateInfo?.version}...`);
-    const result = await window.electron.downloadUpdate();
+    const result = await window.electron.updater.download();
     toast.dismiss(toastId);
 
     if (!result.success) {
-      toast.error(`Update failed: ${result.error}`);
+      toast.error(`Update failed: ${result.message}`);
       return;
     }
     if (result.installerOpened) {
@@ -86,7 +70,7 @@ export function UpdateButton() {
       );
       return;
     }
-    window.electron.installUpdate();
+    window.electron.updater.install();
   };
 
   const getButtonContent = () => {
@@ -98,38 +82,36 @@ export function UpdateButton() {
 
   return (
     <>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleCheckForUpdates}
-                disabled={checking}
-                className="h-9 w-9 relative transition-all hover:bg-accent"
-              >
-                {getButtonContent()}
-              </Button>
-              {/* Update available indicator */}
-              {updateAvailable && !checking && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                </span>
-              )}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <div className="text-center">
-              <p className="font-medium">
-                {checking ? "Checking for updates..." : "Check for Updates"}
-              </p>
-              <p className="text-xs text-muted-foreground">v{currentVersion}</p>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleCheckForUpdates}
+              disabled={checking}
+              className="h-9 w-9 relative transition-all hover:bg-accent"
+            >
+              {getButtonContent()}
+            </Button>
+            {/* Update available indicator */}
+            {updateAvailable && !checking && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+              </span>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <div className="text-center">
+            <p className="font-medium">
+              {checking ? "Checking for updates..." : "Check for Updates"}
+            </p>
+            <p className="text-xs text-muted-foreground">v{currentVersion}</p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
 
       <AlertDialog open={updateAvailable} onOpenChange={setUpdateAvailable}>
         <AlertDialogContent className="sm:max-w-md">

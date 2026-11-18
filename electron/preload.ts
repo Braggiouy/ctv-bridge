@@ -1,146 +1,58 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { ElectronApi } from "../shared/ipc";
 
-// Expose protected methods that allow the renderer process to use
-// the ipcRenderer without exposing the entire object
-contextBridge.exposeInMainWorld("electron", {
-  // Device management (webOS)
-  listDevices: () => ipcRenderer.invoke("list-devices"),
-  addDevice: (device: {
-    name: string;
-    ip: string;
-    port: string;
-    username: string;
-  }) => ipcRenderer.invoke("add-device", device),
-  updateDevice: (device: {
-    name: string;
-    ip: string;
-    port: string;
-    username: string;
-  }) => ipcRenderer.invoke("update-device", device),
-  removeDevice: (name: string) => ipcRenderer.invoke("remove-device", name),
+const invoke =
+  (channel: string) =>
+  (...args: unknown[]) =>
+    ipcRenderer.invoke(channel, ...args);
 
-  // Device management (Tizen)
-  listTizenDevices: () => ipcRenderer.invoke("list-tizen-devices"),
-  addTizenDevice: (ip: string) => ipcRenderer.invoke("add-tizen-device", ip),
-  removeTizenDevice: (ip: string) =>
-    ipcRenderer.invoke("remove-tizen-device", ip),
-
-  // Device management (Android)
-  listAndroidDevices: () => ipcRenderer.invoke("list-android-devices"),
-  addAndroidDevice: (ip: string) =>
-    ipcRenderer.invoke("add-android-device", ip),
-  removeAndroidDevice: (ip: string) =>
-    ipcRenderer.invoke("remove-android-device", ip),
-  // File operations
-  selectDirectory: () => ipcRenderer.invoke("select-directory"),
-
-  // SDK check
-  checkTizenSdk: () => ipcRenderer.invoke("check-tizen-sdk"),
-  checkWebOsSdk: () => ipcRenderer.invoke("check-webos-sdk"),
-
-  // SDK operations
-  testConnection: (platform: string, identifier: string, passphrase?: string) =>
-    ipcRenderer.invoke("test-connection", platform, identifier, passphrase),
-
-  buildPackage: (platform: string, projectPath: string, profileName?: string) =>
-    ipcRenderer.invoke("build-package", platform, projectPath, profileName),
-
-  listTizenProfiles: () => ipcRenderer.invoke("list-tizen-profiles"),
-  deleteTizenProfile: (name: string) =>
-    ipcRenderer.invoke("delete-tizen-profile", name),
-
-  deployApp: (
-    platform: string,
-    tvIp: string,
-    projectPath: string,
-    mode: "debug" | "run"
-  ) => ipcRenderer.invoke("deploy-app", platform, tvIp, projectPath, mode),
-
-  // Log streaming
-  onDeployLog: (callback: (log: string) => void) => {
-    const subscription = (_event: unknown, log: string) => callback(log);
-    ipcRenderer.on("deploy-log", subscription);
+const subscribe =
+  <T>(channel: string) =>
+  (callback: (payload: T) => void) => {
+    const listener = (_event: unknown, payload: T) => callback(payload);
+    ipcRenderer.on(channel, listener);
     return () => {
-      ipcRenderer.removeListener("deploy-log", subscription);
+      ipcRenderer.removeListener(channel, listener);
     };
+  };
+
+const api: ElectronApi = {
+  devices: {
+    list: invoke("devices:list"),
+    add: invoke("devices:add"),
+    update: invoke("devices:update"),
+    remove: invoke("devices:remove"),
+    test: invoke("devices:test"),
   },
-
-  // Auto-updater
-  checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
-  downloadUpdate: () => ipcRenderer.invoke("download-update"),
-  installUpdate: () => ipcRenderer.invoke("install-update"),
-  getAppVersion: () => ipcRenderer.invoke("get-app-version"),
-  onUpdateAvailable: (callback: (info: { version: string }) => void) => {
-    const subscription = (_event: unknown, info: { version: string }) =>
-      callback(info);
-    ipcRenderer.on("update-available", subscription);
-    return () => {
-      ipcRenderer.removeListener("update-available", subscription);
-    };
+  sdk: {
+    getPaths: invoke("sdk:get-paths"),
+    savePaths: invoke("sdk:save-paths"),
+    verify: invoke("sdk:verify"),
   },
-  onUpdateDownloaded: (callback: (info: { version: string }) => void) => {
-    const subscription = (_event: unknown, info: { version: string }) =>
-      callback(info);
-    ipcRenderer.on("update-downloaded", subscription);
-    return () => {
-      ipcRenderer.removeListener("update-downloaded", subscription);
-    };
+  build: invoke("package:build"),
+  deploy: invoke("package:deploy"),
+  onDeployLog: subscribe("deploy-log"),
+  tizen: {
+    listProfiles: invoke("tizen:list-profiles"),
+    deleteProfile: invoke("tizen:delete-profile"),
+    login: invoke("tizen-cert:login"),
+    cancelLogin: invoke("tizen-cert:cancel-login"),
+    logout: invoke("tizen-cert:logout"),
+    generateCertificates: invoke("tizen-cert:generate"),
+    onCertificateLog: subscribe("tizen-cert:log"),
   },
-  onUpdateError: (callback: (error: string) => void) => {
-    const subscription = (_event: unknown, error: string) => callback(error);
-    ipcRenderer.on("update-error", subscription);
-    return () => {
-      ipcRenderer.removeListener("update-error", subscription);
-    };
+  updater: {
+    check: invoke("updater:check"),
+    download: invoke("updater:download"),
+    install: invoke("updater:install"),
+    getVersion: invoke("updater:get-version"),
+    onAvailable: subscribe("update-available"),
+    onError: subscribe("update-error"),
   },
+  selectDirectory: invoke("dialog:select-directory"),
+  selectFile: invoke("dialog:select-file"),
+  openExternal: invoke("shell:open-external"),
+  showInFolder: invoke("shell:show-in-folder"),
+};
 
-  // Secure storage
-  savePassphrase: (deviceName: string, passphrase: string) =>
-    ipcRenderer.invoke("save-passphrase", deviceName, passphrase),
-  getPassphrase: (deviceName: string) =>
-    ipcRenderer.invoke("get-passphrase", deviceName),
-  deletePassphrase: (deviceName: string) =>
-    ipcRenderer.invoke("delete-passphrase", deviceName),
-  getAllDeviceNames: () => ipcRenderer.invoke("get-all-device-names"),
-  isSecureStorageAvailable: () =>
-    ipcRenderer.invoke("is-secure-storage-available"),
-
-  // Generic invoke method
-  invoke: <T = unknown>(channel: string, ...args: unknown[]): Promise<T> =>
-    ipcRenderer.invoke(channel, ...args),
-
-  // External link handling
-  openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
-
-  showInFolder: (target: string) =>
-    ipcRenderer.invoke("show-in-folder", target),
-
-  // SDK paths management
-  saveSdkPaths: (paths: {
-    sdbPath?: string;
-    tizenPath?: string;
-    aresPath?: string;
-  }) => ipcRenderer.invoke("save-sdk-paths", paths),
-  getSdkPaths: () => ipcRenderer.invoke("get-sdk-paths"),
-
-  // Tizen certificate generation
-  loginTizenCertificateSession: () => ipcRenderer.invoke("tizen-cert-login"),
-  cancelTizenCertificateLogin: () =>
-    ipcRenderer.invoke("tizen-cert-cancel-login"),
-  logoutTizenCertificateSession: () => ipcRenderer.invoke("tizen-cert-logout"),
-  generateTizenCertificates: (params: {
-    email: string;
-    deviceIds?: string[];
-    password?: string;
-    privilegeLevel?: "Public" | "Partner" | "Platform";
-    developerType?: "Individual" | "Corporation";
-    profileName?: string;
-  }) => ipcRenderer.invoke("tizen-generate-certificates", params),
-  onTizenCertLog: (callback: (log: string) => void) => {
-    const subscription = (_event: unknown, log: string) => callback(log);
-    ipcRenderer.on("tizen-cert-log", subscription);
-    return () => {
-      ipcRenderer.removeListener("tizen-cert-log", subscription);
-    };
-  },
-});
+contextBridge.exposeInMainWorld("electron", api);

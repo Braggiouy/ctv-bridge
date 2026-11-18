@@ -110,13 +110,13 @@ Build, install, and launch your app in seconds. Toggle **Debug Mode** to automat
 
 1. **Download** the latest release from the [GitHub releases page](https://github.com/Braggiouy/ctv-bridge/releases/latest).
 2. **Install** the app for your OS (macOS `.dmg`/`.zip`, Windows `.exe`, Linux `.AppImage`/`.deb`).
-3. **Run CTV Bridge** and select your platform (Tizen, webOS, or Android).
-4. **Add a device**:
+3. **Run CTV Bridge**, pick your platform at the top, and click **Check tools & continue** (paths are optional if the tools are on your PATH).
+4. **Add a TV**:
    - _Tizen_: Enter the TV's IP address (Developer Mode must be enabled).
    - _webOS_: Enter IP, port `9922`, username `prisoner`, and the passphrase you set in the TV's Developer Mode app.
    - _Android_: Enter the TV's IP address (enable wireless debugging/ADB on device).
-5. **Test the connection** – the app will report success or show troubleshooting hints.
-6. **Build & Deploy** – choose your project folder, click **Build Package**, then **Deploy to TV**. Enable **Debug Mode** to launch with the inspector.
+5. **Use this TV** – the app connects, then moves on; on failure it shows a troubleshooting hint on the TV card.
+6. **Build & Deploy** – choose your project folder, build the package, then pick **Install & run** or **Install & debug** (launches with the inspector).
 
 ---
 
@@ -181,12 +181,11 @@ To use CTV Bridge, you'll need to download and install the respective SDKs:
 **Solution**:
 
 - Verify SDK is installed correctly
-- In CTV Bridge, go to the Installation step and enter the **full path** to each binary:
+- In CTV Bridge, go to the Setup step and enter the **full path** to each binary, then click **Check tools & continue** to see which ones were found:
   - Tizen: Path to `sdb` binary (e.g., `/Users/yourname/tizen-studio/tools/sdb`)
   - Tizen: Path to `tizen` binary (e.g., `/Users/yourname/tizen-studio/tools/ide/bin/tizen`)
   - webOS: Path to `ares` binary (e.g., `/Users/yourname/webOS_TV_SDK/CLI/bin/ares`)
   - Android: Path to `adb` binary (e.g., `/Users/yourname/platform-tools/adb`)
-- Restart CTV Bridge after configuring paths
 - Test paths by running them manually in terminal (e.g., `/path/to/sdb version`)
 
 ### Connection Issues
