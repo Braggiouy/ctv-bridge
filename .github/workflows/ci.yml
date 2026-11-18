@@ -26,3 +26,9 @@ jobs:
 
       - name: Check Formatting
         run: bunx prettier --check .
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun run test

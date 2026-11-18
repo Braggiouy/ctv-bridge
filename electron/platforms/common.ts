@@ -54,15 +54,6 @@ export function mergeWithKnownDevices(
   }));
 }
 
-/** Parses `sdb devices` / `adb devices` output into attached serials. */
-export function parseAttachedSerials(stdout: string): string[] {
-  return stdout
-    .split(/\r?\n/)
-    .map((line) => line.trim().split(/\s+/))
-    .filter(([serial, state]) => serial && state === "device")
-    .map(([serial]) => serial);
-}
-
 export async function findNewestFile(
   dir: string,
   extension: string

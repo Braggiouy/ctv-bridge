@@ -2,7 +2,6 @@ export const TIZEN_CONSTANTS = {
   DEFAULT_PORT: 26101,
   CONFIG_FILE: "config.xml",
   PACKAGE_EXTENSION: ".wgt",
-  APP_ID_PATTERN: /<tizen:application[^>]*id="([^"]+)"/,
 } as const;
 
 export const WEBOS_CONSTANTS = {

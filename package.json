@@ -20,8 +20,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p electron/tsconfig.json",
+    "test": "vitest run",
     "preview": "vite preview",
-    "release": "bun run lint && bun run format:check && bun run typecheck && bunx standard-version"
+    "release": "bun run lint && bun run format:check && bun run typecheck && bun run test && bunx standard-version"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -64,6 +65,7 @@
     "typescript-eslint": "^8.38.0",
     "vite": "^6.4.2",
     "vite-plugin-electron": "^0.29.1",
-    "vite-plugin-electron-renderer": "^0.14.7"
+    "vite-plugin-electron-renderer": "^0.14.7",
+    "vitest": "^3.2.4"
   }
 }

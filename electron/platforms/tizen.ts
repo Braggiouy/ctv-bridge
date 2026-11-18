@@ -14,12 +14,20 @@ import {
   findNewestFile,
   knownDevices,
   mergeWithKnownDevices,
-  parseAttachedSerials,
   replaceDebugSession,
   resolvePackage,
   checkTool,
   unreachableMessage,
 } from "./common";
+import {
+  findDebugPort,
+  findProfilesXmlPath,
+  parseAttachedSerials,
+  parseDuid,
+  parseProfilesTable,
+  parseProfilesXml,
+  parseTizenAppId,
+} from "./parsers";
 import type { LogFn, PlatformAdapter } from "./types";
 
 const sdb = () => store.get("sdbPath") || "sdb";
@@ -72,8 +80,7 @@ async function readDuid(ip: string): Promise<string | undefined> {
       "0",
       "getduid",
     ]);
-    const duid = stdout.trim();
-    return /^[A-Z0-9]{10,}$/i.test(duid) ? duid : undefined;
+    return parseDuid(stdout);
   } catch {
     return undefined;
   }
@@ -86,18 +93,7 @@ async function readAppId(projectPath: string): Promise<string> {
       `${TIZEN_CONSTANTS.CONFIG_FILE} not found in ${projectPath}`
     );
   });
-  const appId = content.match(TIZEN_CONSTANTS.APP_ID_PATTERN)?.[1];
-  if (!appId) {
-    throw new Error(
-      `Could not find <tizen:application id> in ${TIZEN_CONSTANTS.CONFIG_FILE}`
-    );
-  }
-  if (/^https?:\/\//.test(appId)) {
-    throw new Error(
-      `Invalid Tizen app ID "${appId}": <tizen:application id> must be an app ID, not a URL.`
-    );
-  }
-  return appId;
+  return parseTizenAppId(content);
 }
 
 async function install(
@@ -162,9 +158,7 @@ function startDebugSession(
       output += text;
 
       // e.g. "port: 7011", "debug 7011", "ws://127.0.0.1:7011/devtools/…"
-      const port = output.match(
-        /(?:\b(?:port|debug)\b\s*[:=]?\s*|localhost:|127\.0\.0\.1:)(\d{4,5})\b/i
-      )?.[1];
+      const port = findDebugPort(output);
       if (!port) return;
       settled = true;
       clearTimeout(timeout);
@@ -325,45 +319,10 @@ export const tizenAdapter: PlatformAdapter = {
 
 // ── Security profiles ────────────────────────────────────────────────────────
 
-function parseProfilesXml(xml: string): TizenProfile[] {
-  const activeName =
-    xml.match(/<profiles[^>]*\sactive="([^"]*)"/i)?.[1]?.trim() ?? "";
-  return [...xml.matchAll(/<profile\s+name="([^"]+)"/gi)]
-    .map((match) => match[1].trim())
-    .filter(Boolean)
-    .map((name) => ({ name, active: name === activeName }));
-}
-
-function parseProfilesTable(stdout: string): TizenProfile[] {
-  const isNoise = (line: string) =>
-    !line ||
-    line.includes("------") ||
-    /^(security-profiles\s+list|loaded\b|available\s*:?$|\[profile\s+name\]|name\s+active)/i.test(
-      line
-    );
-
-  const lines = stdout.split(/\r?\n/).map((line) => line.trim());
-  const headerIndex = lines.findIndex(
-    (line) => line.includes("Name") && line.includes("Active")
-  );
-  const rows = headerIndex >= 0 ? lines.slice(headerIndex + 1) : lines;
-
-  return rows
-    .filter((line) => !isNoise(line))
-    .map((line) => {
-      // "name   O", or "nameO" when some CLI versions glue the marker to long names
-      const match = line.match(/^(.*\S)\s*([OX])$/i);
-      return match
-        ? { name: match[1].trim(), active: match[2].toUpperCase() === "O" }
-        : { name: line, active: false };
-    })
-    .filter(({ name }) => name && !name.endsWith(":"));
-}
-
 export async function listTizenProfiles(): Promise<TizenProfile[]> {
   const { stdout } = await runCli(tizen(), ["security-profiles", "list"]);
 
-  const xmlPath = stdout.match(/Loaded in '([^']+)'\./i)?.[1];
+  const xmlPath = findProfilesXmlPath(stdout);
   if (xmlPath) {
     try {
       const profiles = parseProfilesXml(await fs.readFile(xmlPath, "utf-8"));

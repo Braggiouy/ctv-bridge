@@ -19,6 +19,7 @@ import {
   checkTool,
   unreachableMessage,
 } from "./common";
+import { findInspectorUrl, isInspectLogLine } from "./parsers";
 import type { LogFn, PlatformAdapter } from "./types";
 
 const GETKEY_TIMEOUT_MS = 30000;
@@ -141,15 +142,6 @@ async function readAppId(projectPath: string): Promise<string> {
   return appId;
 }
 
-const INSPECTOR_URL =
-  /((?:https?|ws):\/\/(?:localhost|127\.0\.0\.1):\d+(?:\/[^\s"'<>]*)?|chrome-devtools:\/\/[^\s"'<>]+)/;
-
-// Noise ares-inspect prints on every run that isn't actionable for the user.
-const isInspectNoise = (line: string) =>
-  /deprecat|^ares-inspect\s+warn\b|session#forward\(\) failed forwarding client localPort:\s*0/i.test(
-    line
-  );
-
 /** Runs ares-inspect until it prints an inspector URL. The process stays alive to keep the tunnel open. */
 function runInspector(
   args: string[],
@@ -173,11 +165,9 @@ function runInspector(
       const text = data.toString();
       output += text;
       for (const line of text.split(/\r?\n/).map((l) => l.trim())) {
-        if (line && !isInspectNoise(line) && !INSPECTOR_URL.test(line)) {
-          log(line);
-        }
+        if (isInspectLogLine(line)) log(line);
       }
-      const url = output.match(INSPECTOR_URL)?.[1];
+      const url = findInspectorUrl(output);
       if (url) finish(url);
     };
     proc.stdout?.on("data", onOutput);
@@ -187,7 +177,7 @@ function runInspector(
       log(`Inspector error: ${error.message}`);
       finish(null);
     });
-    proc.on("close", () => finish(output.match(INSPECTOR_URL)?.[1] ?? null));
+    proc.on("close", () => finish(findInspectorUrl(output) ?? null));
     const timeout = setTimeout(() => finish(null), timeoutMs);
   });
 }
