@@ -74,6 +74,14 @@ export interface TizenCertificateParams {
 type Unsubscribe = () => void;
 
 /** The `window.electron` bridge exposed by the preload script. */
+/**
+ * `manual` means the app couldn't update itself: the macOS installer or the
+ * release page was opened instead.
+ */
+export interface UpdateDownloadResult extends Result {
+  manual?: "installer" | "release-page";
+}
+
 export interface ElectronApi {
   devices: {
     list(platform: Platform): Promise<DeviceListResult>;
@@ -111,12 +119,14 @@ export interface ElectronApi {
     onCertificateLog(callback: (line: string) => void): Unsubscribe;
   };
   updater: {
-    check(): Promise<{ version: string } | null>;
-    download(): Promise<Result & { installerOpened?: boolean }>;
+    /** `version` is set when a newer release exists. */
+    check(): Promise<Result & { version?: string }>;
+    download(): Promise<UpdateDownloadResult>;
     install(): Promise<void>;
     getVersion(): Promise<string>;
     onAvailable(callback: (info: { version: string }) => void): Unsubscribe;
-    onError(callback: (message: string) => void): Unsubscribe;
+    onProgress(callback: (percent: number) => void): Unsubscribe;
+    onReady(callback: (info: { version: string }) => void): Unsubscribe;
   };
   selectDirectory(): Promise<string | null>;
   selectFile(extensions?: string[]): Promise<string | null>;

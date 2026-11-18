@@ -235,7 +235,7 @@ A: No! CTV Bridge is completely free and open-source. However, you may need Sams
 A: CTV Bridge is designed for development and testing. For production deployment, use the official Samsung Seller Office or LG Seller Lounge.
 
 **Q: How do I update CTV Bridge?**  
-A: CTV Bridge checks for updates on startup (or use the download button in the header). Click **Update Now**: on Windows and Linux the app restarts with the new version; on macOS the installer opens.
+A: CTV Bridge checks for updates on startup and every few hours, and shows a notice when a new version is out (you can also check from the download button in the header). On Windows and Linux (AppImage) the update downloads in the background; click **Restart**, or it installs the next time you quit. On macOS, click **Update** and then **Restart**; if the app can't replace itself (for example when it runs from the DMG), the installer opens instead.
 
 **Q: Is my data safe?**  
 A: Yes. CTV Bridge stores everything locally on your machine and sends nothing to external servers. webOS passphrases and SSH keys are kept by the webOS CLI itself, as they would be if you used it from a terminal.

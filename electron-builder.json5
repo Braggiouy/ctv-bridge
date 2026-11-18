@@ -22,7 +22,8 @@
   compression: "maximum", // Enable maximum compression
   icon: "build/icon.png", // 1024x1024; converted to .icns/.ico per platform
   mac: {
-    target: ["dmg"], // Only DMG (most common for Mac)
+    // The zip is what the in-app updater downloads; the DMG is for first installs.
+    target: ["dmg", "zip"],
     category: "public.app-category.developer-tools",
     // Ad-hoc sign the whole bundle so it gets a stable com.ctv.bridge identity instead of
     // Electron's linker signature; macOS Local Network privacy keys off this (EHOSTUNREACH otherwise).
