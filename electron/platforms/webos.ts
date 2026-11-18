@@ -120,8 +120,14 @@ async function runAres(tool: string, args: string[]): Promise<void> {
   if (/error/i.test(stderr)) throw Object.assign(new Error(stderr), { stderr });
 }
 
+// ares-device-info is deprecated in CLI 3.x and errors out; older CLIs lack ares-device.
 const readDeviceInfo = (deviceName: string) =>
-  runAres("device-info", ["--device", deviceName]);
+  runAres("device", ["--system-info", "--device", deviceName]).catch(
+    (error: NodeJS.ErrnoException) =>
+      error.code === "ENOENT"
+        ? runAres("device-info", ["--device", deviceName])
+        : Promise.reject(error)
+  );
 
 async function readAppId(projectPath: string): Promise<string> {
   const appInfoPath = path.join(projectPath, WEBOS_CONSTANTS.CONFIG_FILE);
