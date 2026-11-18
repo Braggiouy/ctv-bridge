@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.10.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.9.0...v1.10.0) (2026-11-18)
+
+
+### Features
+
+* **ui:** replace the step wizard with a single-screen workspace ([#2](https://github.com/Braggiouy/ctv-bridge/issues/2)) ([07c670a](https://github.com/Braggiouy/ctv-bridge/commit/07c670a))
+* **updater:** background updates on windows/linux, self-replacing update on macos ([#3](https://github.com/Braggiouy/ctv-bridge/issues/3)) ([10e940b](https://github.com/Braggiouy/ctv-bridge/commit/10e940b3890f10ff6f2fddec54161a90ba27215d))
+
+
+### Bug Fixes
+
+* **webos:** check connections with ares-device, as ares-device-info is deprecated ([#2](https://github.com/Braggiouy/ctv-bridge/issues/2))
+* **devices:** ignore device lists that arrive after switching platform ([#2](https://github.com/Braggiouy/ctv-bridge/issues/2))
+
 ## [1.9.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.8.1...v1.9.0) (2026-11-18)
 
 
