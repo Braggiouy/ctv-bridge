@@ -12,8 +12,6 @@ export interface Device {
   /** webOS only: write-only, sent when saving and never returned. */
   passphrase?: string;
   hasPassphrase?: boolean;
-  /** Tizen/Android: currently attached in sdb/adb. */
-  connected?: boolean;
   /** Tizen: unique device ID, read from the TV on a successful connection. */
   duid?: string;
 }

@@ -1,60 +1,37 @@
-import { useEffect, useState, type ReactNode } from "react";
-import {
-  CheckCircle2,
-  ChevronDown,
-  ExternalLink,
-  Loader2,
-  XCircle,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, ExternalLink, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { PathInput } from "@/components/shared/PathInput";
-import { StepCard } from "@/components/shared/StepCard";
 import { PLATFORMS, isWindows } from "@/lib/platforms";
 import type { Platform, SdkPaths, ToolCheck } from "@/types";
-import { addLog, cn, notify } from "@/utils";
+import { addLog, cn } from "@/utils";
 
-interface InstallationStepProps {
+interface SetupFormProps {
   platform: Platform;
-  sdkReady: boolean;
   onVerified: (ready: boolean) => void;
-  onNext: () => void;
 }
 
-const Section = ({
-  title,
-  defaultOpen,
-  children,
-}: {
-  title: string;
-  defaultOpen: boolean;
-  children: ReactNode;
-}) => {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="rounded-lg border">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium"
-        aria-expanded={open}
-      >
-        {title}
-        <ChevronDown
-          className={cn("h-4 w-4 transition-transform", open && "rotate-180")}
-        />
-      </button>
-      {open && <div className="border-t px-4 py-3 text-sm">{children}</div>}
-    </div>
-  );
-};
+const Steps = ({ title, steps }: { title: string; steps: string[] }) => (
+  <div className="space-y-1">
+    <h3 className="text-sm font-medium">{title}</h3>
+    <ol className="list-inside list-decimal space-y-0.5 text-sm text-muted-foreground">
+      {steps.map((step) => (
+        <li key={step}>{step}</li>
+      ))}
+    </ol>
+  </div>
+);
 
-export const InstallationStep = ({
-  platform,
-  sdkReady,
-  onVerified,
-  onNext,
-}: InstallationStepProps) => {
+/** SDK install guide plus the tool paths, verified with one click. */
+export const SetupForm = ({ platform, onVerified }: SetupFormProps) => {
   const info = PLATFORMS[platform];
   const [paths, setPaths] = useState<SdkPaths>({});
   const [checks, setChecks] = useState<ToolCheck[]>([]);
@@ -65,43 +42,29 @@ export const InstallationStep = ({
     setChecks([]);
   }, [platform]);
 
-  const verifyAndContinue = async () => {
+  const verify = async () => {
     setVerifying(true);
     await window.electron.sdk.savePaths(paths);
     const result = await window.electron.sdk.verify(platform);
     setVerifying(false);
     setChecks(result.tools ?? []);
     onVerified(result.success);
-
     if (result.success) {
       addLog(
         "step",
         `${info.name} tools found: ${result.tools.map((t) => `${t.tool} ${t.detail}`).join(", ")}`
       );
-      onNext();
     } else {
-      notify.error("Some tools could not be found", result.message);
+      addLog("error", `Some ${info.name} tools are missing: ${result.message}`);
     }
   };
 
   return (
-    <StepCard
-      title={`Set up ${info.name}`}
-      description="Install the vendor SDK once, enable Developer Mode on the TV, then let CTV Bridge find the tools."
-      actions={
-        <Button onClick={verifyAndContinue} disabled={verifying}>
-          {verifying && <Loader2 className="h-4 w-4 animate-spin" />}
-          {verifying ? "Checking tools…" : "Check tools & continue"}
-        </Button>
-      }
-    >
-      <Section title="1. Install the SDK" defaultOpen={!sdkReady}>
-        <ol className="list-inside list-decimal space-y-1 text-muted-foreground">
-          {info.sdkSteps.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
-        <div className="mt-3 flex flex-wrap gap-2">
+    <div className="grid gap-5 md:grid-cols-2">
+      <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+        <Steps title="Install the SDK" steps={info.sdkSteps} />
+        <Steps title="Enable Developer Mode on the TV" steps={info.tvSteps} />
+        <div className="flex flex-wrap gap-2">
           {info.links.map((link) => (
             <Button key={link.url} variant="outline" size="sm" asChild>
               <a href={link.url} target="_blank" rel="noopener noreferrer">
@@ -111,26 +74,12 @@ export const InstallationStep = ({
             </Button>
           ))}
         </div>
-      </Section>
+      </div>
 
-      <Section
-        title="2. Enable Developer Mode on the TV"
-        defaultOpen={!sdkReady}
-      >
-        <ol className="list-inside list-decimal space-y-1 text-muted-foreground">
-          {info.tvSteps.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
-      </Section>
-
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-sm font-medium">3. Tool locations</h3>
-          <p className="text-xs text-muted-foreground">
-            Leave empty if the tools are already on your PATH.
-          </p>
-        </div>
+      <div className="flex flex-col gap-4">
+        <p className="text-xs text-muted-foreground">
+          Tool locations: leave empty if the tools are already on your PATH.
+        </p>
         {info.tools.map((tool) => {
           const check = checks.find((c) => c.key === tool.key);
           return (
@@ -168,7 +117,41 @@ export const InstallationStep = ({
             </div>
           );
         })}
+        <div className="mt-auto flex justify-end">
+          <Button onClick={verify} disabled={verifying}>
+            {verifying && <Loader2 className="h-4 w-4 animate-spin" />}
+            {verifying ? "Checking tools…" : "Check tools"}
+          </Button>
+        </div>
       </div>
-    </StepCard>
+    </div>
   );
 };
+
+export const SetupDialog = ({
+  open,
+  onOpenChange,
+  onVerified,
+  ...props
+}: SetupFormProps & {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="max-w-3xl">
+      <DialogHeader>
+        <DialogTitle>{PLATFORMS[props.platform].name} setup</DialogTitle>
+        <DialogDescription>
+          Where CTV Bridge finds the {PLATFORMS[props.platform].name} tools.
+        </DialogDescription>
+      </DialogHeader>
+      <SetupForm
+        {...props}
+        onVerified={(ready) => {
+          onVerified(ready);
+          if (ready) onOpenChange(false);
+        }}
+      />
+    </DialogContent>
+  </Dialog>
+);

@@ -21,21 +21,6 @@ export const PLATFORM_KEY = "ctv-bridge:platform";
 export const workflowKey = (platform: Platform) =>
   `ctv-bridge:workflow:${platform}`;
 
-export const STEPS = [
-  { id: 1, name: "Setup" },
-  { id: 2, name: "TV" },
-  { id: 3, name: "Build" },
-  { id: 4, name: "Deploy" },
-] as const;
-
-/** The furthest step the user can jump to with what is already configured. */
-export function furthestStep(workflow: Workflow): number {
-  if (!workflow.sdkReady) return 1;
-  if (!workflow.device) return 2;
-  if (!workflow.packagePath) return 3;
-  return 4;
-}
-
 const MAX_RECENT_PROJECTS = 5;
 
 export const addRecentProject = (recent: string[], path: string) =>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, FolderOpen, Loader2, ShieldCheck } from "lucide-react";
+import { CheckCircle2, FolderOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,14 +28,12 @@ function classifyLogLine(line: string): LogType {
 interface TizenCertificatesProps {
   /** DUIDs of TVs CTV Bridge has already connected to. */
   defaultDeviceIds: string[];
-  onClose: () => void;
   onGenerated: (profileName: string) => void;
 }
 
 /** Samsung sign-in, then author + distributor certificates registered as a security profile. */
 export const TizenCertificates = ({
   defaultDeviceIds,
-  onClose,
   onGenerated,
 }: TizenCertificatesProps) => {
   const [signedIn, setSignedIn] = useState(false);
@@ -120,12 +118,7 @@ export const TizenCertificates = ({
   };
 
   return (
-    <div className="space-y-4 rounded-lg border bg-background p-4">
-      <div className="flex items-center gap-2">
-        <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-        <h3 className="font-medium">New Samsung certificate</h3>
-      </div>
-
+    <div className="space-y-4">
       {!signedIn ? (
         <div className="space-y-2 text-sm">
           <p className="text-muted-foreground">
@@ -145,11 +138,6 @@ export const TizenCertificates = ({
                 onClick={() => window.electron.tizen.cancelLogin()}
               >
                 Cancel
-              </Button>
-            )}
-            {!signingIn && (
-              <Button variant="ghost" onClick={onClose}>
-                Close
               </Button>
             )}
           </div>
@@ -249,9 +237,6 @@ export const TizenCertificates = ({
             <Button onClick={generate} disabled={busy || missing.length > 0}>
               {generating && <Loader2 className="h-4 w-4 animate-spin" />}
               {generating ? "Creating…" : "Create certificate"}
-            </Button>
-            <Button variant="ghost" onClick={onClose} disabled={busy}>
-              Close
             </Button>
             {missing.length > 0 && !busy && (
               <span className="text-xs text-muted-foreground">

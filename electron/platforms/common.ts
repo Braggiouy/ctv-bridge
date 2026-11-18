@@ -40,19 +40,17 @@ function stripEmpty<T extends object>(entry: T): Partial<T> {
   ) as Partial<T>;
 }
 
-/** Remembered devices plus anything currently attached, flagged by connection state. */
+/** Remembered devices plus anything currently attached. */
 export function mergeWithKnownDevices(
   platform: Platform,
   connectedIps: string[]
 ): Device[] {
   const known = knownDevices.get(platform);
-  const connected = new Set(connectedIps);
   const ips = new Set([...connectedIps, ...Object.keys(known)]);
   return [...ips].map((ip) => ({
     ip,
     name: known[ip]?.name || ip,
     duid: known[ip]?.duid,
-    connected: connected.has(ip),
   }));
 }
 
