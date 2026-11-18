@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.11.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.10.0...v1.11.0) (2026-11-18)
+
+
+### Features
+
+* **debug:** open DevTools for the app in one click ([6415577](https://github.com/Braggiouy/ctv-bridge/commit/6415577fb99357b7b80f47f9c497226459c155aa))
+
 ## [1.10.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.9.0...v1.10.0) (2026-11-18)
 
 
