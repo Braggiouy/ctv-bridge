@@ -3,11 +3,13 @@ import {
   findDebugPort,
   findInspectorUrl,
   findProfilesXmlPath,
+  findWebViewSocket,
   isInspectLogLine,
   parseAttachedSerials,
   parseBadging,
   parseDuid,
   parseProfilesTable,
+  parsePid,
   parseProfilesXml,
   parseTizenAppId,
 } from "./parsers";
@@ -218,5 +220,44 @@ describe("parseBadging", () => {
     expect(
       parseBadging("package: name='com.example.service' versionCode='1'")
     ).toEqual({ packageName: "com.example.service", activity: undefined });
+  });
+});
+
+describe("Android WebView debugging", () => {
+  // Shape of `cat /proc/net/unix`: the socket path is the last column.
+  const procNetUnix = [
+    "Num       RefCount Protocol Flags    Type St Inode Path",
+    "0000000000000000: 00000002 00000000 00010000 0001 01 21562 @jdwp-control",
+    "0000000000000000: 00000002 00000000 00010000 0001 01 88123 @webview_devtools_remote_4321",
+    "0000000000000000: 00000002 00000000 00010000 0001 01 88124 @chrome_devtools_remote",
+    "0000000000000000: 00000003 00000000 00000000 0001 03 12345 /dev/socket/logdw",
+  ].join("\n");
+
+  it("finds the socket of the app's WebView", () => {
+    expect(findWebViewSocket(procNetUnix, "4321", "com.example.tv")).toBe(
+      "webview_devtools_remote_4321"
+    );
+  });
+
+  it("ignores other processes' WebViews", () => {
+    expect(
+      findWebViewSocket(procNetUnix, "999", "com.example.tv")
+    ).toBeUndefined();
+  });
+
+  it("accepts sockets named after the package", () => {
+    expect(
+      findWebViewSocket(
+        "0: 00000002 0 00010000 0001 01 1 @com.example.tv_devtools_remote",
+        "1",
+        "com.example.tv"
+      )
+    ).toBe("com.example.tv_devtools_remote");
+  });
+
+  it("reads the first PID from pidof", () => {
+    expect(parsePid("4321\n")).toBe("4321");
+    expect(parsePid("4321 4400\n")).toBe("4321");
+    expect(parsePid("")).toBeUndefined();
   });
 });

@@ -7,6 +7,12 @@ import type {
 
 export type LogFn = (message: string) => void;
 
+export interface DeployOutcome {
+  message: string;
+  /** Set after a debug deploy when DevTools can be opened for the app. */
+  inspectorUrl?: string;
+}
+
 /** Each platform implements this; IPC handlers dispatch to it by platform. Errors are thrown. */
 export interface PlatformAdapter {
   listDevices(): Promise<Device[]>;
@@ -20,6 +26,6 @@ export interface PlatformAdapter {
     target: DeployTarget,
     mode: DeployMode,
     log: LogFn
-  ): Promise<string>;
+  ): Promise<DeployOutcome>;
   verifySdk(): Promise<ToolCheck[]>;
 }

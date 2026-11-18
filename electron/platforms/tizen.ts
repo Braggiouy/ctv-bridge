@@ -4,7 +4,14 @@ import path from "node:path";
 import type { Device, TizenProfile } from "../../shared/ipc";
 import { store } from "../store";
 import { logger } from "../utils/logger";
-import { runCli, spawnCli, cliOutput, describeCliError } from "../utils/cli";
+import {
+  runCli,
+  spawnCli,
+  cliOutput,
+  describeCliError,
+  waitForOutput,
+} from "../utils/cli";
+import { getErrorMessage } from "../utils/errors";
 import {
   BUILD_CONSTANTS,
   DEPLOY_CONSTANTS,
@@ -28,7 +35,8 @@ import {
   parseProfilesXml,
   parseTizenAppId,
 } from "./parsers";
-import type { LogFn, PlatformAdapter } from "./types";
+import { attachInspector } from "./inspector";
+import type { DeployOutcome, LogFn, PlatformAdapter } from "./types";
 
 const sdb = () => store.get("sdbPath") || "sdb";
 const tizen = () => store.get("tizenPath") || "tizen";
@@ -126,76 +134,52 @@ async function install(
   }
 }
 
-function startDebugSession(
+/** Launches the app in debug mode and forwards its inspector port. */
+async function startDebugSession(
   serial: string,
   appId: string,
   log: LogFn
-): Promise<string> {
-  return new Promise((resolve) => {
-    const proc = spawnCli(sdb(), ["-s", serial, "shell", "0", "debug", appId]);
-    replaceDebugSession(proc);
+): Promise<DeployOutcome> {
+  const proc = spawnCli(sdb(), ["-s", serial, "shell", "0", "debug", appId]);
+  replaceDebugSession(proc);
 
-    let output = "";
-    let settled = false;
-    const settle = (message: string) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      resolve(message);
+  let port: string | undefined;
+  try {
+    port = await waitForOutput(
+      proc,
+      findDebugPort,
+      DEPLOY_CONSTANTS.DEBUG_PORT_TIMEOUT_MS,
+      log
+    );
+  } catch (error) {
+    log(`Failed to start debug session: ${getErrorMessage(error)}`);
+    return { message: "Deployed, but the debug session failed to start" };
+  }
+  if (!port) {
+    log(
+      `Debug port not detected within ${DEPLOY_CONSTANTS.DEBUG_PORT_TIMEOUT_MS / 1000}s. If a port appears above, run: sdb -s ${serial} forward tcp:<PORT> tcp:<PORT>`
+    );
+    return { message: "Deployed in debug mode (debug port not detected)" };
+  }
+
+  try {
+    await runCli(sdb(), [
+      "-s",
+      serial,
+      "forward",
+      `tcp:${port}`,
+      `tcp:${port}`,
+    ]);
+  } catch (error) {
+    log(
+      `Port forwarding failed (${describeCliError(error)}). Run: sdb -s ${serial} forward tcp:${port} tcp:${port}`
+    );
+    return {
+      message: "Deployed in debug mode (manual port forwarding needed)",
     };
-
-    const showInspectorSteps = (port: string) => {
-      log(`Debug port: ${port}`);
-      log(`1. Open chrome://inspect/#devices in Chrome`);
-      log(`2. Click "Configure…" and add localhost:${port}`);
-      log(`3. Click "inspect" under your app`);
-    };
-
-    const onOutput = async (data: Buffer) => {
-      const text = data.toString();
-      if (text.trim()) log(text.trim());
-      if (settled) return;
-      output += text;
-
-      // e.g. "port: 7011", "debug 7011", "ws://127.0.0.1:7011/devtools/…"
-      const port = findDebugPort(output);
-      if (!port) return;
-      settled = true;
-      clearTimeout(timeout);
-
-      try {
-        await runCli(sdb(), [
-          "-s",
-          serial,
-          "forward",
-          `tcp:${port}`,
-          `tcp:${port}`,
-        ]);
-        showInspectorSteps(port);
-        resolve("Deployed in debug mode");
-      } catch (error) {
-        showInspectorSteps(port);
-        log(
-          `Port forwarding failed (${describeCliError(error)}). Run: sdb -s ${serial} forward tcp:${port} tcp:${port}`
-        );
-        resolve("Deployed in debug mode (manual port forwarding needed)");
-      }
-    };
-
-    proc.stdout?.on("data", onOutput);
-    proc.stderr?.on("data", onOutput);
-    proc.on("error", (error) => {
-      log(`Failed to start debug session: ${error.message}`);
-      settle("Deployed, but the debug session failed to start");
-    });
-
-    const timeout = setTimeout(() => {
-      log(
-        `Debug port not detected within ${DEPLOY_CONSTANTS.DEBUG_PORT_TIMEOUT_MS / 1000}s. If a port appears above, run: sdb -s ${serial} forward tcp:<PORT> tcp:<PORT>`
-      );
-      settle("Deployed in debug mode (debug port not detected)");
-    }, DEPLOY_CONSTANTS.DEBUG_PORT_TIMEOUT_MS);
-  });
+  }
+  // Page URLs contain the package ID (the part before the dot), not the app ID.
+  return attachInspector(Number(port), appId.split(".")[0], log);
 }
 
 export const tizenAdapter: PlatformAdapter = {
@@ -306,7 +290,7 @@ export const tizenAdapter: PlatformAdapter = {
 
     log("Launching application…");
     await runCli(tizen(), ["run", "-p", appId, "-s", serial]);
-    return "Deployed and launched";
+    return { message: "Deployed and launched" };
   },
 
   async verifySdk() {

@@ -7,6 +7,7 @@ import type {
   SdkPaths,
 } from "../../shared/ipc";
 import { store } from "../store";
+import { openInspector } from "../inspector-window";
 import { handle, replyLog } from "./handle";
 import type { PlatformAdapter } from "../platforms/types";
 import {
@@ -85,11 +86,11 @@ export function registerIpcHandlers() {
       mode: DeployMode
     ) => {
       const log = replyLog(event, "deploy-log");
-      return {
-        message: await adapterFor(platform).deploy(device, target, mode, log),
-      };
+      return adapterFor(platform).deploy(device, target, mode, log);
     }
   );
+
+  handle("inspector:open", async (_e, url: string) => openInspector(url));
 
   handle("tizen:list-profiles", async () => ({
     profiles: await listTizenProfiles(),

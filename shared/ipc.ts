@@ -33,6 +33,11 @@ export interface BuildResult extends Result {
   packagePath?: string;
 }
 
+export interface DeployResult extends Result {
+  /** Set after a debug deploy when DevTools can be opened for the app. */
+  inspectorUrl?: string;
+}
+
 export interface DeployTarget {
   projectPath: string;
   /** The package produced by the last build; deploy falls back to the newest one. */
@@ -105,7 +110,9 @@ export interface ElectronApi {
     device: Device,
     target: DeployTarget,
     mode: DeployMode
-  ): Promise<Result>;
+  ): Promise<DeployResult>;
+  /** Opens DevTools for the app in its own window. */
+  openInspector(url: string): Promise<Result>;
   onDeployLog(callback: (line: string) => void): Unsubscribe;
   tizen: {
     listProfiles(): Promise<Result & { profiles?: TizenProfile[] }>;

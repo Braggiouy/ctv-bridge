@@ -117,3 +117,29 @@ export function parseBadging(stdout: string): {
     activity: stdout.match(/launchable-activity:\s+name='([^']+)'/)?.[1],
   };
 }
+
+/**
+ * The DevTools socket of an app's WebView in `/proc/net/unix` (what Chrome's
+ * chrome://inspect reads too). Some apps name it after the package instead.
+ */
+export function findWebViewSocket(
+  procNetUnix: string,
+  pid: string,
+  packageName: string
+): string | undefined {
+  const names = [
+    `webview_devtools_remote_${pid}`,
+    `${packageName}_devtools_remote`,
+  ];
+  const sockets = procNetUnix
+    .split(/\r?\n/)
+    .map((line) => line.trim().split(/\s+/).pop() ?? "")
+    .filter((path) => path.startsWith("@"))
+    .map((path) => path.slice(1));
+  return names.find((name) => sockets.includes(name));
+}
+
+/** The first PID printed by `pidof`. */
+export function parsePid(stdout: string): string | undefined {
+  return stdout.trim().split(/\s+/)[0]?.match(/^\d+$/)?.[0];
+}

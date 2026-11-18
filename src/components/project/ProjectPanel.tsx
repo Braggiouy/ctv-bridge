@@ -28,7 +28,12 @@ interface ProjectPanelProps {
 }
 
 type Busy = "build" | DeployMode | null;
-type Outcome = { success: boolean; message: string; at: Date };
+type Outcome = {
+  success: boolean;
+  message: string;
+  at: Date;
+  inspectorUrl?: string;
+};
 
 const baseName = (path: string) =>
   path.split(/[\\/]/).filter(Boolean).pop() ?? path;
@@ -87,6 +92,13 @@ export const ProjectPanel = ({
     return result.packagePath;
   };
 
+  const openInspector = async (url: string) => {
+    const result = await window.electron.openInspector(url);
+    if (!result.success) {
+      addLog("error", `Couldn't open DevTools: ${result.message}`);
+    }
+  };
+
   const run = async (action: "build" | DeployMode) => {
     setBusy(action);
     setOutcome(null);
@@ -110,9 +122,16 @@ export const ProjectPanel = ({
       );
       const message =
         result.message ?? (result.success ? "Done" : "Deployment failed");
-      setOutcome({ success: result.success, message, at: new Date() });
+      const { inspectorUrl } = result;
+      setOutcome({
+        success: result.success,
+        message,
+        at: new Date(),
+        inspectorUrl,
+      });
       if (result.success) addLog("step", message);
       else addLog("error", `Deployment failed: ${message}`);
+      if (inspectorUrl) await openInspector(inspectorUrl);
     } finally {
       setBusy(null);
     }
@@ -244,8 +263,8 @@ export const ProjectPanel = ({
             disabled={!!busy || !canDeploy}
             title={
               info.projectIsFile
-                ? "Like Run, ready for the Android Studio debugger"
-                : "Like Run, with the web inspector attached"
+                ? "Like Run, then opens DevTools for the app's WebView"
+                : "Like Run, then opens DevTools for the app"
             }
           >
             {busy === "debug" ? (
@@ -291,6 +310,17 @@ export const ProjectPanel = ({
             <span className="flex-1 whitespace-pre-wrap break-words">
               {outcome.message}
             </span>
+            {outcome.inspectorUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="-my-1 h-7 shrink-0"
+                onClick={() => openInspector(outcome.inspectorUrl!)}
+              >
+                <Bug className="h-3.5 w-3.5" />
+                Open DevTools
+              </Button>
+            )}
             <span className="shrink-0 text-xs opacity-70">
               {time(outcome.at)}
             </span>

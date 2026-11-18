@@ -73,6 +73,48 @@ export function spawnCli(command: string, args: string[]): ChildProcess {
   return proc;
 }
 
+/**
+ * Watches a spawned process until `find` extracts a value from its combined
+ * output. Resolves undefined on timeout or exit, and rejects if it can't start.
+ * `onLine` keeps receiving output after that, for as long as the process runs.
+ */
+export function waitForOutput<T>(
+  proc: ChildProcess,
+  find: (output: string) => T | undefined,
+  timeoutMs: number,
+  onLine?: (line: string) => void
+): Promise<T | undefined> {
+  return new Promise((resolve, reject) => {
+    let output = "";
+    let settled = false;
+    const settle = (value: T | undefined, error?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      output = "";
+      if (error) reject(error);
+      else resolve(value);
+    };
+    const onData = (data: Buffer) => {
+      const text = data.toString();
+      text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .forEach((line) => onLine?.(line));
+      if (settled) return;
+      output += text;
+      const value = find(output);
+      if (value !== undefined) settle(value);
+    };
+    proc.stdout?.on("data", onData);
+    proc.stderr?.on("data", onData);
+    proc.once("error", (error) => settle(undefined, error));
+    proc.once("close", () => settle(undefined));
+    const timeout = setTimeout(() => settle(undefined), timeoutMs);
+  });
+}
+
 /** The most useful text of a failed CLI call: SDK tools often report errors on stdout. */
 export function describeCliError(error: unknown): string {
   const { message = "", stdout = "", stderr = "" } = (error ?? {}) as CliError;
