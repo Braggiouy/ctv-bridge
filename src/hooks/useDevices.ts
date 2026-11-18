@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Device, Platform, Result } from "@/types";
 import { addLog, notify } from "@/utils";
 
@@ -6,10 +6,14 @@ import { addLog, notify } from "@/utils";
 export function useDevices(platform: Platform) {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
+  const latestRequest = useRef(0);
 
   const refresh = useCallback(async () => {
+    const request = ++latestRequest.current;
     setLoading(true);
     const result = await window.electron.devices.list(platform);
+    // A slower answer for the previous platform must not overwrite this one.
+    if (request !== latestRequest.current) return;
     if (result.success) {
       setDevices(result.devices);
       addLog("log", `Found ${result.devices.length} ${platform} device(s)`);
