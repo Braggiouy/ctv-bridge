@@ -7,7 +7,7 @@
 ![GitHub Stars](https://img.shields.io/github/stars/Braggiouy/ctv-bridge?style=flat-square)
 ![Electron](https://img.shields.io/badge/Electron-39.0.0-47848F?style=flat-square&logo=electron&logoColor=white)
 ![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=flat-square&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.7.2-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)
 
 **CTV Bridge is an open-source desktop tool that simplifies deploying and debugging Connected TV applications directly on real Samsung Tizen, LG webOS, and Android TV devices.**
@@ -34,33 +34,29 @@ while keeping all execution local to the developer machine.
 
 ### 📺 Multi-Platform Support
 
-- **Samsung Tizen**: Seamless integration with Tizen Studio CLI (`sdb`, `tizen`).
-- **LG webOS**: Full support for webOS OSE/TV CLI (`ares-*` tools).
-- **Android TV**: Integration with Android Debug Bridge (`adb`) for APK deployment on Android TV / Fire TV.
+- **Samsung Tizen**: Built on the Tizen Studio CLI (`sdb`, `tizen`).
+- **LG webOS**: Built on the webOS TV CLI (`ares-*` tools).
+- **Android TV**: Built on Android Debug Bridge (`adb`) for APK deployment on Android TV / Google TV / Fire TV.
 
-### ⚡ One-Click Deployment
+### ⚡ One Screen, One Click
 
-- **Automated Build**: Generate `.wgt`, `.ipk`, and `.apk` packages instantly.
-- **Smart Install**: Automatically handles uninstallation of old versions and installation of new packages.
-- **Instant Launch**: Apps launch immediately after deployment.
-
-### 🔐 Tizen Certificate Workflow
-
-- **Samsung Login Wizard**: Sign in with Samsung directly in-app, cancel login anytime, and sign out cleanly.
-- **Guided Certificate Creation**: Generate `author.p12` and `distributor.p12` with clear, step-by-step validation.
-- **DUID Validation**: Enforces one DUID per line and explains disabled CTA reasons via tooltips.
-- **Field Guidance**: Explains when to use `Public` vs `Partner`/`Platform` privilege and `Individual` vs `Corporation` developer type.
-- **Profile Management**: Refresh, select, and delete Tizen security profiles from the Build step.
-
-### 🛠️ Advanced Debugging
-
-- **webOS Inspector**: Integrated support for `ares-inspect`. Automatically captures and displays the Chrome DevTools URL for instant debugging.
-- **Live Logs**: View real-time deployment logs and error messages directly in the UI.
+- **Workspace layout**: Your TVs on the left, your project and actions on the right, live console at the bottom. Everything fits in one window.
+- **Run**: Builds the `.wgt` / `.ipk` package, installs it (replacing the old version) and launches it.
+- **Debug**: Same as Run, with the web inspector attached and its URL shown in the console (Android: attach the Android Studio debugger).
+- **Build only**: Just create the package.
+- **Remembers your work**: TVs, recent projects and signing profiles are kept per platform.
 
 ### 🔌 Device Management
 
-- **Unified Dashboard**: Manage all your Tizen, webOS, and Android devices in one place.
-- **Connection Doctor**: Built-in troubleshooting for SSH keys and connection issues.
+- **Add a TV once**: CTV Bridge remembers it and checks the connection when you select it (green / red status dot).
+- **webOS SSH keys**: Set up automatically from the passphrase shown in the Developer Mode app.
+
+### 🔐 Tizen Certificates
+
+- **Samsung sign-in**: Sign in with your Samsung account in the browser, right from the app.
+- **Certificate generator**: Creates `author.p12` and `distributor.p12` and registers them as a signing profile.
+- **DUIDs pre-filled** from the Samsung TVs you've connected to.
+- **Profile management**: Select, reload and delete Tizen security profiles.
 
 ---
 
@@ -77,46 +73,44 @@ CTV Bridge is designed for:
 
 ## 📸 Visual Walkthrough
 
-### 1. Easy SDK Configuration
+### 1. One-time setup
 
-Configure your Tizen, webOS, and Android SDK paths directly in the app. No system PATH modification required.
+Pick your platform, follow the short guide and click **Check tools**. SDK paths are optional when the tools are on your PATH.
 
 <p align="center">
-  <img src=".github/assets/screenshot-tizen-installation.png" width="45%" alt="Tizen Installation" />
-  <img src=".github/assets/screenshot-webOS-installation.png" width="45%" alt="webOS Installation" />
+  <img src=".github/assets/screenshot-setup.png" width="80%" alt="Setup" />
 </p>
 
-### 2. Unified Device Management
-
-Manage all your TVs in one place. Add devices by IP, manage SSH keys for webOS, and test connections instantly.
+### 2. Add your TV
 
 <p align="center">
-  <img src=".github/assets/screenshot-tizen-devices.png" width="45%" alt="Tizen Devices" />
-  <img src=".github/assets/screenshot-webos-devices.png" width="45%" alt="webOS Devices" />
+  <img src=".github/assets/screenshot-add-tv.png" width="80%" alt="Add a TV" />
 </p>
 
-### 3. One-Click Deployment
+### 3. Run and debug
 
-Build, install, and launch your app in seconds. Toggle **Debug Mode** to automatically launch the Web Inspector.
+Select the TV, choose your project and click **Run** or **Debug**.
 
 <p align="center">
-  <img src=".github/assets/screenshot-tizen-deployment.png" width="45%" alt="Tizen Deployment" />
-  <img src=".github/assets/screenshot-webos-deployment.png" width="45%" alt="webOS Deployment" />
+  <img src=".github/assets/screenshot-tizen-run.png" width="45%" alt="Run on a Samsung TV" />
+  <img src=".github/assets/screenshot-webos-debug.png" width="45%" alt="Debug on an LG TV" />
 </p>
 
 ---
 
 ## 🚀 Getting Started
 
-1. **Download** the latest release from the [GitHub releases page](https://github.com/Braggiouy/ctv-bridge/releases/latest).
-2. **Install** the app for your OS (macOS `.dmg`/`.zip`, Windows `.exe`, Linux `.AppImage`/`.deb`).
-3. **Run CTV Bridge**, pick your platform at the top, and click **Check tools & continue** (paths are optional if the tools are on your PATH).
-4. **Add a TV**:
-   - _Tizen_: Enter the TV's IP address (Developer Mode must be enabled).
-   - _webOS_: Enter IP, port `9922`, username `prisoner`, and the passphrase you set in the TV's Developer Mode app.
-   - _Android_: Enter the TV's IP address (enable wireless debugging/ADB on device).
-5. **Use this TV** – the app connects, then moves on; on failure it shows a troubleshooting hint on the TV card.
-6. **Build & Deploy** – choose your project folder, build the package, then pick **Install & run** or **Install & debug** (launches with the inspector).
+1. **Download** the latest release from the [GitHub releases page](https://github.com/Braggiouy/ctv-bridge/releases/latest) and install it (see below).
+2. **Pick your platform** at the top and click **Check tools**.
+3. **Add a TV** with the **+** button:
+   - _Tizen_: the TV's IP address (Developer Mode must point to this computer's IP).
+   - _webOS_: name, IP, port `9922`, user `prisoner` and the passphrase from the Developer Mode app.
+   - _Android_: the TV's IP address (enable network debugging on the TV).
+4. **Select the TV**. The dot turns green when it's reachable; otherwise the error appears next to its name.
+5. **Choose your project** (Tizen: folder with `config.xml`, webOS: folder with `appinfo.json`, Android: a built `.apk`). Tizen also needs a signing profile; create one with **New certificate**.
+6. Click **Run** or **Debug**. Output appears in the console.
+
+You can change SDK paths later from the ⚙️ button in the header.
 
 ---
 
@@ -124,9 +118,9 @@ Build, install, and launch your app in seconds. Toggle **Debug Mode** to automat
 
 Download the latest release for your operating system:
 
-- **macOS**: `.dmg` or `.zip`
-- **Windows**: `.exe` (Installer) or Portable
-- **Linux**: `.AppImage` or `.deb`
+- **macOS** (Apple Silicon): `.dmg`
+- **Windows**: `-setup.exe` installer
+- **Linux**: `.AppImage`
 
 [**Download Latest Release**](https://github.com/Braggiouy/ctv-bridge/releases/latest)
 
@@ -154,8 +148,8 @@ You may see a **"Windows protected your PC"** (SmartScreen) popup. This is norma
 If you are using the `.AppImage` file, you must make it executable before running it:
 
 ```bash
-chmod +x CTV.Bridge-*.AppImage
-./CTV.Bridge-*.AppImage
+chmod +x ctv-bridge-*.AppImage
+./ctv-bridge-*.AppImage
 ```
 
 ---
@@ -168,7 +162,7 @@ To use CTV Bridge, you'll need to download and install the respective SDKs:
 - **LG webOS**: [webOS TV CLI](https://webostv.developer.lge.com/develop/tools/cli-installation)
 - **Android TV**: [Android Platform Tools (ADB)](https://developer.android.com/tools/releases/platform-tools)
 
-> **Note**: You don't need to add SDK tools to your system PATH. CTV Bridge lets you configure the full paths to SDK binaries directly in the Installation step (e.g., `/path/to/tizen-studio/tools/sdb`). The app will use these exact paths when running commands.
+> **Note**: You don't need to add SDK tools to your system PATH. CTV Bridge lets you set the full path to each tool in the setup screen (e.g., `/path/to/tizen-studio/tools/sdb`).
 
 ---
 
@@ -176,54 +170,53 @@ To use CTV Bridge, you'll need to download and install the respective SDKs:
 
 ### SDK Not Detected
 
-**Problem**: "SDK not found" or command errors when deploying.
+**Problem**: "Some tools could not be found" or command errors when deploying.
 
-**Solution**:
+**Solution**: open setup (⚙️ in the header), enter the **full path** to each tool and click **Check tools**. Each tool shows whether it was found:
 
-- Verify SDK is installed correctly
-- In CTV Bridge, go to the Setup step and enter the **full path** to each binary, then click **Check tools & continue** to see which ones were found:
-  - Tizen: Path to `sdb` binary (e.g., `/Users/yourname/tizen-studio/tools/sdb`)
-  - Tizen: Path to `tizen` binary (e.g., `/Users/yourname/tizen-studio/tools/ide/bin/tizen`)
-  - webOS: Path to `ares` binary (e.g., `/Users/yourname/webOS_TV_SDK/CLI/bin/ares`)
-  - Android: Path to `adb` binary (e.g., `/Users/yourname/platform-tools/adb`)
-- Test paths by running them manually in terminal (e.g., `/path/to/sdb version`)
+- Tizen: `sdb` (e.g., `/Users/yourname/tizen-studio/tools/sdb`) and `tizen` (e.g., `/Users/yourname/tizen-studio/tools/ide/bin/tizen`)
+- webOS: `ares` (e.g., `/Users/yourname/webOS_TV_SDK/CLI/bin/ares`)
+- Android: `adb` (e.g., `/Users/yourname/Library/Android/sdk/platform-tools/adb`)
 
 ### Connection Issues
 
+The selected TV shows its connection error next to its name; the console has the full output.
+
+**All platforms (macOS)**: if you see `EHOSTUNREACH`, allow CTV Bridge in System Settings → Privacy & Security → Local Network.
+
 **Tizen**:
 
-- Ensure Developer Mode is enabled on TV
-- Verify TV and computer are on same network
-- Try `sdb connect <TV_IP>` manually to test connection
+- Developer Mode must be on and set to this computer's IP address
+- TV and computer must be on the same network
+- Try `sdb connect <TV_IP>` in a terminal
 
 **webOS**:
 
-- Verify Developer Mode is enabled and passphrase is set
-- Check firewall isn't blocking port 9922
-- Try removing and re-adding the device
-- Ensure SSH keys are properly configured (CTV Bridge handles this automatically)
+- The Developer Mode app must be open, with Dev Mode Status and Key Server on
+- Check the passphrase (edit the TV with the ✏️ button) and that port 9922 isn't blocked
+- Try `ares-device -i -d <TV_NAME>` in a terminal
 
 **Android**:
 
-- Ensure "USB Debugging" or "Network Debugging" is enabled in Developer Options
-- Verify device is on same network
-- Try `adb connect <IP>` manually
+- Enable USB/Network debugging in Developer options and accept the prompt on the TV
+- Try `adb connect <IP>` in a terminal
 
 ### Build Failures
 
-- Verify project has valid configuration file:
-  - Tizen: `config.xml` in project root
-  - webOS: `appinfo.json` in project root
-- Check project structure matches platform requirements
-- Review build logs in CTV Bridge for specific errors
+- Tizen needs `config.xml` and webOS needs `appinfo.json` in the project folder
+- Tizen apps must be signed: choose a signing profile or create one with **New certificate**
+- Check the console for the SDK's error message
 
 ### Deployment Fails
 
-- Ensure TV is powered on and connected to network
-- Verify connection test passes before deploying
-- Check TV has sufficient storage space
-- For webOS: Ensure Developer Mode app is running on TV
-- For Tizen author certificate mismatch errors (`install failed[118, -11]`), CTV Bridge now attempts uninstall + reinstall automatically.
+- Make sure the TV is on and its status dot is green
+- Check the TV has enough free storage
+- Tizen author certificate mismatch (`install failed[118, -11]`): CTV Bridge uninstalls the old app and retries automatically
+- Tizen: the certificate must include the TV's DUID
+
+### macOS: "CTV Bridge needs to be updated" / component won't open in a future macOS
+
+This warning comes from Samsung's `sdb`, which is still an Intel-only binary and runs through Rosetta. macOS attributes it to CTV Bridge because the app starts it. CTV Bridge itself is native Apple Silicon; the warning goes away once Samsung ships a native `sdb` (update Tizen Studio from its Package Manager).
 
 ---
 
@@ -242,10 +235,10 @@ A: No! CTV Bridge is completely free and open-source. However, you may need Sams
 A: CTV Bridge is designed for development and testing. For production deployment, use the official Samsung Seller Office or LG Seller Lounge.
 
 **Q: How do I update CTV Bridge?**  
-A: CTV Bridge automatically checks for updates and notifies you when a new version is available. Just click "Download Update" in the notification.
+A: CTV Bridge checks for updates on startup (or use the download button in the header). Click **Update Now**: on Windows and Linux the app restarts with the new version; on macOS the installer opens.
 
 **Q: Is my data safe?**  
-A: Yes. CTV Bridge stores all data locally on your machine. No data is sent to external servers. Device credentials are stored securely in your system's keychain.
+A: Yes. CTV Bridge stores everything locally on your machine and sends nothing to external servers. webOS passphrases and SSH keys are kept by the webOS CLI itself, as they would be if you used it from a terminal.
 
 ---
 
