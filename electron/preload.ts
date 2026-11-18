@@ -31,6 +31,7 @@ const api: ElectronApi = {
   },
   build: invoke("package:build"),
   deploy: invoke("package:deploy"),
+  openInspector: invoke("inspector:open"),
   onDeployLog: subscribe("deploy-log"),
   tizen: {
     listProfiles: invoke("tizen:list-profiles"),

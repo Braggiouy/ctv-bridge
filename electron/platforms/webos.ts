@@ -10,6 +10,7 @@ import {
   cliOutput,
   describeCliError,
   killTree,
+  waitForOutput,
 } from "../utils/cli";
 import { DEPLOY_CONSTANTS, WEBOS_CONSTANTS } from "../utils/constants";
 import {
@@ -20,7 +21,8 @@ import {
   unreachableMessage,
 } from "./common";
 import { findInspectorUrl, isInspectLogLine } from "./parsers";
-import type { LogFn, PlatformAdapter } from "./types";
+import { discoverInspector } from "./inspector";
+import type { DeployOutcome, LogFn, PlatformAdapter } from "./types";
 
 const GETKEY_TIMEOUT_MS = 30000;
 const INSPECT_RETRY_TIMEOUT_MS = 15000;
@@ -143,50 +145,29 @@ async function readAppId(projectPath: string): Promise<string> {
 }
 
 /** Runs ares-inspect until it prints an inspector URL. The process stays alive to keep the tunnel open. */
-function runInspector(
+async function runInspector(
   args: string[],
   timeoutMs: number,
   log: LogFn
-): Promise<string | null> {
-  return new Promise((resolve) => {
-    const proc = spawnCli(ares("inspect"), args);
-    let output = "";
-    let settled = false;
-    const finish = (url: string | null) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      if (url) replaceDebugSession(proc);
-      else killTree(proc);
-      resolve(url);
-    };
-
-    const onOutput = (data: Buffer) => {
-      const text = data.toString();
-      output += text;
-      for (const line of text.split(/\r?\n/).map((l) => l.trim())) {
-        if (isInspectLogLine(line)) log(line);
-      }
-      const url = findInspectorUrl(output);
-      if (url) finish(url);
-    };
-    proc.stdout?.on("data", onOutput);
-    proc.stderr?.on("data", onOutput);
-    proc.on("error", (error) => {
-      logger.error("ares-inspect failed", error);
-      log(`Inspector error: ${error.message}`);
-      finish(null);
-    });
-    proc.on("close", () => finish(findInspectorUrl(output) ?? null));
-    const timeout = setTimeout(() => finish(null), timeoutMs);
+): Promise<string | undefined> {
+  const proc = spawnCli(ares("inspect"), args);
+  const url = await waitForOutput(proc, findInspectorUrl, timeoutMs, (line) => {
+    if (isInspectLogLine(line)) log(line);
+  }).catch((error: Error) => {
+    logger.error("ares-inspect failed", error);
+    log(`Inspector error: ${error.message}`);
+    return undefined;
   });
+  if (url) replaceDebugSession(proc);
+  else killTree(proc);
+  return url;
 }
 
 async function startDebugSession(
   deviceName: string,
   appId: string,
   log: LogFn
-): Promise<string> {
+): Promise<DeployOutcome> {
   const args = ["--device", deviceName, "--app", appId];
   const url =
     (await runInspector(args, DEPLOY_CONSTANTS.DEBUG_PORT_TIMEOUT_MS, log)) ??
@@ -197,11 +178,16 @@ async function startDebugSession(
     log(
       "Could not start the web inspector automatically. Try running: ares-inspect --device <name> --app <id>"
     );
-    return "Deployed, but the inspector could not be opened";
+    return { message: "Deployed, but the inspector could not be opened" };
   }
+
+  const port = Number(new URL(url).port);
+  const inspectorUrl = port ? await discoverInspector(port, appId) : undefined;
+  if (inspectorUrl) return { message: "Deployed in debug mode", inspectorUrl };
+
   log(`Inspector: ${url}`);
   log("Open the link above in Chrome to debug your app.");
-  return "Deployed in debug mode";
+  return { message: "Deployed in debug mode" };
 }
 
 /** Fetches the SSH key when a passphrase is known; reports instead of failing. */
@@ -324,7 +310,7 @@ export const webosAdapter: PlatformAdapter = {
       log("Starting web inspector…");
       return startDebugSession(device.name, appId, log);
     }
-    return "Deployed and launched";
+    return { message: "Deployed and launched" };
   },
 
   async verifySdk() {

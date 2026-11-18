@@ -9,8 +9,14 @@ import {
   checkTool,
   unreachableMessage,
 } from "./common";
-import { parseAttachedSerials, parseBadging } from "./parsers";
-import type { LogFn, PlatformAdapter } from "./types";
+import { attachInspector } from "./inspector";
+import {
+  findWebViewSocket,
+  parseAttachedSerials,
+  parseBadging,
+  parsePid,
+} from "./parsers";
+import type { DeployOutcome, LogFn, PlatformAdapter } from "./types";
 
 const adb = () => store.get("adbPath") || "adb";
 
@@ -114,6 +120,66 @@ async function launch(serial: string, apkPath: string, log: LogFn) {
   return packageName;
 }
 
+const WEBVIEW_ATTEMPTS = 10;
+const WEBVIEW_RETRY_DELAY_MS = 1000;
+
+/** Forwards the app's WebView DevTools socket to a free local port, once the WebView exists. */
+async function forwardWebView(
+  serial: string,
+  packageName: string
+): Promise<number | undefined> {
+  const shell = (...args: string[]) =>
+    runCli(adb(), ["-s", serial, "shell", ...args]).then(
+      ({ stdout }) => stdout,
+      () => ""
+    );
+
+  for (let attempt = 1; attempt <= WEBVIEW_ATTEMPTS; attempt++) {
+    const pid = parsePid(await shell("pidof", packageName));
+    const socket =
+      pid &&
+      findWebViewSocket(await shell("cat", "/proc/net/unix"), pid, packageName);
+    if (socket) {
+      const { stdout } = await runCli(adb(), [
+        "-s",
+        serial,
+        "forward",
+        "tcp:0",
+        `localabstract:${socket}`,
+      ]);
+      return Number(stdout.trim()) || undefined;
+    }
+    await new Promise((resolve) => setTimeout(resolve, WEBVIEW_RETRY_DELAY_MS));
+  }
+  return undefined;
+}
+
+async function startDebugSession(
+  serial: string,
+  packageName: string | null,
+  log: LogFn
+): Promise<DeployOutcome> {
+  const androidStudioHint = `Attach the Android Studio debugger to ${packageName ?? "your app's process"}.`;
+  if (!packageName) {
+    log(androidStudioHint);
+    return { message: "Deployed" };
+  }
+
+  log("Looking for a debuggable WebView…");
+  const port = await forwardWebView(serial, packageName).catch((error) => {
+    log(`WebView port forwarding failed: ${describeCliError(error)}`);
+    return undefined;
+  });
+  if (!port) {
+    log(
+      "No debuggable WebView found. Web apps need WebView.setWebContentsDebuggingEnabled(true)."
+    );
+    log(androidStudioHint);
+    return { message: "Deployed" };
+  }
+  return attachInspector(port, undefined, log);
+}
+
 export const androidAdapter: PlatformAdapter = {
   async listDevices() {
     return mergeWithKnownDevices("android", await attachedIps());
@@ -186,11 +252,9 @@ export const androidAdapter: PlatformAdapter = {
     });
 
     if (mode === "debug") {
-      log(
-        `Attach the Android Studio debugger to ${packageName ?? "your app's process"}.`
-      );
+      return startDebugSession(device.ip, packageName, log);
     }
-    return "Deployed";
+    return { message: "Deployed" };
   },
 
   async verifySdk() {
