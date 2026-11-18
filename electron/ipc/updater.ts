@@ -16,8 +16,8 @@ import { pipeline } from "node:stream/promises";
 import type { ReadableStream } from "node:stream/web";
 import type { UpdateDownloadResult } from "../../shared/ipc";
 import { runCli } from "../utils/cli";
-import { getErrorMessage } from "../utils/errors";
 import { logger } from "../utils/logger";
+import { handle } from "./handle";
 
 const REPO_URL = "https://github.com/Braggiouy/ctv-bridge";
 const FIRST_CHECK_DELAY_MS = 5_000;
@@ -81,45 +81,29 @@ export function registerUpdater(checkPeriodically: boolean) {
   );
   autoUpdater.on("error", (error) => logger.error("Auto-updater error", error));
 
-  ipcMain.handle("updater:check", async () => {
-    try {
-      const result = await autoUpdater.checkForUpdates();
-      return {
-        success: true,
-        version: result?.isUpdateAvailable
-          ? result.updateInfo.version
-          : undefined,
-      };
-    } catch (error) {
-      return { success: false, message: getErrorMessage(error) };
-    }
+  handle("updater:check", async () => {
+    const result = await autoUpdater.checkForUpdates();
+    return {
+      version: result?.isUpdateAvailable
+        ? result.updateInfo.version
+        : undefined,
+    };
   });
 
-  ipcMain.handle(
-    "updater:download",
-    async (): Promise<UpdateDownloadResult> => {
-      try {
-        if (!latestUpdate) throw new Error("No update available");
-        // Older releases ship only the DMG on macOS.
-        const hasMacZip = latestUpdate.files.some((f) =>
-          f.url.endsWith(".zip")
-        );
-        if (!canSelfUpdate() || (isMac && !hasMacZip)) {
-          return await installManually(latestUpdate);
-        }
-        if (isMac) {
-          stagedMacApp = await downloadMacApp(latestUpdate);
-          broadcast("updater:ready", { version: latestUpdate.version });
-        } else {
-          await autoUpdater.downloadUpdate();
-        }
-        return { success: true };
-      } catch (error) {
-        logger.error("Update download failed", error);
-        return { success: false, message: getErrorMessage(error) };
-      }
+  handle("updater:download", async (): Promise<UpdateDownloadResult | void> => {
+    if (!latestUpdate) throw new Error("No update available");
+    // Older releases ship only the DMG on macOS.
+    const hasMacZip = latestUpdate.files.some((f) => f.url.endsWith(".zip"));
+    if (!canSelfUpdate() || (isMac && !hasMacZip)) {
+      return installManually(latestUpdate);
     }
-  );
+    if (isMac) {
+      stagedMacApp = await downloadMacApp(latestUpdate);
+      broadcast("updater:ready", { version: latestUpdate.version });
+    } else {
+      await autoUpdater.downloadUpdate();
+    }
+  });
 
   ipcMain.handle("updater:install", () => {
     if (isMac) swapMacAppAndRelaunch();

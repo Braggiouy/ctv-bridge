@@ -1,7 +1,12 @@
 type Level = "DEBUG" | "INFO" | "WARN" | "ERROR";
 
+// JSON.stringify turns an Error into "{}", so keep its message and stack.
+const serialize = (value: unknown) =>
+  value instanceof Error ? value.stack || value.message : value;
+
 function format(level: Level, message: string, args: unknown[]): string {
-  const details = args.length > 0 ? ` ${JSON.stringify(args)}` : "";
+  const details =
+    args.length > 0 ? ` ${JSON.stringify(args.map(serialize))}` : "";
   return `[${new Date().toISOString()}] [${level}] ${message}${details}`;
 }
 

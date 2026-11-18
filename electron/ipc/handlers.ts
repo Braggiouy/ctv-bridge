@@ -1,4 +1,4 @@
-import { dialog, ipcMain, shell, type IpcMainInvokeEvent } from "electron";
+import { dialog, ipcMain, shell } from "electron";
 import type {
   DeployMode,
   DeployTarget,
@@ -7,8 +7,7 @@ import type {
   SdkPaths,
 } from "../../shared/ipc";
 import { store } from "../store";
-import { logger } from "../utils/logger";
-import { getErrorMessage } from "../utils/errors";
+import { handle, replyLog } from "./handle";
 import type { PlatformAdapter } from "../platforms/types";
 import {
   tizenAdapter,
@@ -28,21 +27,6 @@ function adapterFor(platform: Platform): PlatformAdapter {
   const adapter = adapters[platform];
   if (!adapter) throw new Error(`Unknown platform: ${platform}`);
   return adapter;
-}
-
-/** Registers an IPC handler whose thrown errors are returned as `{ success: false, message }`. */
-export function handle<Args extends unknown[]>(
-  channel: string,
-  fn: (event: IpcMainInvokeEvent, ...args: Args) => Promise<object | void>
-) {
-  ipcMain.handle(channel, async (event, ...args) => {
-    try {
-      return { success: true, ...(await fn(event, ...(args as Args))) };
-    } catch (error) {
-      logger.error(`${channel} failed`, getErrorMessage(error));
-      return { success: false, message: getErrorMessage(error) };
-    }
-  });
 }
 
 export function registerIpcHandlers() {
@@ -100,11 +84,7 @@ export function registerIpcHandlers() {
       target: DeployTarget,
       mode: DeployMode
     ) => {
-      const log = (line: string) => {
-        if (!event.sender.isDestroyed()) {
-          event.sender.send("deploy-log", line);
-        }
-      };
+      const log = replyLog(event, "deploy-log");
       return {
         message: await adapterFor(platform).deploy(device, target, mode, log),
       };

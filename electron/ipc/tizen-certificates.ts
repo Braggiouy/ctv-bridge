@@ -5,7 +5,7 @@
  * → optional `tizen security-profiles add`.
  */
 
-import { ipcMain, shell, app, type IpcMainInvokeEvent } from "electron";
+import { shell, app } from "electron";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import type { TizenCertificateParams } from "../../shared/ipc";
@@ -25,6 +25,7 @@ import {
 import { resolveOpenssl, runOpenssl } from "../utils/tizen-openssl";
 import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/errors";
+import { handle, replyLog } from "./handle";
 
 const DEFAULT_P12_PASSWORD = "tizencert";
 const INTERMEDIATE_SUFFIXES = [".csr", ".crt", ".key.pem", "-chain.crt"];
@@ -37,34 +38,23 @@ let cachedOAuthCredentials: {
 
 let inFlightLoginSession: OAuthSession | null = null;
 
-const certificateLogger =
-  (event: IpcMainInvokeEvent) =>
-  (message: string): void => {
-    if (!event.sender.isDestroyed())
-      event.sender.send("tizen-cert:log", message);
-  };
+const LOG_CHANNEL = "tizen-cert:log";
 
 export function registerTizenCertHandlers() {
-  ipcMain.handle("tizen-cert:login", async (event) => {
-    const sendLog = certificateLogger(event);
-
+  handle("tizen-cert:login", async (event) => {
+    if (inFlightLoginSession) {
+      throw new Error("Samsung login is already in progress.");
+    }
+    const sendLog = replyLog(event, LOG_CHANNEL);
     let oauthSession: OAuthSession | null = null;
 
     try {
-      if (inFlightLoginSession) {
-        return {
-          success: false,
-          message: "Samsung login is already in progress.",
-        };
-      }
-
       sendLog("Fetching Samsung certificate configuration…");
       const config = await getTizenCertConfig();
       sendLog("Configuration ready.");
 
-      const registeredRedirectUri = getRegisteredRedirectUri(config.loginUrl);
       oauthSession = await startOAuthServer({
-        redirectUri: registeredRedirectUri,
+        redirectUri: getRegisteredRedirectUri(config.loginUrl),
       });
       inFlightLoginSession = oauthSession;
 
@@ -83,17 +73,15 @@ export function registerTizenCertHandlers() {
       };
 
       sendLog("Samsung login successful. Continue with certificate details.");
-      return { success: true, email: credentials.email };
+      return { email: credentials.email };
     } catch (error) {
       const message = getErrorMessage(error);
-      const cancelled = /cancelled/i.test(message);
-      logger.error("Samsung login failed", error);
-      if (cancelled) {
+      if (/cancelled/i.test(message)) {
         sendLog("Samsung login cancelled. You can retry now.");
-      } else {
-        sendLog(`Error: ${message}`);
+        return { success: false, cancelled: true, message };
       }
-      return { success: false, message, cancelled };
+      sendLog(`Error: ${message}`);
+      throw error;
     } finally {
       if (oauthSession === inFlightLoginSession) {
         inFlightLoginSession = null;
@@ -102,48 +90,33 @@ export function registerTizenCertHandlers() {
     }
   });
 
-  ipcMain.handle("tizen-cert:cancel-login", async (event) => {
-    const sendLog = certificateLogger(event);
-
+  handle("tizen-cert:cancel-login", async (event) => {
     if (!inFlightLoginSession) {
-      return {
-        success: false,
-        message: "No Samsung login is currently in progress.",
-      };
+      throw new Error("No Samsung login is currently in progress.");
     }
-
     inFlightLoginSession.close("Samsung login cancelled by user");
     inFlightLoginSession = null;
-    sendLog("Cancelling Samsung login…");
-
-    return { success: true };
+    replyLog(event, LOG_CHANNEL)("Cancelling Samsung login…");
   });
 
-  ipcMain.handle("tizen-cert:logout", async () => {
-    if (inFlightLoginSession) {
-      inFlightLoginSession.close("Samsung login cancelled by user");
-      inFlightLoginSession = null;
-    }
-
+  handle("tizen-cert:logout", async () => {
+    inFlightLoginSession?.close("Samsung login cancelled by user");
+    inFlightLoginSession = null;
     cachedOAuthCredentials = null;
-    return { success: true };
   });
 
-  ipcMain.handle(
+  handle(
     "tizen-cert:generate",
     async (event, params: TizenCertificateParams) => {
-      const sendLog = certificateLogger(event);
+      const sendLog = replyLog(event, LOG_CHANNEL);
+      const credentials = getCachedOAuthCredentials();
+      if (!credentials) {
+        throw new Error(
+          "Samsung login required. Please click 'Sign in with Samsung' first."
+        );
+      }
 
       try {
-        const credentials = getCachedOAuthCredentials();
-        if (!credentials) {
-          return {
-            success: false,
-            message:
-              "Samsung login required. Please click 'Sign in with Samsung' first.",
-          };
-        }
-
         sendLog("Checking OpenSSL…");
         const opensslBin = await resolveOpenssl();
 
@@ -200,12 +173,10 @@ export function registerTizenCertHandlers() {
         }
 
         sendLog("Done! author.p12 and distributor.p12 are ready.");
-        return { success: true, path: certDir };
+        return { path: certDir };
       } catch (error) {
-        const message = getErrorMessage(error);
-        logger.error("Certificate generation failed", error);
-        sendLog(`Error: ${message}`);
-        return { success: false, message };
+        sendLog(`Error: ${getErrorMessage(error)}`);
+        throw error;
       }
     }
   );

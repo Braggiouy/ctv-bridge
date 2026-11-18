@@ -73,7 +73,6 @@ export interface TizenCertificateParams {
 
 type Unsubscribe = () => void;
 
-/** The `window.electron` bridge exposed by the preload script. */
 /**
  * `manual` means the app couldn't update itself: the macOS installer or the
  * release page was opened instead.
@@ -82,6 +81,7 @@ export interface UpdateDownloadResult extends Result {
   manual?: "installer" | "release-page";
 }
 
+/** The `window.electron` bridge exposed by the preload script. */
 export interface ElectronApi {
   devices: {
     list(platform: Platform): Promise<DeviceListResult>;
