@@ -51,7 +51,7 @@ function readJson<T>(key: string, fallback: T): T {
   }
 }
 
-/** One-time move from the pre-2.0 scattered localStorage keys. */
+/** One-time move from the scattered localStorage keys used before 1.9.0. */
 export function migrateLegacyStorage(): void {
   const MIGRATED_KEY = "ctv-bridge:migrated";
   if (localStorage.getItem(MIGRATED_KEY)) return;
