@@ -6,10 +6,10 @@ import { ANDROID_CONSTANTS, DEPLOY_CONSTANTS } from "../utils/constants";
 import {
   knownDevices,
   mergeWithKnownDevices,
-  parseAttachedSerials,
   checkTool,
   unreachableMessage,
 } from "./common";
+import { parseAttachedSerials, parseBadging } from "./parsers";
 import type { LogFn, PlatformAdapter } from "./types";
 
 const adb = () => store.get("adbPath") || "adb";
@@ -93,8 +93,7 @@ async function launch(serial: string, apkPath: string, log: LogFn) {
   }
 
   const { stdout } = await runCli(aapt, ["dump", "badging", apkPath]);
-  const packageName = stdout.match(/package:\s+name='([^']+)'/)?.[1];
-  const activity = stdout.match(/launchable-activity:\s+name='([^']+)'/)?.[1];
+  const { packageName, activity } = parseBadging(stdout);
   if (!packageName) {
     log("Could not read the package name. Open the app on the TV.");
     return null;
