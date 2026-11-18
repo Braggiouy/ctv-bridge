@@ -4,6 +4,11 @@ import { WINDOW_CONSTANTS } from "./utils/constants";
 
 let inspectorWindow: BrowserWindow | null = null;
 let inspectorSession: Session | null = null;
+const closedListeners = new Set<() => void>();
+
+export function onInspectorClosed(listener: () => void): void {
+  closedListeners.add(listener);
+}
 
 /**
  * DevTools gets its own session. Chromium 111+ refuses debug connections that
@@ -47,6 +52,7 @@ export async function openInspector(url: string): Promise<void> {
   });
   inspectorWindow.on("closed", () => {
     inspectorWindow = null;
+    closedListeners.forEach((listener) => listener());
   });
   inspectorWindow.webContents.setWindowOpenHandler(({ url: target }) => {
     if (/^https?:/.test(target)) void shell.openExternal(target);

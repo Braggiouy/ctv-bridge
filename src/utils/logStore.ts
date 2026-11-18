@@ -2,11 +2,15 @@ import { useSyncExternalStore } from "react";
 
 export type LogType = "log" | "info" | "step" | "warning" | "error";
 
+/** `app`: printed by the app on the TV rather than by CTV Bridge. */
+export type LogSource = "app";
+
 export interface LogEntry {
   id: number;
   type: LogType;
   message: string;
   timestamp: number;
+  source?: LogSource;
 }
 
 const MAX_ENTRIES = 1000;
@@ -17,11 +21,17 @@ const listeners = new Set<() => void>();
 
 const emit = () => listeners.forEach((listener) => listener());
 
-export function addLog(type: LogType, message: string) {
-  entries = [
-    ...entries.slice(-(MAX_ENTRIES - 1)),
-    { id: nextId++, type, message, timestamp: Date.now() },
-  ];
+export function addLog(type: LogType, message: string, source?: LogSource) {
+  addLogs([{ type, message, source }]);
+}
+
+/** Adds several entries with a single re-render. */
+export function addLogs(
+  batch: { type: LogType; message: string; source?: LogSource }[]
+) {
+  const timestamp = Date.now();
+  const added = batch.map((entry) => ({ ...entry, id: nextId++, timestamp }));
+  entries = [...entries, ...added].slice(-MAX_ENTRIES);
   emit();
 }
 

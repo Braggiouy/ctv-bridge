@@ -38,6 +38,17 @@ export interface DeployResult extends Result {
   inspectorUrl?: string;
 }
 
+export type AppLogLevel = "log" | "info" | "warning" | "error";
+
+/** A console message, uncaught exception or browser log line from the app on the TV. */
+export interface AppLogEntry {
+  level: AppLogLevel;
+  text: string;
+}
+
+/** `paused`: the TV allows one debugger at a time and DevTools has it. */
+export type AppConsoleState = "live" | "paused" | "stopped";
+
 export interface DeployTarget {
   projectPath: string;
   /** The package produced by the last build; deploy falls back to the newest one. */
@@ -114,6 +125,12 @@ export interface ElectronApi {
   /** Opens DevTools for the app in its own window. */
   openInspector(url: string): Promise<Result>;
   onDeployLog(callback: (line: string) => void): Unsubscribe;
+  /** Console output of the app being debugged, streamed after a debug deploy. */
+  appConsole: {
+    stop(): Promise<Result>;
+    onEntries(callback: (entries: AppLogEntry[]) => void): Unsubscribe;
+    onState(callback: (state: AppConsoleState) => void): Unsubscribe;
+  };
   tizen: {
     listProfiles(): Promise<Result & { profiles?: TizenProfile[] }>;
     deleteProfile(name: string): Promise<Result>;
