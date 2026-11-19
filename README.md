@@ -12,7 +12,7 @@
 CTV Bridge is a free, open-source desktop app on top of the official vendor tools (`sdb`/`tizen`, `ares-*`, `adb`). It replaces the repetitive CLI commands with a single screen, and everything runs locally on your machine.
 
 <p align="center">
-  <img src=".github/assets/screenshot-tizen-run.png" width="85%" alt="CTV Bridge running an app on a Samsung TV" />
+  <img src=".github/assets/ctv-bridge-demo.gif" width="85%" alt="Debugging an app on a Samsung TV with CTV Bridge: deploy, live app console, remote control, screenshot and log filters" />
 </p>
 
 ## ✨ Features
@@ -20,7 +20,7 @@ CTV Bridge is a free, open-source desktop app on top of the official vendor tool
 - **One screen**: your TVs on the left, your project and actions on the right, a live console at the bottom.
 - **Run**: builds the `.wgt` / `.ipk`, installs it (replacing the old version) and launches it.
 - **Debug**: the same, then opens DevTools for your app in its own window. On Android this works for apps with a debuggable WebView.
-- **Live app console**: after Debug, your app's `console` output, uncaught errors and failed requests stream into the console, tagged **APP**, with an All / Warnings / Errors filter.
+- **Live app console**: after Debug, your app's `console` output, uncaught errors and failed requests stream into the console, tagged **APP**, with an All / Warnings / Errors filter. Turn **App logs** off to keep the console to CTV Bridge's own output.
 - **Remote and screenshots**: while the app console is live, press the arrows, OK and Back from the console bar (or with the keyboard once the remote has focus), and capture the app's screen. Screenshots are saved to `Pictures/CTV Bridge` and copied to the clipboard.
 - **Remembers everything**: TVs, recent projects and signing profiles, per platform.
 - **Connection status at a glance**: select a TV and its dot turns green or red, with the reason.
@@ -167,6 +167,7 @@ It's built for development and testing. Publish through Samsung Seller Office or
 bun install      # install dependencies
 bun run dev      # run the app in development mode
 bun run build    # build installers for your OS
+bun run demo:record  # re-record the README demo GIF (needs ffmpeg; uses made-up data)
 ```
 
 Contributions are welcome. See the [Contributing Guide](CONTRIBUTING.md) and use [Conventional Commits](https://www.conventionalcommits.org/).
