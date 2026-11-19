@@ -14,6 +14,8 @@ interface DeviceFormProps {
   platform: Platform;
   /** Present when editing an existing device. */
   device?: Device;
+  /** Starting values for a new device, e.g. a TV found on the network. */
+  initial?: Partial<Device>;
   onSubmit: (device: Device) => Promise<boolean>;
   onCancel: () => void;
 }
@@ -46,6 +48,7 @@ const Field = ({
 export const DeviceForm = ({
   platform,
   device,
+  initial,
   onSubmit,
   onCancel,
 }: DeviceFormProps) => {
@@ -54,7 +57,7 @@ export const DeviceForm = ({
     name: "",
     ip: "",
     ...(isWebos ? WEBOS_DEFAULTS : {}),
-    ...device,
+    ...(device ?? initial),
     passphrase: "",
   });
   const [errors, setErrors] = useState<DeviceErrors>({});

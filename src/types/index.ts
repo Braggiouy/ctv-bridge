@@ -1,6 +1,7 @@
 export type {
   AppConsoleState,
   RemoteKey,
+  DiscoveredTv,
   AppLogEntry,
   BuildResult,
   DeployMode,

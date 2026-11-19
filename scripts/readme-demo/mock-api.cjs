@@ -19,6 +19,10 @@ const DEVICES = {
   webos: [{ name: "Bedroom TV", ip: "192.0.2.20" }],
   android: [{ name: "Streaming Stick", ip: "192.0.2.30" }],
 };
+const NEARBY = [
+  { name: "Kitchen TV", ip: "192.0.2.12", model: "QE55Q80C" },
+  { name: "Guest Room TV", ip: "192.0.2.13", warning: "Developer Mode is off" },
+];
 
 // "setup" shows the one-time setup screen; anything else starts ready to deploy.
 const scene = process.argv
@@ -113,6 +117,10 @@ window.electron = {
     test: async (_platform, device) => {
       await sleep(500);
       return { success: true, message: `Connected to ${device.name}` };
+    },
+    discover: async () => {
+      await sleep(600);
+      return { success: true, tvs: NEARBY };
     },
   },
   sdk: {

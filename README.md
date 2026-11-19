@@ -22,6 +22,7 @@ CTV Bridge is a free, open-source desktop app on top of the official vendor tool
 - **Debug**: the same, then opens DevTools for your app in its own window. On Android this works for apps with a debuggable WebView.
 - **Live app console**: after Debug, your app's `console` output, uncaught errors and failed requests stream into the console, tagged **APP**, with an All / Warnings / Errors filter. Turn **App logs** off to keep the console to CTV Bridge's own output.
 - **Remote and screenshots**: while the app console is live, press the arrows, OK and Back from the console bar (or with the keyboard once the remote has focus), and capture the app's screen. Screenshots are saved to `Pictures/CTV Bridge` and copied to the clipboard.
+- **Finds your TVs**: the add dialog lists TVs on your network, and warns when one isn't ready, e.g. Developer Mode is off.
 - **Remembers everything**: TVs, recent projects and signing profiles, per platform.
 - **Connection status at a glance**: select a TV and its dot turns green or red, with the reason.
 - **webOS SSH keys** set up automatically from the Developer Mode passphrase.
@@ -79,7 +80,7 @@ chmod +x ctv-bridge-*.AppImage
 ### 3. Deploy your first app
 
 1. **Pick your platform** at the top and click **Check tools**.
-2. **Add your TV** with the **+** button:
+2. **Add your TV** with the **+** button: pick it from the TVs found on your network, or enter it yourself:
    - _Samsung / Android_: the TV's IP address.
    - _LG_: a name, the IP, port `9922`, user `prisoner` and the passphrase shown in the Developer Mode app.
 3. **Select the TV**. A green dot means it's reachable.

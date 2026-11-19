@@ -16,13 +16,6 @@ app.setPath(
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Fills a React-controlled input the way typing would.
-const fill = (selector, value) => `(() => {
-  const input = document.querySelector(${JSON.stringify(selector)});
-  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, ${JSON.stringify(value)});
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-})()`;
-
 const SCENES = [
   { file: "screenshot-setup.png", scene: "setup", steps: [] },
   {
@@ -30,9 +23,9 @@ const SCENES = [
     scene: "ready",
     steps: [
       `document.querySelector('[aria-label="Add a TV"]').click()`,
-      fill('input[placeholder="Living room TV"]', "Kitchen TV"),
-      fill('input[placeholder="192.168.1.100"]', "192.0.2.12"),
-      `document.querySelector('input[placeholder="192.168.1.100"]').focus()`,
+      "await new Promise((r) => setTimeout(r, 1000))",
+      `[...document.querySelectorAll('[aria-label="TVs on your network"] button[aria-pressed]')][0].click()`,
+      "await new Promise((r) => setTimeout(r, 300))",
     ],
   },
   // GitHub's social preview (Settings → General), shown when the repo link is shared.
