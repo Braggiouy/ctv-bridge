@@ -46,9 +46,9 @@ export interface AppLogEntry {
   text: string;
 }
 
-/** `paused`: the TV allows one debugger at a time and DevTools has it. */
 export type RemoteKey = "up" | "down" | "left" | "right" | "enter" | "back";
 
+/** `paused`: the TV allows one debugger at a time and DevTools has it. */
 export type AppConsoleState = "live" | "paused" | "stopped";
 
 export interface DeployTarget {
