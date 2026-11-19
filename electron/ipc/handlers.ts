@@ -17,6 +17,7 @@ import {
 } from "../platforms/tizen";
 import { webosAdapter } from "../platforms/webos";
 import { androidAdapter } from "../platforms/android";
+import { endDebugSession } from "../platforms/common";
 
 const adapters: Record<Platform, PlatformAdapter> = {
   tizen: tizenAdapter,
@@ -85,6 +86,7 @@ export function registerIpcHandlers() {
       target: DeployTarget,
       mode: DeployMode
     ) => {
+      endDebugSession();
       const log = replyLog(event, "deploy-log");
       return adapterFor(platform).deploy(device, target, mode, log);
     }

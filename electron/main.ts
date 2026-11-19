@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { registerIpcHandlers } from "./ipc/handlers";
+import { endDebugSession } from "./platforms/common";
 import { registerTizenCertHandlers } from "./ipc/tizen-certificates";
 import { registerUpdater } from "./ipc/updater";
 import { WINDOW_CONSTANTS } from "./utils/constants";
@@ -84,6 +85,9 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
   win = null;
 });
+
+// Port forwards outlive the app otherwise.
+app.on("before-quit", endDebugSession);
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();

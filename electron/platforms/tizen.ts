@@ -21,7 +21,8 @@ import {
   findNewestFile,
   knownDevices,
   mergeWithKnownDevices,
-  replaceDebugSession,
+  addDebugForward,
+  addDebugProcess,
   resolvePackage,
   checkTool,
   unreachableMessage,
@@ -141,7 +142,7 @@ async function startDebugSession(
   log: LogFn
 ): Promise<DeployOutcome> {
   const proc = spawnCli(sdb(), ["-s", serial, "shell", "0", "debug", appId]);
-  replaceDebugSession(proc);
+  addDebugProcess(proc);
 
   let port: string | undefined;
   try {
@@ -170,6 +171,7 @@ async function startDebugSession(
       `tcp:${port}`,
       `tcp:${port}`,
     ]);
+    addDebugForward(sdb(), serial, port);
   } catch (error) {
     log(
       `Port forwarding failed (${describeCliError(error)}). Run: sdb -s ${serial} forward tcp:${port} tcp:${port}`

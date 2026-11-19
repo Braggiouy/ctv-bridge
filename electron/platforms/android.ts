@@ -7,6 +7,7 @@ import {
   knownDevices,
   mergeWithKnownDevices,
   checkTool,
+  addDebugForward,
   unreachableMessage,
 } from "./common";
 import { attachInspector } from "./inspector";
@@ -147,7 +148,9 @@ async function forwardWebView(
         "tcp:0",
         `localabstract:${socket}`,
       ]);
-      return Number(stdout.trim()) || undefined;
+      const port = Number(stdout.trim()) || undefined;
+      if (port) addDebugForward(adb(), serial, port);
+      return port;
     }
     await new Promise((resolve) => setTimeout(resolve, WEBVIEW_RETRY_DELAY_MS));
   }
