@@ -7,7 +7,12 @@ import type {
   SdkPaths,
 } from "../../shared/ipc";
 import { store } from "../store";
-import { openInspector } from "../inspector-window";
+import {
+  openInspectorForApp,
+  startAppConsole,
+  stopAppConsole,
+} from "../app-console";
+import { getErrorMessage } from "../utils/errors";
 import { handle, replyLog } from "./handle";
 import type { PlatformAdapter } from "../platforms/types";
 import {
@@ -85,12 +90,25 @@ export function registerIpcHandlers() {
       target: DeployTarget,
       mode: DeployMode
     ) => {
+      stopAppConsole();
       const log = replyLog(event, "deploy-log");
-      return adapterFor(platform).deploy(device, target, mode, log);
+      const outcome = await adapterFor(platform).deploy(
+        device,
+        target,
+        mode,
+        log
+      );
+      if (outcome.inspectorUrl) {
+        await startAppConsole(outcome.inspectorUrl, event.sender).catch(
+          (error) => log(`App logs unavailable: ${getErrorMessage(error)}`)
+        );
+      }
+      return outcome;
     }
   );
 
-  handle("inspector:open", async (_e, url: string) => openInspector(url));
+  handle("inspector:open", async (_e, url: string) => openInspectorForApp(url));
+  handle("app-console:stop", async () => stopAppConsole());
 
   handle("tizen:list-profiles", async () => ({
     profiles: await listTizenProfiles(),

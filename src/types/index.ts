@@ -1,4 +1,6 @@
 export type {
+  AppConsoleState,
+  AppLogEntry,
   BuildResult,
   DeployMode,
   Device,
