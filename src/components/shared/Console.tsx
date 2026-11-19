@@ -3,6 +3,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronRight,
+  Eye,
+  EyeOff,
   Info,
   Square,
   Terminal,
@@ -12,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppConsole } from "@/hooks/useAppConsole";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { RemoteControl } from "./RemoteControl";
 import { clearLogs, cn, useLogs, type LogEntry, type LogType } from "@/utils";
 
@@ -63,10 +66,19 @@ const linkify = (message: string) =>
 
 /** Docked output of every SDK command and of the app being debugged, newest at the bottom like a terminal. */
 export const Console = ({ className }: { className?: string }) => {
-  const logs = useLogs();
-  const appConsole = useAppConsole();
+  const allLogs = useLogs();
+  const [showAppLogs, setShowAppLogs] = usePersistentState(
+    "console:show-app-logs",
+    true
+  );
+  const appConsole = useAppConsole(showAppLogs);
   const [search, setSearch] = useState("");
   const [level, setLevel] = useState<Level>("all");
+  const hasAppLogs = allLogs.some((log) => log.source === "app");
+  const logs =
+    showAppLogs || !hasAppLogs
+      ? allLogs
+      : allLogs.filter((log) => log.source !== "app");
   const scroller = useRef<HTMLDivElement>(null);
   const pinnedToBottom = useRef(true);
 
@@ -123,6 +135,29 @@ export const Console = ({ className }: { className?: string }) => {
         )}
         {appConsole.state !== "stopped" && (
           <RemoteControl disabled={appConsole.state === "paused"} />
+        )}
+        {(appConsole.state !== "stopped" || hasAppLogs) && (
+          <button
+            type="button"
+            aria-pressed={showAppLogs}
+            onClick={() => setShowAppLogs(!showAppLogs)}
+            className={cn(
+              "flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs hover:bg-muted",
+              showAppLogs ? "text-foreground" : "text-muted-foreground"
+            )}
+            title={
+              showAppLogs
+                ? "Hide the app's logs; the remote and screenshots keep working"
+                : "Show the app's logs in the console"
+            }
+          >
+            {showAppLogs ? (
+              <Eye className="h-3.5 w-3.5" />
+            ) : (
+              <EyeOff className="h-3.5 w-3.5" />
+            )}
+            App logs
+          </button>
         )}
         <div
           role="radiogroup"
