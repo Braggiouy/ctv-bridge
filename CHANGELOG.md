@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.12.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.11.0...v1.12.0) (2026-11-19)
+
+
+### Features
+
+* **console:** toggle the app's logs on and off ([7b0dae5](https://github.com/Braggiouy/ctv-bridge/commit/7b0dae58b17b1b4cfa24798daab76a0bf2fb04a1))
+* **debug:** remote control and screenshots for the debugged app ([3a15230](https://github.com/Braggiouy/ctv-bridge/commit/3a152306f2a41d6e9fb87b99e0d826c6ab067ef7))
+* **debug:** stream the app's console from the TV ([fa18f81](https://github.com/Braggiouy/ctv-bridge/commit/fa18f816602afa975858a0f87543cb0faedd06d6))
+
+
+### Bug Fixes
+
+* **debug:** remove port forwards when a debug session ends ([a4d6c4b](https://github.com/Braggiouy/ctv-bridge/commit/a4d6c4bb86b12e008f94fc1a368f5da951e8ee28))
+
 ## [1.11.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.10.0...v1.11.0) (2026-11-18)
 
 
