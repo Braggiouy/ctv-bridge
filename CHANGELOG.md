@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.13.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.12.0...v1.13.0) (2026-11-19)
+
+
+### Features
+
+* **devices:** find TVs on the network ([c5f8d23](https://github.com/Braggiouy/ctv-bridge/commit/c5f8d239b92af342e6d81b5b92c7ce3920bb9d54))
+* **project:** show recent projects' full paths on hover ([c4d16df](https://github.com/Braggiouy/ctv-bridge/commit/c4d16dfaa8e594a8afb62f41432988a4c7965338))
+
+
+### Bug Fixes
+
+* **devices:** fail fast on unreachable TVs, with cancel and retry ([832c5b9](https://github.com/Braggiouy/ctv-bridge/commit/832c5b99caa6a3c2692f2695ec451b79ef048d99))
+* **tizen:** let the Samsung login be cancelled while its config downloads ([a9d0380](https://github.com/Braggiouy/ctv-bridge/commit/a9d0380a6bb4b66e5bde25873a1b16d4baf2ae80))
+* **tizen:** time out hung sdb calls and restart sdb ([d6e2baa](https://github.com/Braggiouy/ctv-bridge/commit/d6e2baa28355b248c0c13cde4639ab38d9492702))
+
 ## [1.12.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.11.0...v1.12.0) (2026-11-19)
 
 
