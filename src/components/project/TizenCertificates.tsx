@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, FolderOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,7 @@ export const TizenCertificates = ({
   const [signingIn, setSigningIn] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState("");
+  const loginAttempt = useRef(0);
   const [error, setError] = useState("");
   const [certPath, setCertPath] = useState<string | null>(null);
 
@@ -73,9 +74,12 @@ export const TizenCertificates = ({
   );
 
   const signIn = async () => {
+    const attempt = ++loginAttempt.current;
     setSigningIn(true);
     setError("");
     const result = await window.electron.tizen.login();
+    // Cancelled, or replaced by a newer attempt.
+    if (attempt !== loginAttempt.current) return;
     setSigningIn(false);
     if (result.success) {
       setSignedIn(true);
@@ -83,6 +87,12 @@ export const TizenCertificates = ({
     } else if (!result.cancelled) {
       setError(result.message ?? "Samsung sign-in failed");
     }
+  };
+
+  const cancelSignIn = () => {
+    loginAttempt.current++;
+    setSigningIn(false);
+    void window.electron.tizen.cancelLogin();
   };
 
   const signOut = async () => {
@@ -128,15 +138,10 @@ export const TizenCertificates = ({
           <div className="flex gap-2">
             <Button onClick={signIn} disabled={busy}>
               {signingIn && <Loader2 className="h-4 w-4 animate-spin" />}
-              {signingIn
-                ? "Waiting for browser sign-in…"
-                : "Sign in with Samsung"}
+              {signingIn ? "Signing in…" : "Sign in with Samsung"}
             </Button>
             {signingIn && (
-              <Button
-                variant="outline"
-                onClick={() => window.electron.tizen.cancelLogin()}
-              >
+              <Button variant="outline" onClick={cancelSignIn}>
                 Cancel
               </Button>
             )}

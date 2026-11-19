@@ -39,27 +39,33 @@ let cachedOAuthCredentials: {
   expiresAt: number;
 } | null = null;
 
-let inFlightLoginSession: OAuthSession | null = null;
+// Set for the whole login, so it can be cancelled while the config is still downloading.
+let inFlightLogin: { cancelled: boolean; session?: OAuthSession } | null = null;
 
 const LOG_CHANNEL = "tizen-cert:log";
 
 export function registerTizenCertHandlers() {
   handle("tizen-cert:login", async (event) => {
-    if (inFlightLoginSession) {
+    if (inFlightLogin) {
       throw new Error("Samsung login is already in progress.");
     }
     const sendLog = replyLog(event, LOG_CHANNEL);
+    const login: NonNullable<typeof inFlightLogin> = { cancelled: false };
+    inFlightLogin = login;
     let oauthSession: OAuthSession | null = null;
 
     try {
-      sendLog("Fetching Samsung certificate configuration…");
+      sendLog(
+        "Fetching Samsung certificate configuration (this can take a minute)…"
+      );
       const config = await getTizenCertConfig();
+      if (login.cancelled) throw new Error("Samsung login cancelled by user");
       sendLog("Configuration ready.");
 
       oauthSession = await startOAuthServer({
         redirectUri: getRegisteredRedirectUri(config.loginUrl),
       });
-      inFlightLoginSession = oauthSession;
+      login.session = oauthSession;
 
       const authUrl = buildAuthUrl(
         config,
@@ -86,25 +92,25 @@ export function registerTizenCertHandlers() {
       sendLog(`Error: ${message}`);
       throw error;
     } finally {
-      if (oauthSession === inFlightLoginSession) {
-        inFlightLoginSession = null;
-      }
+      if (inFlightLogin === login) inFlightLogin = null;
       oauthSession?.close("Samsung login session closed");
     }
   });
 
   handle("tizen-cert:cancel-login", async (event) => {
-    if (!inFlightLoginSession) {
+    if (!inFlightLogin) {
       throw new Error("No Samsung login is currently in progress.");
     }
-    inFlightLoginSession.close("Samsung login cancelled by user");
-    inFlightLoginSession = null;
+    inFlightLogin.cancelled = true;
+    inFlightLogin.session?.close("Samsung login cancelled by user");
+    inFlightLogin = null;
     replyLog(event, LOG_CHANNEL)("Cancelling Samsung login…");
   });
 
   handle("tizen-cert:logout", async () => {
-    inFlightLoginSession?.close("Samsung login cancelled by user");
-    inFlightLoginSession = null;
+    if (inFlightLogin) inFlightLogin.cancelled = true;
+    inFlightLogin?.session?.close("Samsung login cancelled by user");
+    inFlightLogin = null;
     cachedOAuthCredentials = null;
   });
 
