@@ -168,6 +168,7 @@ bun install      # install dependencies
 bun run dev      # run the app in development mode
 bun run build    # build installers for your OS
 bun run demo:record  # re-record the README demo GIF (needs ffmpeg; uses made-up data)
+bun run demo:screenshots  # re-render the README screenshots (made-up data)
 ```
 
 Contributions are welcome. See the [Contributing Guide](CONTRIBUTING.md) and use [Conventional Commits](https://www.conventionalcommits.org/).
