@@ -15,7 +15,7 @@ import {
 import { DEPLOY_CONSTANTS, WEBOS_CONSTANTS } from "../utils/constants";
 import {
   findNewestFile,
-  replaceDebugSession,
+  addDebugProcess,
   resolvePackage,
   checkTool,
   unreachableMessage,
@@ -158,7 +158,7 @@ async function runInspector(
     log(`Inspector error: ${error.message}`);
     return undefined;
   });
-  if (url) replaceDebugSession(proc);
+  if (url) addDebugProcess(proc);
   else killTree(proc);
   return url;
 }

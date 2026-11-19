@@ -122,10 +122,28 @@ export function unreachableMessage(): string {
     : "TV unreachable. Check it is on, on the same network, and that the IP is correct.";
 }
 
-let debugSession: ChildProcess | null = null;
+let debugSessionCleanup: (() => void)[] = [];
 
-/** Only one debug bridge runs at a time; a new debug deploy replaces the previous one. */
-export function replaceDebugSession(proc: ChildProcess): void {
-  if (debugSession) killTree(debugSession);
-  debugSession = proc;
+/** Ends the running debug session: kills its bridge process and removes its port forwards. */
+export function endDebugSession(): void {
+  debugSessionCleanup.forEach((cleanup) => cleanup());
+  debugSessionCleanup = [];
+}
+
+/** Keeps a bridge process alive until the debug session ends. */
+export function addDebugProcess(proc: ChildProcess): void {
+  debugSessionCleanup.push(() => killTree(proc));
+}
+
+/** Removes a `forward tcp:PORT` (sdb or adb) when the debug session ends. */
+export function addDebugForward(
+  cli: string,
+  serial: string,
+  port: number | string
+): void {
+  debugSessionCleanup.push(() => {
+    runCli(cli, ["-s", serial, "forward", "--remove", `tcp:${port}`]).catch(
+      () => {}
+    );
+  });
 }
