@@ -40,6 +40,7 @@ const MAX_TEXT_LENGTH = 5000;
 const MAX_STACK_FRAMES = 5;
 const FLUSH_INTERVAL_MS = 100;
 const CONNECT_TIMEOUT_MS = 5000;
+const COMMAND_TIMEOUT_MS = 5000;
 const SERIALIZE_TIMEOUT_MS = 1000;
 // Runs on the TV: older Chrome sends console objects without a preview.
 const SERIALIZE_OBJECT = `function () {
@@ -203,6 +204,11 @@ export function chromeMajorVersion(userAgent: string): number | undefined {
   return major || undefined;
 }
 
+interface CdpResponse {
+  result?: unknown;
+  error?: { message: string };
+}
+
 export interface ConsoleStreamOptions {
   /** Called with batches of entries, at most every 100ms. */
   onEntries(entries: AppLogEntry[]): void;
@@ -216,7 +222,7 @@ export interface ConsoleStreamOptions {
 export class ConsoleStream {
   private socket?: WebSocket;
   private nextId = 1;
-  private pending = new Map<number, (result: unknown) => void>();
+  private pending = new Map<number, (response?: CdpResponse) => void>();
   private batch: AppLogEntry[] = [];
   private flushTimer?: ReturnType<typeof setTimeout>;
   private closedByUs = false;
@@ -275,12 +281,35 @@ export class ConsoleStream {
     this.socket?.close();
   }
 
-  private send(method: string, params?: object): Promise<unknown> {
+  private request(
+    method: string,
+    params?: object
+  ): Promise<CdpResponse | undefined> {
     const id = this.nextId++;
     return new Promise((resolve) => {
       this.pending.set(id, resolve);
       this.socket?.send(JSON.stringify({ id, method, params }));
     });
+  }
+
+  private async send(method: string, params?: object): Promise<unknown> {
+    return (await this.request(method, params))?.result;
+  }
+
+  /** Runs a CDP command on the page, failing on protocol errors and timeouts. */
+  async command(method: string, params?: object): Promise<unknown> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<undefined>((resolve) => {
+      timer = setTimeout(() => resolve(undefined), COMMAND_TIMEOUT_MS);
+    });
+    const response = await Promise.race([
+      this.request(method, params),
+      timeout,
+    ]);
+    clearTimeout(timer);
+    if (!response) throw new Error("The TV didn't respond.");
+    if (response.error) throw new Error(response.error.message);
+    return response.result;
   }
 
   /** JSON of a console object that came without a preview, read from the TV. */
@@ -311,6 +340,7 @@ export class ConsoleStream {
     let message: {
       id?: number;
       result?: unknown;
+      error?: { message: string };
       method?: string;
       params?: Record<string, unknown>;
     };
@@ -321,7 +351,7 @@ export class ConsoleStream {
     }
 
     if (message.id !== undefined) {
-      this.pending.get(message.id)?.(message.result);
+      this.pending.get(message.id)?.(message);
       this.pending.delete(message.id);
       return;
     }

@@ -1,14 +1,19 @@
-import { dialog, ipcMain, shell } from "electron";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { app, clipboard, dialog, ipcMain, nativeImage, shell } from "electron";
 import type {
   DeployMode,
   DeployTarget,
   Device,
   Platform,
+  RemoteKey,
   SdkPaths,
 } from "../../shared/ipc";
 import { store } from "../store";
 import {
+  captureAppScreen,
   openInspectorForApp,
+  pressRemoteKey,
   startAppConsole,
   stopAppConsole,
 } from "../app-console";
@@ -101,8 +106,12 @@ export function registerIpcHandlers() {
         log
       );
       if (outcome.inspectorUrl) {
-        await startAppConsole(outcome.inspectorUrl, event.sender).catch(
-          (error) => log(`App logs unavailable: ${getErrorMessage(error)}`)
+        await startAppConsole(
+          outcome.inspectorUrl,
+          platform,
+          event.sender
+        ).catch((error) =>
+          log(`App logs unavailable: ${getErrorMessage(error)}`)
         );
       }
       return outcome;
@@ -111,6 +120,22 @@ export function registerIpcHandlers() {
 
   handle("inspector:open", async (_e, url: string) => openInspectorForApp(url));
   handle("app-console:stop", async () => stopAppConsole());
+  handle("remote:press", async (_e, key: RemoteKey) => pressRemoteKey(key));
+  handle("remote:screenshot", async () => {
+    const png = await captureAppScreen();
+    clipboard.writeImage(nativeImage.createFromBuffer(png));
+    const dir = path.join(app.getPath("pictures"), "CTV Bridge");
+    await fs.mkdir(dir, { recursive: true });
+    // Local time, e.g. screenshot-2026-11-19-14-05-09.png
+    const now = new Date();
+    const stamp = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+      .toISOString()
+      .slice(0, 19)
+      .replace(/[T:]/g, "-");
+    const file = path.join(dir, `screenshot-${stamp}.png`);
+    await fs.writeFile(file, png);
+    return { path: file };
+  });
 
   handle("tizen:list-profiles", async () => ({
     profiles: await listTizenProfiles(),

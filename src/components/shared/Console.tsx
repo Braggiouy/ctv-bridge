@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppConsole } from "@/hooks/useAppConsole";
+import { RemoteControl } from "./RemoteControl";
 import { clearLogs, cn, useLogs, type LogEntry, type LogType } from "@/utils";
 
 const STYLES: Record<LogType, { icon: typeof Info; className: string }> = {
@@ -119,6 +120,9 @@ export const Console = ({ className }: { className?: string }) => {
               <Square className="h-2.5 w-2.5 fill-current" />
             </button>
           </span>
+        )}
+        {appConsole.state !== "stopped" && (
+          <RemoteControl disabled={appConsole.state === "paused"} />
         )}
         <div
           role="radiogroup"
