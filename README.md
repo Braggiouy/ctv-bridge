@@ -21,6 +21,7 @@ CTV Bridge is a free, open-source desktop app on top of the official vendor tool
 - **Run**: builds the `.wgt` / `.ipk`, installs it (replacing the old version) and launches it.
 - **Debug**: the same, then opens DevTools for your app in its own window. On Android this works for apps with a debuggable WebView.
 - **Live app console**: after Debug, your app's `console` output, uncaught errors and failed requests stream into the console, tagged **APP**, with an All / Warnings / Errors filter.
+- **Remote and screenshots**: while the app console is live, press the arrows, OK and Back from the console bar (or with the keyboard once the remote has focus), and capture the app's screen. Screenshots are saved to `Pictures/CTV Bridge` and copied to the clipboard.
 - **Remembers everything**: TVs, recent projects and signing profiles, per platform.
 - **Connection status at a glance**: select a TV and its dot turns green or red, with the reason.
 - **webOS SSH keys** set up automatically from the Developer Mode passphrase.

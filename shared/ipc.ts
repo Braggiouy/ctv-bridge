@@ -46,6 +46,8 @@ export interface AppLogEntry {
   text: string;
 }
 
+export type RemoteKey = "up" | "down" | "left" | "right" | "enter" | "back";
+
 /** `paused`: the TV allows one debugger at a time and DevTools has it. */
 export type AppConsoleState = "live" | "paused" | "stopped";
 
@@ -130,6 +132,12 @@ export interface ElectronApi {
     stop(): Promise<Result>;
     onEntries(callback: (entries: AppLogEntry[]) => void): Unsubscribe;
     onState(callback: (state: AppConsoleState) => void): Unsubscribe;
+  };
+  /** Controls the app being debugged, over the same connection as its console. */
+  remote: {
+    press(key: RemoteKey): Promise<Result>;
+    /** Saves a PNG of the app's screen and copies it to the clipboard. */
+    screenshot(): Promise<Result & { path?: string }>;
   };
   tizen: {
     listProfiles(): Promise<Result & { profiles?: TizenProfile[] }>;

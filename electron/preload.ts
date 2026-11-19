@@ -38,6 +38,10 @@ const api: ElectronApi = {
     onEntries: subscribe("app-console:entries"),
     onState: subscribe("app-console:state"),
   },
+  remote: {
+    press: invoke("remote:press"),
+    screenshot: invoke("remote:screenshot"),
+  },
   tizen: {
     listProfiles: invoke("tizen:list-profiles"),
     deleteProfile: invoke("tizen:delete-profile"),
