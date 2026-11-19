@@ -195,7 +195,11 @@ const eventTimestamp = (method: string, params: Record<string, unknown>) =>
   ) || 0;
 
 export function chromeMajorVersion(userAgent: string): number | undefined {
-  const major = Number(userAgent.match(/Chrome\/(\d+)/)?.[1]);
+  // Tizen 5.5+ omits "Chrome/": "(KHTML, like Gecko) 120.0.6099.5/9.0 TV Safari".
+  const match =
+    userAgent.match(/Chrome\/(\d+)/) ??
+    userAgent.match(/like Gecko\) (\d+)\.[\d.]+\/[\d.]+ TV/);
+  const major = Number(match?.[1]);
   return major || undefined;
 }
 

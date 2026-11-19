@@ -198,6 +198,17 @@ describe("TV compatibility", () => {
     ).toBe(87);
     expect(
       chromeMajorVersion(
+        "Mozilla/5.0 (SMART-TV; LINUX; Tizen 9.0) AppleWebKit/537.36 (KHTML, like Gecko) 120.0.6099.5/9.0 TV Safari/537.36"
+      )
+    ).toBe(120);
+    expect(
+      chromeMajorVersion(
+        "Mozilla/5.0 (SMART-TV; LINUX; Tizen 5.5) AppleWebKit/537.36 (KHTML, like Gecko) 69.0.3497.106.1/5.5 TV Safari/537.36"
+      )
+    ).toBe(69);
+    // Tizen 4 (Chrome 56) doesn't report its engine version.
+    expect(
+      chromeMajorVersion(
         "Mozilla/5.0 (SMART-TV; LINUX; Tizen 4.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 TV Safari/537.36"
       )
     ).toBeUndefined();
