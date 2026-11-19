@@ -24,6 +24,8 @@ interface ProjectPanelProps {
   workflow: Workflow;
   updateWorkflow: (patch: Partial<Workflow>) => void;
   status?: ConnectionStatus;
+  onRetryConnection: () => void;
+  onCancelConnection: () => void;
   knownDuids: string[];
 }
 
@@ -46,6 +48,8 @@ export const ProjectPanel = ({
   workflow,
   updateWorkflow,
   status,
+  onRetryConnection,
+  onCancelConnection,
   knownDuids,
 }: ProjectPanelProps) => {
   const info = PLATFORMS[platform];
@@ -231,6 +235,28 @@ export const ProjectPanel = ({
                       ? `Connected · ${device.ip}`
                       : device.ip}
               </span>
+              {status?.state === "checking" ? (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0"
+                  onClick={onCancelConnection}
+                >
+                  Cancel
+                </Button>
+              ) : (
+                status?.state === "failed" && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto shrink-0 p-0"
+                    onClick={onRetryConnection}
+                    disabled={!!busy}
+                  >
+                    Retry
+                  </Button>
+                )
+              )}
             </>
           ) : (
             <span className="text-muted-foreground">

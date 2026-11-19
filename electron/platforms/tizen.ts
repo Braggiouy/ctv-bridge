@@ -26,6 +26,7 @@ import {
   resolvePackage,
   checkTool,
   unreachableMessage,
+  assertReachable,
 } from "./common";
 import {
   findDebugPort,
@@ -55,6 +56,12 @@ async function attachedIps(): Promise<string[]> {
 
 async function connect(ip: string): Promise<void> {
   if ((await attachedIps()).includes(ip)) return;
+  if (IPV4.test(ip))
+    await assertReachable(
+      ip,
+      TIZEN_CONSTANTS.DEFAULT_PORT,
+      "Turn on Developer Mode with this computer's IP as the Host PC IP"
+    );
 
   let output = "";
   try {

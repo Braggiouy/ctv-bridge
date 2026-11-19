@@ -19,6 +19,7 @@ import {
   resolvePackage,
   checkTool,
   unreachableMessage,
+  assertReachable,
 } from "./common";
 import { findInspectorUrl, isInspectLogLine } from "./parsers";
 import { discoverInspector } from "./inspector";
@@ -235,6 +236,11 @@ export const webosAdapter: PlatformAdapter = {
   },
 
   async testConnection(device) {
+    await assertReachable(
+      device.ip,
+      device.port || WEBOS_CONSTANTS.DEFAULT_PORT,
+      "Open the Developer Mode app on the TV and turn Dev Mode on"
+    );
     try {
       await readDeviceInfo(device.name);
       return { message: `Connected to ${device.name}` };
