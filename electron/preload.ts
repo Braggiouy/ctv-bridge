@@ -23,6 +23,7 @@ const api: ElectronApi = {
     update: invoke("devices:update"),
     remove: invoke("devices:remove"),
     test: invoke("devices:test"),
+    discover: invoke("devices:discover"),
   },
   sdk: {
     getPaths: invoke("sdk:get-paths"),

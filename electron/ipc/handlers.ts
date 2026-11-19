@@ -28,6 +28,7 @@ import {
 import { webosAdapter } from "../platforms/webos";
 import { androidAdapter } from "../platforms/android";
 import { endDebugSession } from "../platforms/common";
+import { discoverTvs } from "../platforms/discovery";
 
 const adapters: Record<Platform, PlatformAdapter> = {
   tizen: tizenAdapter,
@@ -59,6 +60,9 @@ export function registerIpcHandlers() {
   handle("devices:test", async (_e, platform: Platform, device: Device) =>
     adapterFor(platform).testConnection(device)
   );
+  handle("devices:discover", async (_e, platform: Platform) => ({
+    tvs: await discoverTvs(platform),
+  }));
 
   ipcMain.handle("sdk:get-paths", () => store.getAll());
   handle("sdk:save-paths", async (_e, paths: SdkPaths) => store.setAll(paths));

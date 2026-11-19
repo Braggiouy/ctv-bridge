@@ -12,9 +12,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { useDevices } from "@/hooks/useDevices";
 import { PLATFORMS } from "@/lib/platforms";
-import type { Device, Platform } from "@/types";
+import type { Device, DiscoveredTv, Platform } from "@/types";
 import { cn } from "@/utils";
 import { DeviceForm } from "./DeviceForm";
+import { NearbyTvs } from "./NearbyTvs";
 import { STATUS_DOT, type ConnectionStatus } from "./status";
 
 interface DeviceListProps {
@@ -30,6 +31,15 @@ interface DeviceListProps {
 const sameDevice = (a?: Device, b?: Device) =>
   !!a && !!b && a.ip === b.ip && a.name === b.name;
 
+// webOS names are CLI identifiers: "[LG] webOS TV" → "lg-webos-tv".
+const deviceName = (platform: Platform, tv: DiscoveredTv) =>
+  platform === "webos"
+    ? tv.name
+        .toLowerCase()
+        .replace(/[^\w-]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+    : tv.name;
+
 export const DeviceList = ({
   platform,
   devices: { devices, loading, refresh, add, update, remove },
@@ -39,6 +49,7 @@ export const DeviceList = ({
   onSelectionChange,
 }: DeviceListProps) => {
   const [editing, setEditing] = useState<Device | "new" | null>(null);
+  const [picked, setPicked] = useState<DiscoveredTv>();
   const [pendingRemoval, setPendingRemoval] = useState<Device | null>(null);
   const info = PLATFORMS[platform];
 
@@ -183,7 +194,11 @@ export const DeviceList = ({
 
       <Dialog
         open={editing !== null}
-        onOpenChange={(open) => !open && setEditing(null)}
+        onOpenChange={(open) => {
+          if (open) return;
+          setEditing(null);
+          setPicked(undefined);
+        }}
       >
         <DialogContent>
           <DialogHeader>
@@ -197,12 +212,30 @@ export const DeviceList = ({
               computer.
             </DialogDescription>
           </DialogHeader>
+          {editing === "new" && (
+            <NearbyTvs
+              platform={platform}
+              existing={devices}
+              selectedIp={picked?.ip}
+              onPick={setPicked}
+            />
+          )}
           {editing !== null && (
             <DeviceForm
+              key={picked?.ip}
               platform={platform}
               device={editing === "new" ? undefined : editing}
+              initial={
+                picked && {
+                  name: deviceName(platform, picked),
+                  ip: picked.ip,
+                }
+              }
               onSubmit={submit}
-              onCancel={() => setEditing(null)}
+              onCancel={() => {
+                setEditing(null);
+                setPicked(undefined);
+              }}
             />
           )}
         </DialogContent>

@@ -29,6 +29,15 @@ export interface TestConnectionResult extends Result {
   duid?: string;
 }
 
+/** A TV found on the local network, not yet added. */
+export interface DiscoveredTv {
+  name: string;
+  ip: string;
+  model?: string;
+  /** Something to fix on the TV before deploying, e.g. Developer Mode is off. */
+  warning?: string;
+}
+
 export interface BuildResult extends Result {
   packagePath?: string;
 }
@@ -107,6 +116,8 @@ export interface ElectronApi {
     update(platform: Platform, previous: Device, next: Device): Promise<Result>;
     remove(platform: Platform, device: Device): Promise<Result>;
     test(platform: Platform, device: Device): Promise<TestConnectionResult>;
+    /** Searches the local network for TVs of this platform. */
+    discover(platform: Platform): Promise<Result & { tvs?: DiscoveredTv[] }>;
   };
   sdk: {
     getPaths(): Promise<SdkPaths>;
