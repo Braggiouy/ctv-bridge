@@ -4,13 +4,15 @@ import {
   CheckCircle2,
   ChevronRight,
   Info,
+  Square,
   Terminal,
   Trash2,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { clearLogs, cn, useLogs, type LogType } from "@/utils";
+import { useAppConsole } from "@/hooks/useAppConsole";
+import { clearLogs, cn, useLogs, type LogEntry, type LogType } from "@/utils";
 
 const STYLES: Record<LogType, { icon: typeof Info; className: string }> = {
   log: { icon: ChevronRight, className: "text-foreground/80" },
@@ -25,6 +27,19 @@ const STYLES: Record<LogType, { icon: typeof Info; className: string }> = {
     className: "text-red-600 dark:text-red-400 bg-red-500/10",
   },
 };
+
+type Level = "all" | "warning" | "error";
+
+const LEVELS: { id: Level; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "warning", label: "Warnings" },
+  { id: "error", label: "Errors" },
+];
+
+const matchesLevel = (log: LogEntry, level: Level) =>
+  level === "all" ||
+  log.type === "error" ||
+  (level === "warning" && log.type === "warning");
 
 const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 
@@ -45,17 +60,23 @@ const linkify = (message: string) =>
     )
   );
 
-/** Docked output of every SDK command, newest at the bottom like a terminal. */
+/** Docked output of every SDK command and of the app being debugged, newest at the bottom like a terminal. */
 export const Console = ({ className }: { className?: string }) => {
   const logs = useLogs();
+  const appConsole = useAppConsole();
   const [search, setSearch] = useState("");
+  const [level, setLevel] = useState<Level>("all");
   const scroller = useRef<HTMLDivElement>(null);
   const pinnedToBottom = useRef(true);
 
   const term = search.toLowerCase();
-  const visible = term
-    ? logs.filter((log) => log.message.toLowerCase().includes(term))
-    : logs;
+  const visible =
+    term || level !== "all"
+      ? logs.filter(
+          (log) =>
+            matchesLevel(log, level) && log.message.toLowerCase().includes(term)
+        )
+      : logs;
 
   useEffect(() => {
     const el = scroller.current;
@@ -75,9 +96,56 @@ export const Console = ({ className }: { className?: string }) => {
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Console
         </h2>
+        {appConsole.state !== "stopped" && (
+          <span className="flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs">
+            <span
+              className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                appConsole.state === "live"
+                  ? "animate-pulse bg-green-500"
+                  : "bg-yellow-500"
+              )}
+            />
+            {appConsole.state === "live"
+              ? "App console live"
+              : "App console paused"}
+            <button
+              type="button"
+              onClick={appConsole.stop}
+              className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+              title="Stop streaming the app's console"
+              aria-label="Stop streaming the app's console"
+            >
+              <Square className="h-2.5 w-2.5 fill-current" />
+            </button>
+          </span>
+        )}
+        <div
+          role="radiogroup"
+          aria-label="Level"
+          className="ml-auto flex rounded-md bg-muted p-0.5"
+        >
+          {LEVELS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={level === id}
+              onClick={() => setLevel(id)}
+              className={cn(
+                "rounded px-2 py-0.5 text-xs",
+                level === id
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <Input
           placeholder="Filter…"
-          className="ml-auto h-7 w-44 text-xs"
+          className="h-7 w-44 text-xs"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -102,7 +170,7 @@ export const Console = ({ className }: { className?: string }) => {
         {visible.length === 0 ? (
           <p className="py-6 text-center font-sans text-muted-foreground">
             {logs.length === 0
-              ? "Output from builds and deployments appears here."
+              ? "Output from builds, deployments and the app being debugged appears here."
               : "No entries match the filter."}
           </p>
         ) : (
@@ -117,6 +185,11 @@ export const Console = ({ className }: { className?: string }) => {
                   {new Date(log.timestamp).toLocaleTimeString()}
                 </span>
                 <Icon className="mt-0.5 h-3 w-3 shrink-0" />
+                {log.source === "app" && (
+                  <span className="h-fit shrink-0 rounded bg-foreground/10 px-1 text-[10px] font-semibold uppercase leading-4 text-muted-foreground">
+                    app
+                  </span>
+                )}
                 <span className="flex-1 whitespace-pre-wrap break-all">
                   {linkify(log.message)}
                 </span>

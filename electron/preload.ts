@@ -33,6 +33,11 @@ const api: ElectronApi = {
   deploy: invoke("package:deploy"),
   openInspector: invoke("inspector:open"),
   onDeployLog: subscribe("deploy-log"),
+  appConsole: {
+    stop: invoke("app-console:stop"),
+    onEntries: subscribe("app-console:entries"),
+    onState: subscribe("app-console:state"),
+  },
   tizen: {
     listProfiles: invoke("tizen:list-profiles"),
     deleteProfile: invoke("tizen:delete-profile"),
