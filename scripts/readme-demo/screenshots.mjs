@@ -35,16 +35,30 @@ const SCENES = [
       `document.querySelector('input[placeholder="192.168.1.100"]').focus()`,
     ],
   },
+  // GitHub's social preview (Settings → General), shown when the repo link is shared.
+  {
+    file: "social-preview.png",
+    scene: "ready",
+    width: 1280,
+    height: 640,
+    steps: [
+      `[...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Debug").click()`,
+      "await new Promise((r) => setTimeout(r, 5500))",
+      `document.querySelector('[aria-label="Right"]').click()`,
+      `document.querySelector('[aria-label="Down"]').click()`,
+      `document.querySelector('[aria-label="OK"]').click()`,
+    ],
+  },
 ];
 
 // Each scene closes its window; don't quit until all are done.
 app.on("window-all-closed", () => {});
 
 app.whenReady().then(async () => {
-  for (const { file, scene, steps } of SCENES) {
+  for (const { file, scene, steps, width = 1200, height = 800 } of SCENES) {
     const win = new BrowserWindow({
-      width: 1200,
-      height: 800,
+      width,
+      height,
       show: false,
       useContentSize: true,
       webPreferences: {
@@ -58,7 +72,9 @@ app.whenReady().then(async () => {
     await win.loadFile(path.join(root, "dist/index.html"));
     await sleep(1500);
     for (const step of steps) {
-      await win.webContents.executeJavaScript(`${step}; 0`);
+      await win.webContents.executeJavaScript(
+        `(async () => { ${step}; })().then(() => 0)`
+      );
       await sleep(400);
     }
     await sleep(600);
