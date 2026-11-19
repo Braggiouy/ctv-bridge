@@ -20,13 +20,18 @@ const DEVICES = {
   android: [{ name: "Streaming Stick", ip: "192.0.2.30" }],
 };
 
+// "setup" shows the one-time setup screen; anything else starts ready to deploy.
+const scene = process.argv
+  .find((arg) => arg.startsWith("--demo-scene="))
+  ?.split("=")[1];
+
 localStorage.setItem("theme", "dark");
 localStorage.setItem("ctv-bridge:migrated", "1");
 localStorage.setItem("ctv-bridge:platform", JSON.stringify("tizen"));
 localStorage.setItem(
   "ctv-bridge:workflow:tizen",
   JSON.stringify({
-    sdkReady: true,
+    sdkReady: scene !== "setup",
     device: DEVICES.tizen[0],
     projectPath: PROJECT,
     recentProjects: [PROJECT, "~/projects/kids-app"],
@@ -111,7 +116,10 @@ window.electron = {
     },
   },
   sdk: {
-    getPaths: async () => ({}),
+    getPaths: async () => ({
+      sdbPath: "~/tizen-studio/tools/sdb",
+      tizenPath: "~/tizen-studio/tools/ide/bin/tizen",
+    }),
     savePaths: ok,
     verify: async () => ({ success: true, tools: [] }),
   },
