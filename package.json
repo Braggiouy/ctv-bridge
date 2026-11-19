@@ -22,6 +22,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p electron/tsconfig.json",
     "test": "vitest run",
     "preview": "vite preview",
+    "demo:record": "vite build && electron scripts/readme-demo/record.mjs",
     "release": "bun run lint && bun run format:check && bun run typecheck && bun run test && bunx standard-version"
   },
   "dependencies": {
