@@ -7,7 +7,6 @@
 
 import { shell, app } from "electron";
 import * as path from "node:path";
-import * as fs from "node:fs/promises";
 import type { TizenCertificateParams } from "../../shared/ipc";
 import { store } from "../store";
 import { runCli } from "../utils/cli";
@@ -15,7 +14,6 @@ import {
   getTizenCertConfig,
   evictTizenCertConfigCache,
   getCaCertPath,
-  TizenCertConfig,
 } from "../utils/tizen-cert-config";
 import {
   startOAuthServer,
@@ -23,12 +21,17 @@ import {
   OAuthSession,
 } from "../utils/tizen-oauth-server";
 import { resolveOpenssl, runOpenssl } from "../utils/tizen-openssl";
-import { logger } from "../utils/logger";
+import {
+  buildAuthUrl,
+  certificateDir,
+  generateCertificates,
+  getRegisteredRedirectUri,
+  StaleConfigError,
+} from "../utils/tizen-cert-generator";
 import { getErrorMessage } from "../utils/errors";
 import { handle, replyLog } from "./handle";
 
 const DEFAULT_P12_PASSWORD = "tizencert";
-const INTERMEDIATE_SUFFIXES = [".csr", ".crt", ".key.pem", "-chain.crt"];
 const OAUTH_SESSION_TTL_MS = 10 * 60 * 1000;
 
 let cachedOAuthCredentials: {
@@ -125,39 +128,26 @@ export function registerTizenCertHandlers() {
         sendLog("Configuration ready.");
         sendLog("Using active Samsung login session.");
 
-        const certDir = resolveSamsungCertificateDir(params);
-        await fs.mkdir(certDir, { recursive: true });
-
+        const certDir = certificateDir(app.getPath("home"), params);
         const exportPassword = params.password?.trim() || DEFAULT_P12_PASSWORD;
 
-        sendLog("Generating author certificate…");
-        await generateAuthorCert(
-          opensslBin,
-          certDir,
-          params.email.trim(),
-          credentials,
-          config
-        );
-
-        sendLog("Generating distributor certificate…");
-        await generateDistributorCert(
-          opensslBin,
-          certDir,
-          params.email.trim(),
-          params.deviceIds ?? [],
+        await generateCertificates({
+          dir: certDir,
+          email: params.email.trim(),
+          deviceIds: params.deviceIds ?? [],
+          password: exportPassword,
+          privilegeLevel: params.privilegeLevel ?? "Public",
+          developerType: params.developerType ?? "Individual",
           credentials,
           config,
-          {
-            privilegeLevel: params.privilegeLevel ?? "Public",
-            developerType: params.developerType ?? "Individual",
-          }
-        );
-
-        sendLog("Exporting PKCS12 files (author.p12, distributor.p12)…");
-        await exportPkcs12(opensslBin, certDir, "author", exportPassword);
-        await exportPkcs12(opensslBin, certDir, "distributor", exportPassword);
-
-        await cleanupIntermediateFiles(certDir);
+          caCerts: {
+            author: getCaCertPath("author"),
+            distributor: getCaCertPath("distributor"),
+          },
+          openssl: (args, stdin) =>
+            runOpenssl(opensslBin, args, certDir, stdin),
+          log: sendLog,
+        });
 
         const profileName = params.profileName?.trim();
         if (profileName) {
@@ -175,60 +165,12 @@ export function registerTizenCertHandlers() {
         sendLog("Done! author.p12 and distributor.p12 are ready.");
         return { path: certDir };
       } catch (error) {
+        if (error instanceof StaleConfigError) evictTizenCertConfigCache();
         sendLog(`Error: ${getErrorMessage(error)}`);
         throw error;
       }
     }
   );
-}
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-interface DistributorOptions {
-  privilegeLevel: string;
-  developerType: string;
-}
-
-function sanitizeFolderSegment(value: string): string {
-  return value
-    .trim()
-    .replace(/[^a-zA-Z0-9._-]/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
-
-function resolveSamsungCertificateDir(params: TizenCertificateParams): string {
-  const homeDir = app.getPath("home");
-  const emailPrefix = params.email.split("@")[0] || "default";
-  const preferredName = params.profileName?.trim() || emailPrefix;
-  const folderName = sanitizeFolderSegment(preferredName) || "default";
-  return path.join(homeDir, "SamsungCertificate", folderName);
-}
-
-// ── OAuth ────────────────────────────────────────────────────────────────────
-
-function buildAuthUrl(
-  config: TizenCertConfig,
-  redirectUri: string,
-  state: string
-): string {
-  const url = new URL(config.loginUrl);
-  url.searchParams.set("serviceID", config.serviceId);
-  url.searchParams.set("actionID", "StartOAuth2");
-  url.searchParams.set("accessToken", "Y");
-  url.searchParams.set("redirect_uri", redirectUri);
-  url.searchParams.set("state", state);
-  return url.toString();
-}
-
-function getRegisteredRedirectUri(loginUrl: string): string | undefined {
-  try {
-    const url = new URL(loginUrl);
-    const redirectUri = url.searchParams.get("redirect_uri");
-    return redirectUri?.trim() || undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 function getCachedOAuthCredentials(): OAuthCredentials | null {
@@ -242,194 +184,6 @@ function getCachedOAuthCredentials(): OAuthCredentials | null {
   }
 
   return cachedOAuthCredentials.credentials;
-}
-
-// ── Certificate generation ─────────────────────────────────────────────────────
-
-async function generateAuthorCert(
-  opensslBin: string,
-  workDir: string,
-  email: string,
-  credentials: OAuthCredentials,
-  config: TizenCertConfig
-) {
-  await runOpenssl(
-    opensslBin,
-    ["genrsa", "-out", "author.key.pem", "2048"],
-    workDir
-  );
-  await runOpenssl(
-    opensslBin,
-    [
-      "req",
-      "-new",
-      "-key",
-      "author.key.pem",
-      "-out",
-      "author.csr",
-      "-subj",
-      `/CN=${email}`,
-    ],
-    workDir
-  );
-
-  const csrPath = path.join(workDir, "author.csr");
-  const crtPath = path.join(workDir, "author.crt");
-  await submitCsr(csrPath, crtPath, config.authorUrl, credentials);
-
-  await combineCerts(
-    crtPath,
-    getCaCertPath("author"),
-    path.join(workDir, "author-chain.crt")
-  );
-}
-
-async function generateDistributorCert(
-  opensslBin: string,
-  workDir: string,
-  email: string,
-  deviceIds: string[],
-  credentials: OAuthCredentials,
-  config: TizenCertConfig,
-  options: DistributorOptions
-) {
-  const deviceURIs = deviceIds
-    .map((id) => id.trim())
-    .filter(Boolean)
-    .map((id) => `URI:URN:tizen:deviceid=${id}`);
-
-  await runOpenssl(
-    opensslBin,
-    ["genrsa", "-out", "distributor.key.pem", "2048"],
-    workDir
-  );
-
-  const reqArgs = [
-    "req",
-    "-new",
-    "-key",
-    "distributor.key.pem",
-    "-out",
-    "distributor.csr",
-    "-subj",
-    `/CN=TizenSDK/emailAddress=${email}`,
-  ];
-  if (deviceURIs.length > 0) {
-    reqArgs.push("-addext", `subjectAltName=${deviceURIs.join(",")}`);
-  }
-  await runOpenssl(opensslBin, reqArgs, workDir);
-
-  const csrPath = path.join(workDir, "distributor.csr");
-  const crtPath = path.join(workDir, "distributor.crt");
-  await submitCsr(csrPath, crtPath, config.distributorUrl, credentials, {
-    privilege_level: options.privilegeLevel,
-    developer_type: options.developerType,
-  });
-
-  await combineCerts(
-    crtPath,
-    getCaCertPath("distributor"),
-    path.join(workDir, "distributor-chain.crt")
-  );
-}
-
-async function exportPkcs12(
-  opensslBin: string,
-  workDir: string,
-  type: "author" | "distributor",
-  password: string
-) {
-  const passoutStdin = `${password}\n`;
-  const baseArgs = [
-    "pkcs12",
-    "-export",
-    "-out",
-    `${type}.p12`,
-    "-inkey",
-    `${type}.key.pem`,
-    "-in",
-    `${type}-chain.crt`,
-    "-name",
-    "usercertificate",
-    "-passout",
-    "stdin",
-  ];
-  const runExport = (args: string[]) =>
-    runOpenssl(opensslBin, args, workDir, passoutStdin);
-
-  try {
-    await runExport([...baseArgs, "-legacy"]);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (/unknown option\s+'?-legacy'?/i.test(message)) {
-      await runExport(baseArgs);
-    } else {
-      throw error;
-    }
-  }
-}
-
-// ── Samsung API ──────────────────────────────────────────────────────────────
-
-async function submitCsr(
-  csrPath: string,
-  outputPath: string,
-  apiUrl: string,
-  credentials: OAuthCredentials,
-  extraFields?: Record<string, string>
-) {
-  const csrContent = await fs.readFile(csrPath);
-  const form = new FormData();
-  form.append("access_token", credentials.accessToken);
-  form.append("user_id", credentials.userId);
-  form.append("platform", "VD");
-  if (extraFields) {
-    for (const [key, value] of Object.entries(extraFields)) {
-      form.append(key, value);
-    }
-  }
-  form.append("csr", new Blob([csrContent]), path.basename(csrPath));
-
-  const res = await fetch(apiUrl, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${credentials.accessToken}` },
-    body: form,
-  });
-
-  if (res.status === 404 || res.status === 410) {
-    evictTizenCertConfigCache();
-    throw new Error(
-      `Samsung endpoint returned ${res.status}. Config cache cleared — please retry.`
-    );
-  }
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(
-      `Samsung API ${res.status} for ${path.basename(csrPath)}: ${body}`
-    );
-  }
-
-  const buf = Buffer.from(await res.arrayBuffer());
-  if (!isValidCertificate(buf)) {
-    evictTizenCertConfigCache();
-    const preview = buf
-      .toString("utf-8", 0, Math.min(200, buf.length))
-      .replace(/\s+/g, " ")
-      .trim();
-    throw new Error(
-      `Samsung returned a non-certificate response: ${preview}. Cache cleared — please retry.`
-    );
-  }
-
-  await fs.writeFile(outputPath, buf);
-}
-
-function isValidCertificate(buf: Buffer): boolean {
-  if (buf.length < 4) return false;
-  const head = buf.toString("utf-8", 0, Math.min(200, buf.length));
-  if (head.includes("-----BEGIN CERTIFICATE-----")) return true;
-  return buf[0] === 0x30;
 }
 
 async function registerSecurityProfile(
@@ -452,25 +206,4 @@ async function registerSecurityProfile(
     "-dp",
     password,
   ]);
-}
-
-async function combineCerts(
-  certPath: string,
-  caCertPath: string,
-  outputPath: string
-) {
-  const cert = await fs.readFile(certPath);
-  const ca = await fs.readFile(caCertPath);
-  await fs.writeFile(outputPath, Buffer.concat([cert, Buffer.from("\n"), ca]));
-}
-
-async function cleanupIntermediateFiles(dir: string) {
-  const files = await fs.readdir(dir);
-  for (const file of files) {
-    if (INTERMEDIATE_SUFFIXES.some((suffix) => file.endsWith(suffix))) {
-      await fs.unlink(path.join(dir, file)).catch((err) => {
-        logger.warn(`Failed to delete ${file}`, err);
-      });
-    }
-  }
 }
