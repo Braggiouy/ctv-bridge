@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import net from "node:net";
 import path from "node:path";
 import type { ChildProcess } from "node:child_process";
 import type { Device, Platform, SdkPaths, ToolCheck } from "../../shared/ipc";
@@ -118,8 +119,44 @@ export async function checkTool(
 
 export function unreachableMessage(): string {
   return process.platform === "darwin"
-    ? "TV unreachable. Check it is on and on the same network. If it answers ping, allow CTV Bridge under System Settings → Privacy & Security → Local Network, then restart the app."
-    : "TV unreachable. Check it is on, on the same network, and that the IP is correct.";
+    ? "TV unreachable. Check it is on, on the same network, and that its IP hasn't changed. If it answers ping, allow CTV Bridge under System Settings → Privacy & Security → Local Network, then restart the app."
+    : "TV unreachable. Check it is on, on the same network, and that its IP hasn't changed.";
+}
+
+const PROBE_TIMEOUT_MS = 3000;
+
+/** Fails within seconds when nothing answers on the TV's port, instead of waiting out the CLI's timeout. */
+export async function assertReachable(
+  ip: string,
+  port: number | string,
+  /** How to open the port on the TV, e.g. "Turn on Developer Mode". */
+  fix: string
+): Promise<void> {
+  const result = await probePort(ip, Number(port));
+  // Refused can also mean the TV's IP now belongs to another device.
+  if (result === "refused")
+    throw new Error(
+      `${ip} refused the connection. ${fix}, or check the TV's IP hasn't changed.`
+    );
+  if (result === "unreachable") throw new Error(unreachableMessage());
+}
+
+function probePort(
+  host: string,
+  port: number
+): Promise<"open" | "refused" | "unreachable"> {
+  return new Promise((resolve) => {
+    const socket = net.connect({ host, port, timeout: PROBE_TIMEOUT_MS });
+    const done = (result: "open" | "refused" | "unreachable") => {
+      socket.destroy();
+      resolve(result);
+    };
+    socket.once("connect", () => done("open"));
+    socket.once("timeout", () => done("unreachable"));
+    socket.once("error", (error: NodeJS.ErrnoException) =>
+      done(error.code === "ECONNREFUSED" ? "refused" : "unreachable")
+    );
+  });
 }
 
 let debugSessionCleanup: (() => void)[] = [];

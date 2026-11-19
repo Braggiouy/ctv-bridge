@@ -36,6 +36,9 @@ export const BUILD_CONSTANTS = {
 export const DEPLOY_CONSTANTS = {
   DEBUG_PORT_TIMEOUT_MS: 30000,
   CONNECTION_TIMEOUT_MS: 30000,
+  /** For quick TV commands, e.g. reading its DUID. */
+  RESPONSE_TIMEOUT_MS: 15000,
+  INSTALL_TIMEOUT_MS: 5 * 60_000,
 } as const;
 
 export const WINDOW_CONSTANTS = {

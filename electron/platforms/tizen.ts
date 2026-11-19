@@ -26,6 +26,7 @@ import {
   resolvePackage,
   checkTool,
   unreachableMessage,
+  assertReachable,
 } from "./common";
 import {
   findDebugPort,
@@ -55,6 +56,12 @@ async function attachedIps(): Promise<string[]> {
 
 async function connect(ip: string): Promise<void> {
   if ((await attachedIps()).includes(ip)) return;
+  if (IPV4.test(ip))
+    await assertReachable(
+      ip,
+      TIZEN_CONSTANTS.DEFAULT_PORT,
+      "Turn on Developer Mode with this computer's IP as the Host PC IP"
+    );
 
   let output = "";
   try {
@@ -80,17 +87,27 @@ async function connect(ip: string): Promise<void> {
   }
 }
 
+const timedOut = (error: unknown) =>
+  (error as { killed?: boolean } | null)?.killed === true;
+
+// A wedged sdb server accepts connections but never answers, until it's restarted.
+async function restartSdbAfterTimeout(what: string): Promise<never> {
+  await runCli(sdb(), ["kill-server"]).catch(() => undefined);
+  throw new Error(
+    `${what}, so CTV Bridge restarted sdb. Try again; if it happens again, restart the TV.`
+  );
+}
+
 async function readDuid(ip: string): Promise<string | undefined> {
   try {
-    const { stdout } = await runCli(sdb(), [
-      "-s",
-      serialOf(ip),
-      "shell",
-      "0",
-      "getduid",
-    ]);
+    const { stdout } = await runCli(
+      sdb(),
+      ["-s", serialOf(ip), "shell", "0", "getduid"],
+      { timeout: DEPLOY_CONSTANTS.RESPONSE_TIMEOUT_MS }
+    );
     return parseDuid(stdout);
-  } catch {
+  } catch (error) {
+    if (timedOut(error)) await restartSdbAfterTimeout("The TV didn't respond");
     return undefined;
   }
 }
@@ -112,9 +129,12 @@ async function install(
   log: LogFn
 ): Promise<void> {
   const installArgs = ["install", "-n", packagePath, "-s", serial];
+  const options = { timeout: DEPLOY_CONSTANTS.INSTALL_TIMEOUT_MS };
   try {
-    await runCli(tizen(), installArgs);
+    await runCli(tizen(), installArgs, options);
   } catch (error) {
+    if (timedOut(error))
+      await restartSdbAfterTimeout("Installing took over 5 minutes");
     const output = cliOutput(error);
     const authorMismatch =
       /author certificate not match|install failed\[118,\s*-11\]/i.test(output);
@@ -131,7 +151,7 @@ async function install(
       (uninstallError) =>
         logger.warn("Uninstall before reinstall failed", uninstallError)
     );
-    await runCli(tizen(), installArgs);
+    await runCli(tizen(), installArgs, options);
   }
 }
 

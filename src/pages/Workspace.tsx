@@ -87,6 +87,11 @@ const Workspace = () => {
     [platform, updateWorkflow]
   );
 
+  const cancelCheck = () => {
+    latestCheck.current++;
+    setStatus({ state: "failed", message: "Connection check cancelled" });
+  };
+
   // Check the remembered TV once per platform, so its status is current.
   const { sdkReady, device } = workflow;
   const checkedPlatform = useRef<Platform | null>(null);
@@ -199,6 +204,10 @@ const Workspace = () => {
                 workflow={workflow}
                 updateWorkflow={updateWorkflow}
                 status={workflow.device ? status : undefined}
+                onRetryConnection={() =>
+                  workflow.device && void checkConnection(workflow.device)
+                }
+                onCancelConnection={cancelCheck}
                 knownDuids={knownDuids}
               />
             ) : (

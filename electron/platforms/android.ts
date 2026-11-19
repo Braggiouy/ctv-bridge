@@ -9,6 +9,7 @@ import {
   checkTool,
   addDebugForward,
   unreachableMessage,
+  assertReachable,
 } from "./common";
 import { attachInspector } from "./inspector";
 import {
@@ -32,6 +33,11 @@ async function attachedIps(): Promise<string[]> {
 
 async function connect(ip: string): Promise<void> {
   if ((await attachedIps()).includes(ip)) return;
+  await assertReachable(
+    ip,
+    ANDROID_CONSTANTS.DEFAULT_PORT,
+    "Turn on network (ADB) debugging on the TV"
+  );
 
   let output = "";
   try {
