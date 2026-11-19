@@ -26,6 +26,20 @@ const MAX_RECENT_PROJECTS = 5;
 export const addRecentProject = (recent: string[], path: string) =>
   [path, ...recent.filter((p) => p !== path)].slice(0, MAX_RECENT_PROJECTS);
 
+/** Short names for recent projects: the folder name, plus its parent when two share a name. */
+export function recentProjectLabels(paths: string[]): string[] {
+  const segments = paths.map((path) => path.split(/[\\/]/).filter(Boolean));
+  const last = (parts: string[], count: number) =>
+    parts.slice(-count).join("/") || "/";
+  return segments.map((parts) => {
+    const name = last(parts, 1);
+    const clashes = segments.some(
+      (other) => other !== parts && last(other, 1) === name
+    );
+    return clashes ? last(parts, 2) : name;
+  });
+}
+
 const PLATFORM_IDS: Platform[] = ["tizen", "webos", "android"];
 
 function readJson<T>(key: string, fallback: T): T {

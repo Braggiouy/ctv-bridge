@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addRecentProject } from "./workflow";
+import { addRecentProject, recentProjectLabels } from "./workflow";
 
 describe("addRecentProject", () => {
   it("moves the project to the front without duplicates", () => {
@@ -18,5 +18,18 @@ describe("addRecentProject", () => {
       "/3",
       "/4",
     ]);
+  });
+});
+
+describe("recentProjectLabels", () => {
+  it("shows folder names, with the parent only when two clash", () => {
+    expect(
+      recentProjectLabels([
+        "/work/strim/tizen",
+        "/work/rikstv/tizen",
+        "/work/tv4",
+        "C:\\apps\\kids.apk",
+      ])
+    ).toEqual(["strim/tizen", "rikstv/tizen", "tv4", "kids.apk"]);
   });
 });

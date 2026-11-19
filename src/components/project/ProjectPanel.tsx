@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   Bug,
   CheckCircle2,
@@ -13,8 +13,17 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { STATUS_DOT, type ConnectionStatus } from "@/components/devices/status";
 import { PathInput } from "@/components/shared/PathInput";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { PLATFORMS } from "@/lib/platforms";
-import { addRecentProject, type Workflow } from "@/lib/workflow";
+import {
+  addRecentProject,
+  recentProjectLabels,
+  type Workflow,
+} from "@/lib/workflow";
 import type { DeployMode, Platform } from "@/types";
 import { addLog, cn } from "@/utils";
 import { TizenSigning } from "./TizenSigning";
@@ -55,6 +64,7 @@ export const ProjectPanel = ({
   const info = PLATFORMS[platform];
   const { device, projectPath, packagePath, recentProjects, profileName } =
     workflow;
+  const recentLabels = recentProjectLabels(recentProjects);
   const [busy, setBusy] = useState<Busy>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
@@ -161,7 +171,7 @@ export const ProjectPanel = ({
         {recentProjects.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
             <span className="text-xs text-muted-foreground">Recent</span>
-            {recentProjects.map((path) => (
+            {recentProjects.map((path, i) => (
               <span
                 key={path}
                 className={cn(
@@ -169,15 +179,31 @@ export const ProjectPanel = ({
                   path === projectPath && "border-primary/50 bg-primary/10"
                 )}
               >
-                <button
-                  type="button"
-                  className="py-0.5 pl-2.5 pr-1 hover:text-primary"
-                  onClick={() => setProjectPath(path)}
-                  title={path}
-                  disabled={!!busy}
-                >
-                  {baseName(path)}
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="py-0.5 pl-2.5 pr-1 hover:text-primary"
+                      onClick={() => setProjectPath(path)}
+                      aria-label={path}
+                      disabled={!!busy}
+                    >
+                      {recentLabels[i]}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    className="max-w-xl font-mono text-xs"
+                  >
+                    {/* Long paths wrap only after a slash. */}
+                    {path.split(/(?<=[\\/])/).map((part, j) => (
+                      <Fragment key={j}>
+                        {part}
+                        <wbr />
+                      </Fragment>
+                    ))}
+                  </TooltipContent>
+                </Tooltip>
                 <button
                   type="button"
                   className="rounded-full p-1 text-muted-foreground hover:text-foreground"
