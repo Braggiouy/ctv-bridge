@@ -11,7 +11,7 @@ interface KnownDevice {
   duid?: string;
 }
 
-type KnownDevices = Record<string, KnownDevice>;
+type KnownDevices = Partial<Record<string, KnownDevice>>;
 
 const knownDevicesKey = (platform: Platform) => `known-devices:${platform}`;
 

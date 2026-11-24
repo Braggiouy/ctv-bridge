@@ -11,7 +11,7 @@ import {
   stopAppConsole,
 } from "../app-console";
 import { getErrorMessage } from "../utils/errors";
-import { handle, handleRaw, replyLog } from "./handle";
+import { handle, handleRaw, replyLog, sendTo } from "./handle";
 import type { PlatformAdapter } from "../platforms/types";
 import {
   tizenAdapter,
@@ -22,6 +22,7 @@ import { webosAdapter } from "../platforms/webos";
 import { androidAdapter } from "../platforms/android";
 import { endDebugSession } from "../platforms/common";
 import { discoverTvs } from "../platforms/discovery";
+import { watchProject } from "../project-watcher";
 
 const adapters: Record<Platform, PlatformAdapter> = {
   tizen: tizenAdapter,
@@ -34,6 +35,9 @@ function adapterFor(platform: Platform): PlatformAdapter {
   if (!adapter) throw new Error(`Unknown platform: ${platform}`);
   return adapter;
 }
+
+/** Stops watching the project for auto-redeploy; one project is watched at a time. */
+let stopProjectWatch: () => void = () => undefined;
 
 export function registerIpcHandlers() {
   handle("devices:list", async (_e, platform) => ({
@@ -92,7 +96,29 @@ export function registerIpcHandlers() {
     return outcome;
   });
 
-  handle("inspector:open", async (_e, url) => openInspectorForApp(url));
+  handle("project-watch:start", async (event, target) => {
+    stopProjectWatch();
+    let stop: () => void;
+    try {
+      stop = watchProject(target, (changed) => {
+        sendTo(event.sender, "project-watch:changed", changed);
+      });
+    } catch {
+      throw new Error(`Can't watch ${target}: it no longer exists.`);
+    }
+    const onWindowClosed = () => stopProjectWatch();
+    event.sender.once("destroyed", onWindowClosed);
+    stopProjectWatch = () => {
+      stop();
+      event.sender.off("destroyed", onWindowClosed);
+      stopProjectWatch = () => undefined;
+    };
+  });
+  handle("project-watch:stop", async () => stopProjectWatch());
+
+  handle("inspector:open", async (_e, url, background) =>
+    openInspectorForApp(url, background)
+  );
   handle("app-console:stop", async () => stopAppConsole());
   handle("remote:press", async (_e, key) => pressRemoteKey(key));
   handle("remote:screenshot", async () => {
