@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { Device, TizenProfile } from "../../shared/ipc";
+import type { TizenProfile } from "../../shared/ipc";
 import { store } from "../store";
 import { logger } from "../utils/logger";
 import {
@@ -19,19 +19,15 @@ import {
 } from "../utils/constants";
 import {
   findNewestFile,
-  knownDevices,
-  mergeWithKnownDevices,
   addDebugForward,
   addDebugProcess,
   resolvePackage,
   checkTool,
-  unreachableMessage,
-  assertReachable,
 } from "./common";
+import { createBridge } from "./bridge";
 import {
   findDebugPort,
   findProfilesXmlPath,
-  parseAttachedSerials,
   parseDuid,
   parseProfilesTable,
   parseProfilesXml,
@@ -42,50 +38,6 @@ import type { DeployOutcome, LogFn, PlatformAdapter } from "./types";
 
 const sdb = () => store.get("sdbPath") || "sdb";
 const tizen = () => store.get("tizenPath") || "tizen";
-
-const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
-// Emulators are listed by name (e.g. emulator-26101) rather than IP.
-const serialOf = (ip: string) =>
-  IPV4.test(ip) ? `${ip}:${TIZEN_CONSTANTS.DEFAULT_PORT}` : ip;
-const ipOf = (serial: string) => serial.replace(/:\d+$/, "");
-
-async function attachedIps(): Promise<string[]> {
-  const { stdout } = await runCli(sdb(), ["devices"]);
-  return parseAttachedSerials(stdout).map(ipOf);
-}
-
-async function connect(ip: string): Promise<void> {
-  if ((await attachedIps()).includes(ip)) return;
-  if (IPV4.test(ip))
-    await assertReachable(
-      ip,
-      TIZEN_CONSTANTS.DEFAULT_PORT,
-      "Turn on Developer Mode with this computer's IP as the Host PC IP"
-    );
-
-  let output = "";
-  try {
-    const { stdout, stderr } = await runCli(sdb(), ["connect", serialOf(ip)], {
-      timeout: DEPLOY_CONSTANTS.CONNECTION_TIMEOUT_MS,
-    });
-    output = stdout + stderr;
-  } catch (error) {
-    output = cliOutput(error);
-  }
-
-  // sdb connect exits 0 even when it fails, so trust the device list instead.
-  if (!(await attachedIps()).includes(ip)) {
-    if (/refused/i.test(output)) {
-      throw new Error(
-        "Connection refused. Enable Developer Mode on the TV and set this computer's IP as the Host PC IP."
-      );
-    }
-    if (/no route|unreachable|timed? ?out/i.test(output)) {
-      throw new Error(unreachableMessage());
-    }
-    throw new Error(output.trim() || `Could not connect to ${ip}.`);
-  }
-}
 
 const timedOut = (error: unknown) =>
   (error as { killed?: boolean } | null)?.killed === true;
@@ -98,11 +50,11 @@ async function restartSdbAfterTimeout(what: string): Promise<never> {
   );
 }
 
-async function readDuid(ip: string): Promise<string | undefined> {
+async function readDuid(serial: string): Promise<string | undefined> {
   try {
     const { stdout } = await runCli(
       sdb(),
-      ["-s", serialOf(ip), "shell", "0", "getduid"],
+      ["-s", serial, "shell", "0", "getduid"],
       { timeout: DEPLOY_CONSTANTS.RESPONSE_TIMEOUT_MS }
     );
     return parseDuid(stdout);
@@ -111,6 +63,18 @@ async function readDuid(ip: string): Promise<string | undefined> {
     return undefined;
   }
 }
+
+const { serialOf, connect, devices } = createBridge({
+  platform: "tizen",
+  cli: sdb,
+  port: TIZEN_CONSTANTS.DEFAULT_PORT,
+  portFix: "Turn on Developer Mode with this computer's IP as the Host PC IP",
+  connectError: (output) =>
+    /refused/i.test(output)
+      ? "Connection refused. Enable Developer Mode on the TV and set this computer's IP as the Host PC IP."
+      : undefined,
+  readDuid,
+});
 
 async function readAppId(projectPath: string): Promise<string> {
   const configPath = path.join(projectPath, TIZEN_CONSTANTS.CONFIG_FILE);
@@ -205,43 +169,7 @@ async function startDebugSession(
 }
 
 export const tizenAdapter: PlatformAdapter = {
-  async listDevices() {
-    return mergeWithKnownDevices("tizen", await attachedIps());
-  },
-
-  async addDevice(device) {
-    await connect(device.ip);
-    knownDevices.remember("tizen", device.ip, {
-      name: device.name,
-      duid: await readDuid(device.ip),
-    });
-    return `Connected to ${device.name || device.ip}`;
-  },
-
-  async updateDevice(previous, next) {
-    if (previous.ip !== next.ip) {
-      await connect(next.ip);
-      await runCli(sdb(), ["disconnect", serialOf(previous.ip)]).catch(
-        () => undefined
-      );
-      knownDevices.forget("tizen", previous.ip);
-    }
-    knownDevices.remember("tizen", next.ip, { name: next.name });
-  },
-
-  async removeDevice(device) {
-    await runCli(sdb(), ["disconnect", serialOf(device.ip)]).catch(
-      () => undefined
-    );
-    knownDevices.forget("tizen", device.ip);
-  },
-
-  async testConnection(device: Device) {
-    await connect(device.ip);
-    const duid = await readDuid(device.ip);
-    knownDevices.remember("tizen", device.ip, { name: device.name, duid });
-    return { message: `Connected to ${device.name || device.ip}`, duid };
-  },
+  ...devices,
 
   async build(projectPath, profileName) {
     await readAppId(projectPath);
