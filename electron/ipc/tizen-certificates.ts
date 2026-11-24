@@ -39,7 +39,11 @@ let cachedOAuthCredentials: {
 } | null = null;
 
 // Set for the whole login, so it can be cancelled while the config is still downloading.
-let inFlightLogin: { cancelled: boolean; session?: OAuthSession } | null = null;
+interface Login {
+  cancelled: boolean;
+  session?: OAuthSession;
+}
+let inFlightLogin: Login | null = null;
 
 const LOG_CHANNEL = "tizen-cert:log" as const;
 
@@ -49,7 +53,7 @@ export function registerTizenCertHandlers() {
       throw new Error("Samsung login is already in progress.");
     }
     const sendLog = replyLog(event, LOG_CHANNEL);
-    const login: NonNullable<typeof inFlightLogin> = { cancelled: false };
+    const login: Login = { cancelled: false };
     inFlightLogin = login;
     let oauthSession: OAuthSession | null = null;
 

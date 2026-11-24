@@ -1,66 +1,27 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { store } from "../store";
-import { runCli, cliOutput, describeCliError } from "../utils/cli";
-import { ANDROID_CONSTANTS, DEPLOY_CONSTANTS } from "../utils/constants";
-import {
-  knownDevices,
-  mergeWithKnownDevices,
-  checkTool,
-  addDebugForward,
-  unreachableMessage,
-  assertReachable,
-} from "./common";
+import { runCli, describeCliError } from "../utils/cli";
+import { ANDROID_CONSTANTS } from "../utils/constants";
+import { checkTool, addDebugForward, unreachableMessage } from "./common";
+import { createBridge } from "./bridge";
 import { attachInspector } from "./inspector";
-import {
-  findWebViewSocket,
-  parseAttachedSerials,
-  parseBadging,
-  parsePid,
-} from "./parsers";
+import { findWebViewSocket, parseBadging, parsePid } from "./parsers";
 import type { DeployOutcome, LogFn, PlatformAdapter } from "./types";
 
 const adb = () => store.get("adbPath") || "adb";
 
-// adb lists network devices as ip:5555; USB devices keep their serial.
-const ipOf = (serial: string) =>
-  serial.replace(new RegExp(`:${ANDROID_CONSTANTS.DEFAULT_PORT}$`), "");
-
-async function attachedIps(): Promise<string[]> {
-  const { stdout } = await runCli(adb(), ["devices"]);
-  return parseAttachedSerials(stdout).map(ipOf);
-}
-
-async function connect(ip: string): Promise<void> {
-  if ((await attachedIps()).includes(ip)) return;
-  await assertReachable(
-    ip,
-    ANDROID_CONSTANTS.DEFAULT_PORT,
-    "Turn on network (ADB) debugging on the TV"
-  );
-
-  let output = "";
-  try {
-    const { stdout } = await runCli(
-      adb(),
-      ["connect", `${ip}:${ANDROID_CONSTANTS.DEFAULT_PORT}`],
-      { timeout: DEPLOY_CONSTANTS.CONNECTION_TIMEOUT_MS }
-    );
-    output = stdout;
-  } catch (error) {
-    output = cliOutput(error);
-  }
-
-  if (!(await attachedIps()).includes(ip)) {
-    if (/unauthorized/i.test(output)) {
-      throw new Error("Accept the debugging prompt on the TV, then try again.");
-    }
-    if (/refused|unreachable|no route|timed? ?out/i.test(output)) {
-      throw new Error(unreachableMessage());
-    }
-    throw new Error(output.trim() || `Could not connect to ${ip}.`);
-  }
-}
+const { connect, devices } = createBridge({
+  platform: "android",
+  cli: adb,
+  port: ANDROID_CONSTANTS.DEFAULT_PORT,
+  portFix: "Turn on network (ADB) debugging on the TV",
+  connectError: (output) => {
+    if (/unauthorized/i.test(output))
+      return "Accept the debugging prompt on the TV, then try again.";
+    if (/refused/i.test(output)) return unreachableMessage();
+  },
+});
 
 async function findAapt(): Promise<string | null> {
   try {
@@ -190,35 +151,7 @@ async function startDebugSession(
 }
 
 export const androidAdapter: PlatformAdapter = {
-  async listDevices() {
-    return mergeWithKnownDevices("android", await attachedIps());
-  },
-
-  async addDevice(device) {
-    await connect(device.ip);
-    knownDevices.remember("android", device.ip, { name: device.name });
-    return `Connected to ${device.name || device.ip}`;
-  },
-
-  async updateDevice(previous, next) {
-    if (previous.ip !== next.ip) {
-      await connect(next.ip);
-      await runCli(adb(), ["disconnect", previous.ip]).catch(() => undefined);
-      knownDevices.forget("android", previous.ip);
-    }
-    knownDevices.remember("android", next.ip, { name: next.name });
-  },
-
-  async removeDevice(device) {
-    await runCli(adb(), ["disconnect", device.ip]).catch(() => undefined);
-    knownDevices.forget("android", device.ip);
-  },
-
-  async testConnection(device) {
-    await connect(device.ip);
-    knownDevices.remember("android", device.ip, { name: device.name });
-    return { message: `Connected to ${device.name || device.ip}` };
-  },
+  ...devices,
 
   async build(apkPath) {
     // Android apps are built with Gradle/Android Studio; here we only validate the APK.
