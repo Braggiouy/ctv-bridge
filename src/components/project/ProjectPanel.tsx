@@ -211,6 +211,8 @@ export const ProjectPanel = ({
     return () => {
       off();
       void projectWatch.stop();
+      // Changes seen during a deploy no longer count once watching stops.
+      queuedChanges.current = [];
     };
   }, [autoRedeploy, projectPath]);
 

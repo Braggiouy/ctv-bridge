@@ -12,13 +12,17 @@ const QUIET_PERIOD_MS = 1000;
  * trigger a redeploy after every build.
  */
 export function isIgnored(relativePath: string): boolean {
-  const segments = relativePath.split(/[\\/]/).filter(Boolean);
-  const base = segments.at(-1) ?? "";
-  return (
-    segments.some((segment) => segment.startsWith(".")) ||
-    segments.includes("node_modules") ||
-    BUILD_CONSTANTS.EXCLUDE_PATTERNS.some((pattern) => base.endsWith(pattern))
-  );
+  return relativePath
+    .split(/[\\/]/)
+    .filter(Boolean)
+    .some(
+      (segment) =>
+        segment.startsWith(".") ||
+        segment === "node_modules" ||
+        BUILD_CONSTANTS.EXCLUDE_PATTERNS.some((pattern) =>
+          segment.endsWith(pattern)
+        )
+    );
 }
 
 /** Undefined for folders and missing files. */

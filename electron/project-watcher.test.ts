@@ -12,6 +12,8 @@ describe("isIgnored", () => {
     expect(isIgnored("MyApp.wgt")).toBe(true);
     expect(isIgnored("com.example.app_1.0.0_all.ipk")).toBe(true);
     expect(isIgnored("author-signature.xml")).toBe(true);
+    expect(isIgnored("_tempDecompress/config.xml")).toBe(true);
+    expect(isIgnored("_tempDecompress")).toBe(true);
   });
 
   it("keeps project files", () => {
