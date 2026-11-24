@@ -216,6 +216,8 @@ export interface ConsoleStreamOptions {
   onDisconnect(): void;
   /** Skip events at or before this TV timestamp (messages already shown). */
   since?: number;
+  /** Called with every CDP event, e.g. Fetch.requestPaused for live reload. */
+  onEvent?(method: string, params: Record<string, unknown>): void;
 }
 
 /** One CDP connection to a page, forwarding its console output. */
@@ -357,6 +359,7 @@ export class ConsoleStream {
     }
     const { method, params } = message;
     if (!method || !params) return;
+    this.options.onEvent?.(method, params);
 
     // Runtime.enable replays earlier messages; skip those shown before a reconnect.
     const timestamp = eventTimestamp(method, params);

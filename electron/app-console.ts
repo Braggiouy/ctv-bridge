@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import type { WebContents } from "electron";
 import type { IpcEventChannels, Platform, RemoteKey } from "../shared/ipc";
 import {
@@ -5,6 +6,12 @@ import {
   ConsoleStream,
   socketUrlFromInspector,
 } from "./platforms/console-stream";
+import {
+  baseUrlOf,
+  contentType,
+  needsReinstall,
+  projectFileFor,
+} from "./platforms/live-reload";
 import { remoteKeyEvents } from "./platforms/remote-keys";
 import {
   isInspectorOpen,
@@ -23,7 +30,23 @@ interface Session {
   /** Older TVs accept one debugger per page, so DevTools and the stream take turns. */
   singleClient: boolean;
   lastTimestamp: number;
+  /** Set while the app's files are served from the project (live reload). */
+  liveReload?: LiveReload;
+  /** The TV doesn't route the app's own files through CDP Fetch (e.g. Tizen). */
+  liveReloadUnsupported?: boolean;
 }
+
+interface LiveReload {
+  projectPath: string;
+  /** The folder the app's page is loaded from on the TV. */
+  baseUrl: string;
+  /** Set once the TV has let one of the app's files be served from the project. */
+  confirmed: boolean;
+  onFirstServe?: () => void;
+}
+
+/** How long the first live reload waits for the TV to request a file through Fetch. */
+const LIVE_RELOAD_PROBE_MS = 5000;
 
 let session: Session | null = null;
 
@@ -39,6 +62,10 @@ async function connect(current: Session): Promise<void> {
   const stream = new ConsoleStream(current.socketUrl, {
     since: current.lastTimestamp,
     onEntries: (entries) => send(current, "app-console:entries", entries),
+    onEvent: (method, params) => {
+      if (method === "Fetch.requestPaused")
+        void serveFile(current, stream, params);
+    },
     onDisconnect: () => {
       if (session !== current) return;
       session = null;
@@ -48,7 +75,103 @@ async function connect(current: Session): Promise<void> {
   current.stream = stream;
   const chromeMajor = await stream.open();
   current.singleClient = !allowsSecondClient(chromeMajor);
+  // Interception ends with the connection, e.g. while DevTools had the TV's only one.
+  if (current.liveReload) await enableFetch(stream, current.liveReload.baseUrl);
   send(current, "app-console:state", "live");
+}
+
+const enableFetch = (stream: ConsoleStream, baseUrl: string) =>
+  stream.command("Fetch.enable", { patterns: [{ urlPattern: `${baseUrl}*` }] });
+
+/** Answers a request the TV paused: from the project when live reload has the file, else as usual. */
+async function serveFile(
+  current: Session,
+  stream: ConsoleStream,
+  params: Record<string, unknown>
+): Promise<void> {
+  const { requestId, request } = params as {
+    requestId: string;
+    request: { url: string };
+  };
+  const live = current.liveReload;
+  const file =
+    live && projectFileFor(request.url, live.baseUrl, live.projectPath);
+  // Folders and files missing from the project fall back to the installed copy.
+  const body = file && (await fs.readFile(file).catch(() => undefined));
+  try {
+    if (!live || !file || !body) {
+      await stream.command("Fetch.continueRequest", { requestId });
+      return;
+    }
+    await stream.command("Fetch.fulfillRequest", {
+      requestId,
+      responseCode: 200,
+      responseHeaders: [{ name: "Content-Type", value: contentType(file) }],
+      body: body.toString("base64"),
+    });
+    live.confirmed = true;
+    live.onFirstServe?.();
+  } catch (error) {
+    logger.warn("Live reload couldn't answer a request", error);
+  }
+}
+
+/**
+ * Reloads the app with the project's files, without a reinstall. Resolves with
+ * why it couldn't, so the caller can redeploy instead.
+ */
+export async function reloadAppLive(
+  projectPath: string,
+  changed: string[]
+): Promise<{ reloaded: true } | { reloaded: false; reason: string }> {
+  if (needsReinstall(changed)) {
+    return { reloaded: false, reason: "The app's manifest changed" };
+  }
+  const current = session;
+  if (!current) return { reloaded: false, reason: "No app is being debugged" };
+  if (current.liveReloadUnsupported) {
+    return {
+      reloaded: false,
+      reason: "This TV doesn't let CTV Bridge serve the app's files",
+    };
+  }
+  const stream = current.stream;
+  if (!stream) {
+    return { reloaded: false, reason: "DevTools has the TV's only debugger" };
+  }
+
+  if (current.liveReload?.projectPath !== projectPath) {
+    const { result } = (await stream.command("Runtime.evaluate", {
+      expression: "location.href",
+      returnByValue: true,
+    })) as { result: { value?: string } };
+    const baseUrl = baseUrlOf(result.value ?? "");
+    current.liveReload = { projectPath, baseUrl, confirmed: false };
+    await enableFetch(stream, baseUrl);
+  }
+
+  const live = current.liveReload;
+  const served = live.confirmed
+    ? Promise.resolve(true)
+    : new Promise<boolean>((resolve) => {
+        const timer = setTimeout(() => resolve(false), LIVE_RELOAD_PROBE_MS);
+        live.onFirstServe = () => {
+          clearTimeout(timer);
+          live.onFirstServe = undefined;
+          resolve(true);
+        };
+      });
+  await stream.command("Page.reload", { ignoreCache: true });
+  if (await served) return { reloaded: true };
+
+  // The reload went ahead with the installed files; don't try again this session.
+  current.liveReload = undefined;
+  current.liveReloadUnsupported = true;
+  await stream.command("Fetch.disable").catch(() => undefined);
+  return {
+    reloaded: false,
+    reason: "This TV doesn't let CTV Bridge serve the app's files",
+  };
 }
 
 function pause(current: Session) {

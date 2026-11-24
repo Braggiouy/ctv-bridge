@@ -166,13 +166,37 @@ export const ProjectPanel = ({
     } finally {
       running.current = false;
       setBusy(null);
-      const queued = queuedChanges.current;
-      if (queued.length > 0) {
-        queuedChanges.current = [];
-        // After the re-render, so the redeploy sees the current project and TV.
-        setTimeout(() => onProjectChange.current(queued));
-      }
+      applyQueuedChanges();
     }
+  };
+
+  /** Applies files changed during the last run or reload, if Auto-redeploy queued any. */
+  const applyQueuedChanges = () => {
+    const queued = queuedChanges.current;
+    if (queued.length === 0) return;
+    queuedChanges.current = [];
+    // After the re-render, so the redeploy sees the current project and TV.
+    setTimeout(() => onProjectChange.current(queued));
+  };
+
+  /** In Debug, reloads the app with the project's files; redeploys when the TV or change needs it. */
+  const reloadOrRedeploy = async (changed: string[], what: string) => {
+    running.current = true;
+    const result = await window.electron.appConsole.liveReload(
+      projectPath,
+      changed
+    );
+    running.current = false;
+    if (result.success && result.reloaded) {
+      addLog("step", `${what} changed. Reloaded the app live`);
+      applyQueuedChanges();
+      return;
+    }
+    addLog(
+      "info",
+      `${what} changed. ${result.message ?? "Live reload isn't available"}, so redeploying…`
+    );
+    void run("debug", true);
   };
 
   const canDeploy = !missing && !!device && status?.state !== "checking";
@@ -191,6 +215,10 @@ export const ProjectPanel = ({
         "warning",
         `${what} changed, but can't redeploy: ${missing ?? (device ? "the TV is still connecting." : "select a TV.")}`
       );
+      return;
+    }
+    if (lastDeployMode.current === "debug" && !info.projectIsFile) {
+      void reloadOrRedeploy(changed, what);
       return;
     }
     addLog("info", `${what} changed. Redeploying…`);
@@ -411,7 +439,7 @@ export const ProjectPanel = ({
             onClick={() => setAutoRedeploy((on) => !on)}
             disabled={!projectPath}
             aria-pressed={autoRedeploy}
-            title={`Redeploy with Run or Debug, whichever you used last, when the ${info.projectIsFile ? "APK" : "project"} changes`}
+            title={`Redeploy with Run or Debug, whichever you used last, when the ${info.projectIsFile ? "APK" : "project"} changes${info.projectIsFile ? "" : ". After Debug, the app is reloaded live where the TV allows it"}`}
           >
             <RefreshCw className="h-4 w-4" />
             Auto-redeploy
@@ -419,8 +447,10 @@ export const ProjectPanel = ({
         </div>
         {autoRedeploy && (
           <p className="text-xs text-muted-foreground">
-            Watching {baseName(projectPath)}. Changes redeploy with{" "}
-            {lastDeployMode.current === "debug" ? "Debug" : "Run"}.
+            Watching {baseName(projectPath)}.{" "}
+            {lastDeployMode.current === "debug" && !info.projectIsFile
+              ? "Changes reload the app live where the TV allows it, otherwise redeploy with Debug."
+              : `Changes redeploy with ${lastDeployMode.current === "debug" ? "Debug" : "Run"}.`}
           </p>
         )}
 

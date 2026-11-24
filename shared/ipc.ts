@@ -173,6 +173,15 @@ export interface ElectronApi {
   /** Console output of the app being debugged, streamed after a debug deploy. */
   appConsole: {
     stop(): Promise<Result>;
+    /**
+     * Reloads the app being debugged with the project's files, without a
+     * reinstall. `reloaded` is false when the TV or the change needs a
+     * redeploy instead, and `message` says why.
+     */
+    liveReload(
+      projectPath: string,
+      changed: string[]
+    ): Promise<Result & { reloaded?: boolean }>;
     onEntries(callback: (entries: AppLogEntry[]) => void): Unsubscribe;
     onState(callback: (state: AppConsoleState) => void): Unsubscribe;
   };
@@ -228,6 +237,7 @@ export interface IpcInvokeChannels {
   "project-watch:start": Api["projectWatch"]["start"];
   "project-watch:stop": Api["projectWatch"]["stop"];
   "app-console:stop": Api["appConsole"]["stop"];
+  "app-console:live-reload": Api["appConsole"]["liveReload"];
   "remote:press": Api["remote"]["press"];
   "remote:screenshot": Api["remote"]["screenshot"];
   "tizen:list-profiles": Api["tizen"]["listProfiles"];

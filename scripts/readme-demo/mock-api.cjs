@@ -173,6 +173,7 @@ window.electron = {
       emit("state", "stopped");
       return { success: true };
     },
+    liveReload: async () => ({ success: true, reloaded: true }),
     onEntries: on("entries"),
     onState: on("state"),
   },
