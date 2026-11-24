@@ -1,6 +1,9 @@
 export type {
   AppConsoleState,
   RemoteKey,
+  ColorKey,
+  DigitKey,
+  MediaKey,
   DiscoveredTv,
   AppLogEntry,
   BuildResult,

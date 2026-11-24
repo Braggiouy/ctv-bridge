@@ -34,3 +34,41 @@ describe("remoteKeyEvents", () => {
     expect(backCode("android")).toBe(166);
   });
 });
+
+describe("remoteKeyEvents, extra keys", () => {
+  const code = (
+    key: Parameters<typeof remoteKeyEvents>[0],
+    platform: "tizen" | "webos" | "android"
+  ) => remoteKeyEvents(key, platform)[0].windowsVirtualKeyCode;
+
+  it("uses the TV key codes for colour and media keys on Tizen and webOS", () => {
+    for (const platform of ["tizen", "webos"] as const) {
+      expect(
+        ["red", "green", "yellow", "blue"].map((k) =>
+          code(k as "red", platform)
+        )
+      ).toEqual([403, 404, 405, 406]);
+      expect(
+        ["play", "pause", "stop", "rewind", "fastForward"].map((k) =>
+          code(k as "play", platform)
+        )
+      ).toEqual([415, 19, 413, 412, 417]);
+    }
+  });
+
+  it("sends digits with text so the app also gets a keypress", () => {
+    expect(remoteKeyEvents("7", "android")[0]).toMatchObject({
+      type: "keyDown",
+      key: "7",
+      code: "Digit7",
+      text: "7",
+      windowsVirtualKeyCode: 55,
+    });
+  });
+
+  it("refuses keys whose Android code isn't known, instead of guessing", () => {
+    expect(() => remoteKeyEvents("red", "android")).toThrow(
+      "CTV Bridge can't send the red key to Android TV apps yet."
+    );
+  });
+});

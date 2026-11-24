@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppConsole } from "@/hooks/useAppConsole";
 import { usePersistentState } from "@/hooks/usePersistentState";
-import { RemoteControl } from "./RemoteControl";
+import { RemoteControl, RemoteKeypad } from "./RemoteControl";
 import { clearLogs, cn, useLogs, type LogEntry, type LogType } from "@/utils";
 
 const STYLES: Record<LogType, { icon: typeof Info; className: string }> = {
@@ -72,6 +72,10 @@ export const Console = ({ className }: { className?: string }) => {
     true
   );
   const appConsole = useAppConsole(showAppLogs);
+  const [moreKeys, setMoreKeys] = usePersistentState(
+    "console:more-remote-keys",
+    false
+  );
   const [search, setSearch] = useState("");
   const [level, setLevel] = useState<Level>("all");
   const hasAppLogs = allLogs.some((log) => log.source === "app");
@@ -134,7 +138,11 @@ export const Console = ({ className }: { className?: string }) => {
           </span>
         )}
         {appConsole.state !== "stopped" && (
-          <RemoteControl disabled={appConsole.state === "paused"} />
+          <RemoteControl
+            disabled={appConsole.state === "paused"}
+            expanded={moreKeys}
+            onExpandedChange={setMoreKeys}
+          />
         )}
         {(appConsole.state !== "stopped" || hasAppLogs) && (
           <button
@@ -200,6 +208,9 @@ export const Console = ({ className }: { className?: string }) => {
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
+      {moreKeys && appConsole.state !== "stopped" && (
+        <RemoteKeypad disabled={appConsole.state === "paused"} />
+      )}
       <div
         ref={scroller}
         onScroll={trackScroll}
