@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.14.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.13.0...v1.14.0) (2026-11-24)
+
+
+### Features
+
+* **project:** auto-redeploy when the project changes ([0e78182](https://github.com/Braggiouy/ctv-bridge/commit/0e781821ace7bb97ce6761a2ccca16d2c7985609))
+* **remote:** colour, media and number keys ([e87fb0f](https://github.com/Braggiouy/ctv-bridge/commit/e87fb0f098f13ddbfcd11bde84a360eb4b48dad5))
+
 ## [1.13.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.12.0...v1.13.0) (2026-11-19)
 
 
