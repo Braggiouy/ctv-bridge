@@ -29,6 +29,8 @@ export const BUILD_CONSTANTS = {
     ".manifest.tmp",
     "author-signature.xml",
     "signature1.xml",
+    // Created next to the .wgt by `tizen install` while it runs.
+    "_tempDecompress",
   ],
   TEMP_DIR_PREFIX: "ctv-bridge-build-",
 } as const;
