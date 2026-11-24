@@ -55,7 +55,29 @@ export interface AppLogEntry {
   text: string;
 }
 
-export type RemoteKey = "up" | "down" | "left" | "right" | "enter" | "back";
+export type ColorKey = "red" | "green" | "yellow" | "blue";
+export type MediaKey = "play" | "pause" | "stop" | "rewind" | "fastForward";
+export type DigitKey =
+  | "0"
+  | "1"
+  | "2"
+  | "3"
+  | "4"
+  | "5"
+  | "6"
+  | "7"
+  | "8"
+  | "9";
+export type RemoteKey =
+  | "up"
+  | "down"
+  | "left"
+  | "right"
+  | "enter"
+  | "back"
+  | ColorKey
+  | MediaKey
+  | DigitKey;
 
 /** `paused`: the TV allows one debugger at a time and DevTools has it. */
 export type AppConsoleState = "live" | "paused" | "stopped";
