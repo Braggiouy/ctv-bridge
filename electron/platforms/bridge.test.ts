@@ -45,7 +45,7 @@ vi.mock("./common", async (importOriginal) => ({
 }));
 
 const { createBridge } = await import("./bridge");
-const { knownDevices } = await import("./common");
+const { knownDevices, localIpFor } = await import("./common");
 
 const tv = { name: "Living room", ip: "192.168.1.10" };
 
@@ -131,4 +131,30 @@ describe("createBridge", () => {
     await devices.removeDevice({ ...tv, ip: "192.168.1.11" });
     expect(await devices.listDevices()).toEqual([]);
   });
+});
+
+describe("localIpFor", () => {
+  it("picks this computer's address on the TV's network", () => {
+    expect(
+      localIpFor("192.168.1.131", ["10.0.0.5", "192.168.1.149", "172.16.0.2"])
+    ).toBe("192.168.1.149");
+  });
+
+  it("falls back to any address, or none", () => {
+    expect(localIpFor("192.168.1.131", ["10.0.0.5"])).toBe("10.0.0.5");
+    expect(localIpFor("192.168.1.131", [])).toBeUndefined();
+  });
+});
+
+it("passes the TV's IP to the platform's connect error", async () => {
+  fake.connectSucceeds = false;
+  fake.connectOutput = "failed to connect to 192.168.1.10:26101";
+  const connectError = vi.fn(() => "Set the Host PC IP");
+  await expect(bridge({ connectError }).connect(tv.ip)).rejects.toThrow(
+    "Set the Host PC IP"
+  );
+  expect(connectError).toHaveBeenCalledWith(
+    expect.stringContaining("failed to connect"),
+    tv.ip
+  );
 });

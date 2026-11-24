@@ -21,7 +21,7 @@ export interface BridgeConfig {
   /** How to open the port on the TV, e.g. "Turn on Developer Mode". */
   portFix: string;
   /** A user-facing error for a failed `connect`, when the output is recognised. */
-  connectError?: (output: string) => string | undefined;
+  connectError?: (output: string, ip: string) => string | undefined;
   /** Tizen reads the TV's DUID once connected. */
   readDuid?: (serial: string) => Promise<string | undefined>;
 }
@@ -71,7 +71,7 @@ export function createBridge(config: BridgeConfig) {
 
     // connect can exit 0 even when it fails, so trust the device list instead.
     if (!(await attachedIps()).includes(ip)) {
-      const known = config.connectError?.(output);
+      const known = config.connectError?.(output, ip);
       if (known) throw new Error(known);
       if (/no route|unreachable|timed? ?out/i.test(output)) {
         throw new Error(unreachableMessage());
