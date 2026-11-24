@@ -135,8 +135,18 @@ export interface ElectronApi {
     target: DeployTarget,
     mode: DeployMode
   ): Promise<DeployResult>;
-  /** Opens DevTools for the app in its own window. */
-  openInspector(url: string): Promise<Result>;
+  /**
+   * Opens DevTools for the app in its own window. `background`: only
+   * reconnects a DevTools window that is already open, without focusing it.
+   */
+  openInspector(url: string, background?: boolean): Promise<Result>;
+  /** Watches a project folder or APK for auto-redeploy; replaces any earlier watch. */
+  projectWatch: {
+    start(target: string): Promise<Result>;
+    stop(): Promise<Result>;
+    /** Paths relative to the project that changed, once changes settle. */
+    onChange(callback: (changed: string[]) => void): Unsubscribe;
+  };
   onDeployLog(callback: (line: string) => void): Unsubscribe;
   /** Console output of the app being debugged, streamed after a debug deploy. */
   appConsole: {
@@ -193,6 +203,8 @@ export interface IpcInvokeChannels {
   "package:build": Api["build"];
   "package:deploy": Api["deploy"];
   "inspector:open": Api["openInspector"];
+  "project-watch:start": Api["projectWatch"]["start"];
+  "project-watch:stop": Api["projectWatch"]["stop"];
   "app-console:stop": Api["appConsole"]["stop"];
   "remote:press": Api["remote"]["press"];
   "remote:screenshot": Api["remote"]["screenshot"];
@@ -215,6 +227,7 @@ export interface IpcInvokeChannels {
 /** Every channel the main process sends to the renderer, with its payload. */
 export interface IpcEventChannels {
   "deploy-log": string;
+  "project-watch:changed": string[];
   "app-console:entries": AppLogEntry[];
   "app-console:state": AppConsoleState;
   "tizen-cert:log": string;

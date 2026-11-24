@@ -6,7 +6,11 @@ import {
   socketUrlFromInspector,
 } from "./platforms/console-stream";
 import { remoteKeyEvents } from "./platforms/remote-keys";
-import { onInspectorClosed, openInspector } from "./inspector-window";
+import {
+  isInspectorOpen,
+  onInspectorClosed,
+  openInspector,
+} from "./inspector-window";
 import { logger } from "./utils/logger";
 import { sendTo } from "./ipc/handle";
 
@@ -113,13 +117,20 @@ export async function captureAppScreen(): Promise<Buffer> {
   return Buffer.from(data, "base64");
 }
 
-/** Opens DevTools, first handing it the connection on TVs that allow only one. */
-export async function openInspectorForApp(url: string): Promise<void> {
+/**
+ * Opens DevTools, first handing it the connection on TVs that allow only one.
+ * `background`: only reconnects a DevTools window that is already open, without focusing it.
+ */
+export async function openInspectorForApp(
+  url: string,
+  background = false
+): Promise<void> {
+  if (background && !isInspectorOpen()) return;
   if (session?.singleClient && session.stream) {
     pause(session);
     send(session, "app-console:state", "paused");
   }
-  await openInspector(url);
+  await openInspector(url, !background);
 }
 
 onInspectorClosed(() => {
