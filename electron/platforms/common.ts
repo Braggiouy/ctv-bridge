@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import net from "node:net";
+import os from "node:os";
 import path from "node:path";
 import type { ChildProcess } from "node:child_process";
 import type { Device, Platform, SdkPaths, ToolCheck } from "../../shared/ipc";
@@ -115,6 +116,23 @@ export async function checkTool(
         : output.trim().split(/\r?\n/)[0],
     };
   }
+}
+
+/**
+ * This computer's IPv4 address on the TV's network (same /24), for the TV's
+ * Developer Mode settings. Falls back to any external address.
+ */
+export function localIpFor(
+  tvIp: string,
+  addresses = Object.values(os.networkInterfaces())
+    .flat()
+    .filter((info) => info?.family === "IPv4" && !info.internal)
+    .map((info) => info!.address)
+): string | undefined {
+  const subnet = tvIp.split(".").slice(0, 3).join(".") + ".";
+  return (
+    addresses.find((address) => address.startsWith(subnet)) ?? addresses[0]
+  );
 }
 
 export function unreachableMessage(): string {

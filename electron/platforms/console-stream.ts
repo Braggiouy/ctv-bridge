@@ -281,13 +281,22 @@ export class ConsoleStream {
     this.socket?.close();
   }
 
+  /** Resolves undefined if the TV doesn't answer in time or the connection closes. */
   private request(
     method: string,
-    params?: object
+    params?: object,
+    timeoutMs = COMMAND_TIMEOUT_MS
   ): Promise<CdpResponse | undefined> {
     const id = this.nextId++;
     return new Promise((resolve) => {
-      this.pending.set(id, resolve);
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        resolve(undefined);
+      }, timeoutMs);
+      this.pending.set(id, (response) => {
+        clearTimeout(timer);
+        resolve(response);
+      });
       this.socket?.send(JSON.stringify({ id, method, params }));
     });
   }
@@ -298,15 +307,7 @@ export class ConsoleStream {
 
   /** Runs a CDP command on the page, failing on protocol errors and timeouts. */
   async command(method: string, params?: object): Promise<unknown> {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<undefined>((resolve) => {
-      timer = setTimeout(() => resolve(undefined), COMMAND_TIMEOUT_MS);
-    });
-    const response = await Promise.race([
-      this.request(method, params),
-      timeout,
-    ]);
-    clearTimeout(timer);
+    const response = await this.request(method, params);
     if (!response) throw new Error("The TV didn't respond.");
     if (response.error) throw new Error(response.error.message);
     return response.result;
@@ -321,18 +322,17 @@ export class ConsoleStream {
       !["error", "null", "node"].includes(object.subtype ?? "");
     if (!needsSerializing) return object;
 
-    const timeout = new Promise<undefined>((resolve) =>
-      setTimeout(() => resolve(undefined), SERIALIZE_TIMEOUT_MS)
-    );
-    const response = (await Promise.race([
-      this.send("Runtime.callFunctionOn", {
+    const response = await this.request(
+      "Runtime.callFunctionOn",
+      {
         objectId: object.objectId,
         functionDeclaration: SERIALIZE_OBJECT,
         returnByValue: true,
-      }),
-      timeout,
-    ])) as { result?: { value?: unknown } } | undefined;
-    const json = response?.result?.value;
+      },
+      SERIALIZE_TIMEOUT_MS
+    );
+    const json = (response?.result as { result?: { value?: unknown } })?.result
+      ?.value;
     return typeof json === "string" ? { ...object, description: json } : object;
   }
 

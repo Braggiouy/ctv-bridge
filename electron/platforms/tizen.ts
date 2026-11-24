@@ -23,6 +23,7 @@ import {
   addDebugProcess,
   resolvePackage,
   checkTool,
+  localIpFor,
 } from "./common";
 import { createBridge } from "./bridge";
 import {
@@ -69,10 +70,16 @@ const { serialOf, connect, devices } = createBridge({
   cli: sdb,
   port: TIZEN_CONSTANTS.DEFAULT_PORT,
   portFix: "Turn on Developer Mode with this computer's IP as the Host PC IP",
-  connectError: (output) =>
-    /refused/i.test(output)
-      ? "Connection refused. Enable Developer Mode on the TV and set this computer's IP as the Host PC IP."
-      : undefined,
+  connectError: (output, ip) => {
+    if (/refused/i.test(output)) {
+      return "Connection refused. Enable Developer Mode on the TV and set this computer's IP as the Host PC IP.";
+    }
+    // The port answered (see assertReachable), so the TV is on but won't talk to this computer.
+    if (/failed to connect/i.test(output)) {
+      const hostIp = localIpFor(ip) ?? "this computer's IP";
+      return `The TV is on but refused sdb. In the TV's Developer Mode, set the Host PC IP to ${hostIp}, then restart the TV.`;
+    }
+  },
   readDuid,
 });
 

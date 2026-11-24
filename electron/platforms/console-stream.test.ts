@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  ConsoleStream,
   allowsSecondClient,
   chromeMajorVersion,
   formatConsoleArgs,
@@ -226,5 +227,50 @@ describe("TV compatibility", () => {
     expect(
       socketUrlFromInspector(inspectorUrl(41237, "/devtools/page/AB-12"))
     ).toBe("ws://127.0.0.1:41237/devtools/page/AB-12");
+  });
+});
+
+describe("ConsoleStream with a TV that stops answering", () => {
+  /** Connects, then never replies to any command. */
+  class SilentSocket {
+    onopen?: () => void;
+    onerror?: () => void;
+    onmessage?: (message: { data: string }) => void;
+    onclose?: () => void;
+    sent: string[] = [];
+    constructor() {
+      setTimeout(() => this.onopen?.(), 0);
+    }
+    send(data: string) {
+      this.sent.push(data);
+    }
+    close() {}
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("still opens, and commands fail instead of hanging", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("WebSocket", SilentSocket);
+    const stream = new ConsoleStream("ws://127.0.0.1:1/devtools/page/1", {
+      onEntries: () => undefined,
+      onDisconnect: () => undefined,
+    });
+
+    const opened = stream.open();
+    await vi.advanceTimersByTimeAsync(20_000);
+    await expect(opened).resolves.toBeUndefined();
+
+    const pressed = stream.command("Input.dispatchKeyEvent", {});
+    const failed = expect(pressed).rejects.toThrow("The TV didn't respond.");
+    await vi.advanceTimersByTimeAsync(5_000);
+    await failed;
+    // Nothing is left waiting for an answer that will never come.
+    expect(
+      (stream as unknown as { pending: Map<number, unknown> }).pending.size
+    ).toBe(0);
   });
 });

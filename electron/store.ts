@@ -37,7 +37,11 @@ class Store {
 
   private save() {
     try {
-      fs.writeFileSync(this.storePath, JSON.stringify(this.data, null, 2));
+      // Write then rename, so a crash mid-write can't leave a truncated file,
+      // which would load as empty and lose every remembered TV and SDK path.
+      const temp = `${this.storePath}.tmp`;
+      fs.writeFileSync(temp, JSON.stringify(this.data, null, 2));
+      fs.renameSync(temp, this.storePath);
     } catch (error) {
       logger.error("Failed to save settings", error);
     }
