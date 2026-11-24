@@ -176,3 +176,58 @@ export interface ElectronApi {
   openExternal(url: string): Promise<void>;
   showInFolder(target: string): Promise<void>;
 }
+
+type Api = ElectronApi;
+
+/** Every channel the renderer invokes, typed by the ElectronApi method it backs. */
+export interface IpcInvokeChannels {
+  "devices:list": Api["devices"]["list"];
+  "devices:add": Api["devices"]["add"];
+  "devices:update": Api["devices"]["update"];
+  "devices:remove": Api["devices"]["remove"];
+  "devices:test": Api["devices"]["test"];
+  "devices:discover": Api["devices"]["discover"];
+  "sdk:get-paths": Api["sdk"]["getPaths"];
+  "sdk:save-paths": Api["sdk"]["savePaths"];
+  "sdk:verify": Api["sdk"]["verify"];
+  "package:build": Api["build"];
+  "package:deploy": Api["deploy"];
+  "inspector:open": Api["openInspector"];
+  "app-console:stop": Api["appConsole"]["stop"];
+  "remote:press": Api["remote"]["press"];
+  "remote:screenshot": Api["remote"]["screenshot"];
+  "tizen:list-profiles": Api["tizen"]["listProfiles"];
+  "tizen:delete-profile": Api["tizen"]["deleteProfile"];
+  "tizen-cert:login": Api["tizen"]["login"];
+  "tizen-cert:cancel-login": Api["tizen"]["cancelLogin"];
+  "tizen-cert:logout": Api["tizen"]["logout"];
+  "tizen-cert:generate": Api["tizen"]["generateCertificates"];
+  "updater:check": Api["updater"]["check"];
+  "updater:download": Api["updater"]["download"];
+  "updater:install": Api["updater"]["install"];
+  "updater:get-version": Api["updater"]["getVersion"];
+  "dialog:select-directory": Api["selectDirectory"];
+  "dialog:select-file": Api["selectFile"];
+  "shell:open-external": Api["openExternal"];
+  "shell:show-in-folder": Api["showInFolder"];
+}
+
+/** Every channel the main process sends to the renderer, with its payload. */
+export interface IpcEventChannels {
+  "deploy-log": string;
+  "app-console:entries": AppLogEntry[];
+  "app-console:state": AppConsoleState;
+  "tizen-cert:log": string;
+  "updater:available": { version: string };
+  "updater:progress": number;
+  "updater:ready": { version: string };
+}
+
+export type InvokeChannel = keyof IpcInvokeChannels;
+export type EventChannel = keyof IpcEventChannels;
+export type InvokeArgs<C extends InvokeChannel> = Parameters<
+  IpcInvokeChannels[C]
+>;
+export type InvokeResult<C extends InvokeChannel> = Awaited<
+  ReturnType<IpcInvokeChannels[C]>
+>;

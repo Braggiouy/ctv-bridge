@@ -1,15 +1,21 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { ElectronApi } from "../shared/ipc";
+import type {
+  ElectronApi,
+  EventChannel,
+  IpcEventChannels,
+  IpcInvokeChannels,
+  InvokeChannel,
+} from "../shared/ipc";
 
-const invoke =
-  (channel: string) =>
-  (...args: unknown[]) =>
-    ipcRenderer.invoke(channel, ...args);
+const invoke = <C extends InvokeChannel>(channel: C) =>
+  ((...args: unknown[]) =>
+    ipcRenderer.invoke(channel, ...args)) as IpcInvokeChannels[C];
 
 const subscribe =
-  <T>(channel: string) =>
-  (callback: (payload: T) => void) => {
-    const listener = (_event: unknown, payload: T) => callback(payload);
+  <C extends EventChannel>(channel: C) =>
+  (callback: (payload: IpcEventChannels[C]) => void) => {
+    const listener = (_event: unknown, payload: IpcEventChannels[C]) =>
+      callback(payload);
     ipcRenderer.on(channel, listener);
     return () => {
       ipcRenderer.removeListener(channel, listener);

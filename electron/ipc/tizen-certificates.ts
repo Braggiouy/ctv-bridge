@@ -7,7 +7,6 @@
 
 import { shell, app } from "electron";
 import * as path from "node:path";
-import type { TizenCertificateParams } from "../../shared/ipc";
 import { store } from "../store";
 import { runCli } from "../utils/cli";
 import {
@@ -46,7 +45,7 @@ interface Login {
 }
 let inFlightLogin: Login | null = null;
 
-const LOG_CHANNEL = "tizen-cert:log";
+const LOG_CHANNEL = "tizen-cert:log" as const;
 
 export function registerTizenCertHandlers() {
   handle("tizen-cert:login", async (event) => {
@@ -118,69 +117,65 @@ export function registerTizenCertHandlers() {
     cachedOAuthCredentials = null;
   });
 
-  handle(
-    "tizen-cert:generate",
-    async (event, params: TizenCertificateParams) => {
-      const sendLog = replyLog(event, LOG_CHANNEL);
-      const credentials = getCachedOAuthCredentials();
-      if (!credentials) {
-        throw new Error(
-          "Samsung login required. Please click 'Sign in with Samsung' first."
-        );
-      }
-
-      try {
-        sendLog("Checking OpenSSL…");
-        const opensslBin = await resolveOpenssl();
-
-        sendLog("Fetching Samsung certificate configuration…");
-        const config = await getTizenCertConfig();
-        sendLog("Configuration ready.");
-        sendLog("Using active Samsung login session.");
-
-        const certDir = certificateDir(app.getPath("home"), params);
-        const exportPassword = params.password?.trim() || DEFAULT_P12_PASSWORD;
-
-        await generateCertificates({
-          dir: certDir,
-          email: params.email.trim(),
-          deviceIds: params.deviceIds ?? [],
-          password: exportPassword,
-          privilegeLevel: params.privilegeLevel ?? "Public",
-          developerType: params.developerType ?? "Individual",
-          credentials,
-          config,
-          caCerts: {
-            author: getCaCertPath("author"),
-            distributor: getCaCertPath("distributor"),
-          },
-          openssl: (args, stdin) =>
-            runOpenssl(opensslBin, args, certDir, stdin),
-          log: sendLog,
-        });
-
-        const profileName = params.profileName?.trim();
-        if (profileName) {
-          sendLog(`Registering Tizen security profile "${profileName}"…`);
-          try {
-            await registerSecurityProfile(certDir, profileName, exportPassword);
-            sendLog(`Profile "${profileName}" is ready for tizen package.`);
-          } catch (err) {
-            sendLog(
-              `Warning: profile registration failed — ${getErrorMessage(err)}. You can add it manually with tizen security-profiles add.`
-            );
-          }
-        }
-
-        sendLog("Done! author.p12 and distributor.p12 are ready.");
-        return { path: certDir };
-      } catch (error) {
-        if (error instanceof StaleConfigError) evictTizenCertConfigCache();
-        sendLog(`Error: ${getErrorMessage(error)}`);
-        throw error;
-      }
+  handle("tizen-cert:generate", async (event, params) => {
+    const sendLog = replyLog(event, LOG_CHANNEL);
+    const credentials = getCachedOAuthCredentials();
+    if (!credentials) {
+      throw new Error(
+        "Samsung login required. Please click 'Sign in with Samsung' first."
+      );
     }
-  );
+
+    try {
+      sendLog("Checking OpenSSL…");
+      const opensslBin = await resolveOpenssl();
+
+      sendLog("Fetching Samsung certificate configuration…");
+      const config = await getTizenCertConfig();
+      sendLog("Configuration ready.");
+      sendLog("Using active Samsung login session.");
+
+      const certDir = certificateDir(app.getPath("home"), params);
+      const exportPassword = params.password?.trim() || DEFAULT_P12_PASSWORD;
+
+      await generateCertificates({
+        dir: certDir,
+        email: params.email.trim(),
+        deviceIds: params.deviceIds ?? [],
+        password: exportPassword,
+        privilegeLevel: params.privilegeLevel ?? "Public",
+        developerType: params.developerType ?? "Individual",
+        credentials,
+        config,
+        caCerts: {
+          author: getCaCertPath("author"),
+          distributor: getCaCertPath("distributor"),
+        },
+        openssl: (args, stdin) => runOpenssl(opensslBin, args, certDir, stdin),
+        log: sendLog,
+      });
+
+      const profileName = params.profileName?.trim();
+      if (profileName) {
+        sendLog(`Registering Tizen security profile "${profileName}"…`);
+        try {
+          await registerSecurityProfile(certDir, profileName, exportPassword);
+          sendLog(`Profile "${profileName}" is ready for tizen package.`);
+        } catch (err) {
+          sendLog(
+            `Warning: profile registration failed — ${getErrorMessage(err)}. You can add it manually with tizen security-profiles add.`
+          );
+        }
+      }
+
+      sendLog("Done! author.p12 and distributor.p12 are ready.");
+      return { path: certDir };
+    } catch (error) {
+      if (error instanceof StaleConfigError) evictTizenCertConfigCache();
+      sendLog(`Error: ${getErrorMessage(error)}`);
+      throw error;
+    }
+  });
 }
 
 function getCachedOAuthCredentials(): OAuthCredentials | null {

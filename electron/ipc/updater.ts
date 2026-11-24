@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, net, shell } from "electron";
+import { app, BrowserWindow, net, shell } from "electron";
 import { autoUpdater, type UpdateInfo } from "electron-updater";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -14,10 +14,14 @@ import path from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream } from "node:stream/web";
-import type { UpdateDownloadResult } from "../../shared/ipc";
+import type {
+  EventChannel,
+  IpcEventChannels,
+  UpdateDownloadResult,
+} from "../../shared/ipc";
 import { runCli } from "../utils/cli";
 import { logger } from "../utils/logger";
-import { handle } from "./handle";
+import { handle, handleRaw, sendTo } from "./handle";
 
 const REPO_URL = "https://github.com/Braggiouy/ctv-bridge";
 const FIRST_CHECK_DELAY_MS = 5_000;
@@ -28,9 +32,12 @@ let latestUpdate: UpdateInfo | null = null;
 /** macOS: the extracted new app bundle, waiting to replace the running one. */
 let stagedMacApp: string | null = null;
 
-function broadcast(channel: string, payload?: unknown) {
+function broadcast<C extends EventChannel>(
+  channel: C,
+  payload: IpcEventChannels[C]
+) {
   for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) win.webContents.send(channel, payload);
+    if (!win.isDestroyed()) sendTo(win.webContents, channel, payload);
   }
 }
 
@@ -90,7 +97,7 @@ export function registerUpdater(checkPeriodically: boolean) {
     };
   });
 
-  handle("updater:download", async (): Promise<UpdateDownloadResult | void> => {
+  handle("updater:download", async () => {
     if (!latestUpdate) throw new Error("No update available");
     // Older releases ship only the DMG on macOS.
     const hasMacZip = latestUpdate.files.some((f) => f.url.endsWith(".zip"));
@@ -105,11 +112,11 @@ export function registerUpdater(checkPeriodically: boolean) {
     }
   });
 
-  ipcMain.handle("updater:install", () => {
+  handleRaw("updater:install", () => {
     if (isMac) swapMacAppAndRelaunch();
     else autoUpdater.quitAndInstall();
   });
-  ipcMain.handle("updater:get-version", () => app.getVersion());
+  handleRaw("updater:get-version", () => app.getVersion());
 
   if (checkPeriodically) {
     const check = () =>
