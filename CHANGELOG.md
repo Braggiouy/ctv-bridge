@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.14.1](https://github.com/Braggiouy/ctv-bridge/compare/v1.14.0...v1.14.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* **project:** stop the auto-redeploy loop on Tizen ([194b709](https://github.com/Braggiouy/ctv-bridge/commit/194b7094862e139a635c68f4b9ffc69644dc248f))
+* safer settings saves, debug-connection timeouts, clearer Samsung connect error ([523b060](https://github.com/Braggiouy/ctv-bridge/commit/523b060b057de537248dead946cac15cfa1d23bb))
+
 ## [1.14.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.13.0...v1.14.0) (2026-11-24)
 
 
