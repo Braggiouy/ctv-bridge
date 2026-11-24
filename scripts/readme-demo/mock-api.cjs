@@ -162,6 +162,11 @@ window.electron = {
     };
   },
   openInspector: ok,
+  projectWatch: {
+    start: ok,
+    stop: ok,
+    onChange: on("project-changed"),
+  },
   onDeployLog: on("deploy-log"),
   appConsole: {
     stop: async () => {

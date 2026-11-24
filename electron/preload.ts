@@ -33,6 +33,11 @@ const api: ElectronApi = {
   build: invoke("package:build"),
   deploy: invoke("package:deploy"),
   openInspector: invoke("inspector:open"),
+  projectWatch: {
+    start: invoke("project-watch:start"),
+    stop: invoke("project-watch:stop"),
+    onChange: subscribe("project-watch:changed"),
+  },
   onDeployLog: subscribe("deploy-log"),
   appConsole: {
     stop: invoke("app-console:stop"),

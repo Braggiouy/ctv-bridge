@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Bug,
   CheckCircle2,
@@ -6,6 +6,7 @@ import {
   Hammer,
   Loader2,
   Play,
+  RefreshCw,
   X,
   XCircle,
 } from "lucide-react";
@@ -49,6 +50,12 @@ type Outcome = {
 const baseName = (path: string) =>
   path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 
+/** e.g. "index.html", or "index.html and 3 more". */
+const describeChanges = (changed: string[]) =>
+  changed.length > 1
+    ? `${changed[0]} and ${changed.length - 1} more`
+    : (changed[0] ?? "Project");
+
 const time = (date: Date) =>
   date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -67,6 +74,13 @@ export const ProjectPanel = ({
   const recentLabels = recentProjectLabels(recentProjects);
   const [busy, setBusy] = useState<Busy>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [autoRedeploy, setAutoRedeploy] = useState(false);
+  /** Set synchronously, so a change arriving before the re-render doesn't start a second run. */
+  const running = useRef(false);
+  /** Files changed during a run, redeployed once it ends. */
+  const queuedChanges = useRef<string[]>([]);
+  /** Auto-redeploy repeats the last Run or Debug. */
+  const lastDeployMode = useRef<DeployMode>("run");
 
   const setProjectPath = (path: string) => {
     if (path === projectPath) return;
@@ -106,14 +120,17 @@ export const ProjectPanel = ({
     return result.packagePath;
   };
 
-  const openInspector = async (url: string) => {
-    const result = await window.electron.openInspector(url);
+  const openInspector = async (url: string, background = false) => {
+    const result = await window.electron.openInspector(url, background);
     if (!result.success) {
       addLog("error", `Couldn't open DevTools: ${result.message}`);
     }
   };
 
-  const run = async (action: "build" | DeployMode) => {
+  /** `auto`: started by a file change, so DevTools is only reconnected if open, not focused. */
+  const run = async (action: "build" | DeployMode, auto = false) => {
+    running.current = true;
+    if (action !== "build") lastDeployMode.current = action;
     setBusy(action);
     setOutcome(null);
     try {
@@ -145,13 +162,57 @@ export const ProjectPanel = ({
       });
       if (result.success) addLog("step", message);
       else addLog("error", `Deployment failed: ${message}`);
-      if (inspectorUrl) await openInspector(inspectorUrl);
+      if (inspectorUrl) await openInspector(inspectorUrl, auto);
     } finally {
+      running.current = false;
       setBusy(null);
+      const queued = queuedChanges.current;
+      if (queued.length > 0) {
+        queuedChanges.current = [];
+        // After the re-render, so the redeploy sees the current project and TV.
+        setTimeout(() => onProjectChange.current(queued));
+      }
     }
   };
 
   const canDeploy = !missing && !!device && status?.state !== "checking";
+
+  const onProjectChange = useRef<(changed: string[]) => void>(() => {});
+  onProjectChange.current = (changed) => {
+    const what = describeChanges(changed);
+    if (running.current) {
+      queuedChanges.current = [
+        ...new Set([...queuedChanges.current, ...changed]),
+      ];
+      return;
+    }
+    if (!canDeploy) {
+      addLog(
+        "warning",
+        `${what} changed, but can't redeploy: ${missing ?? (device ? "the TV is still connecting." : "select a TV.")}`
+      );
+      return;
+    }
+    addLog("info", `${what} changed. Redeploying…`);
+    void run(lastDeployMode.current, true);
+  };
+
+  useEffect(() => {
+    if (!autoRedeploy || !projectPath) return;
+    const { projectWatch } = window.electron;
+    const off = projectWatch.onChange((changed) =>
+      onProjectChange.current(changed)
+    );
+    void projectWatch.start(projectPath).then((result) => {
+      if (result.success) return;
+      addLog("error", `Auto-redeploy stopped: ${result.message}`);
+      setAutoRedeploy(false);
+    });
+    return () => {
+      off();
+      void projectWatch.stop();
+    };
+  }, [autoRedeploy, projectPath]);
 
   return (
     <section className="space-y-5 p-5">
@@ -342,7 +403,24 @@ export const ProjectPanel = ({
               Build only
             </Button>
           )}
+          <Button
+            size="lg"
+            variant={autoRedeploy ? "secondary" : "ghost"}
+            onClick={() => setAutoRedeploy((on) => !on)}
+            disabled={!projectPath}
+            aria-pressed={autoRedeploy}
+            title={`Redeploy with Run or Debug, whichever you used last, when the ${info.projectIsFile ? "APK" : "project"} changes`}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Auto-redeploy
+          </Button>
         </div>
+        {autoRedeploy && (
+          <p className="text-xs text-muted-foreground">
+            Watching {baseName(projectPath)}. Changes redeploy with{" "}
+            {lastDeployMode.current === "debug" ? "Debug" : "Run"}.
+          </p>
+        )}
 
         {missing && <p className="text-xs text-muted-foreground">{missing}</p>}
         {outcome ? (

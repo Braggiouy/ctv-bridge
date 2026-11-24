@@ -27,14 +27,21 @@ function getInspectorSession(): Session {
   return inspectorSession;
 }
 
-/** Opens DevTools for a debug target, reusing the window of the previous session. */
-export async function openInspector(url: string): Promise<void> {
+export const isInspectorOpen = () =>
+  !!inspectorWindow && !inspectorWindow.isDestroyed();
+
+/**
+ * Opens DevTools for a debug target, reusing the window of the previous
+ * session. Without `focus`, a reused window is updated in the background.
+ */
+export async function openInspector(url: string, focus = true): Promise<void> {
   if (!isInspectorUrl(url)) throw new Error("Invalid inspector URL.");
 
   if (inspectorWindow && !inspectorWindow.isDestroyed()) {
     if (inspectorWindow.webContents.getURL() !== url) {
       await inspectorWindow.loadURL(url);
     }
+    if (!focus) return;
     if (inspectorWindow.isMinimized()) inspectorWindow.restore();
     inspectorWindow.focus();
     return;
