@@ -1,10 +1,5 @@
 import type { WebContents } from "electron";
-import type {
-  AppConsoleState,
-  AppLogEntry,
-  Platform,
-  RemoteKey,
-} from "../shared/ipc";
+import type { IpcEventChannels, Platform, RemoteKey } from "../shared/ipc";
 import {
   allowsSecondClient,
   ConsoleStream,
@@ -17,6 +12,7 @@ import {
   openInspector,
 } from "./inspector-window";
 import { logger } from "./utils/logger";
+import { sendTo } from "./ipc/handle";
 
 /** The app being debugged, whose console is streamed to the window that deployed it. */
 interface Session {
@@ -31,12 +27,12 @@ interface Session {
 
 let session: Session | null = null;
 
-function send(
+function send<C extends "app-console:entries" | "app-console:state">(
   current: Session,
-  channel: string,
-  payload: AppLogEntry[] | AppConsoleState
+  channel: C,
+  payload: IpcEventChannels[C]
 ) {
-  if (!current.window.isDestroyed()) current.window.send(channel, payload);
+  sendTo(current.window, channel, payload);
 }
 
 async function connect(current: Session): Promise<void> {
