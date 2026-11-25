@@ -3,9 +3,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronRight,
+  Copy,
   Eye,
   EyeOff,
   Info,
+  Save,
   Square,
   Terminal,
   Trash2,
@@ -15,8 +17,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppConsole } from "@/hooks/useAppConsole";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { toast } from "sonner";
 import { RemoteControl, RemoteKeypad } from "./RemoteControl";
-import { clearLogs, cn, useLogs, type LogEntry, type LogType } from "@/utils";
+import {
+  addLog,
+  clearLogs,
+  cn,
+  formatLogs,
+  notify,
+  useLogs,
+  type LogEntry,
+  type LogType,
+} from "@/utils";
 
 const STYLES: Record<LogType, { icon: typeof Info; className: string }> = {
   log: { icon: ChevronRight, className: "text-foreground/80" },
@@ -99,6 +111,20 @@ export const Console = ({ className }: { className?: string }) => {
     const el = scroller.current;
     if (el && pinnedToBottom.current) el.scrollTop = el.scrollHeight;
   }, [visible]);
+
+  // What's shown, so a filtered view copies or saves just those lines.
+  const copyLogs = async () => {
+    const result = await window.electron.logs.copy(formatLogs(visible));
+    if (result.success) toast.success(`Copied ${visible.length} line(s)`);
+    else notify.error("Couldn't copy the console", result.message);
+  };
+
+  const saveLogs = async () => {
+    const result = await window.electron.logs.save(formatLogs(visible));
+    if (!result.success)
+      notify.error("Couldn't save the console", result.message);
+    else if (result.path) addLog("step", `Console saved to ${result.path}`);
+  };
 
   const trackScroll = () => {
     const el = scroller.current!;
@@ -196,6 +222,28 @@ export const Console = ({ className }: { className?: string }) => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={copyLogs}
+          disabled={visible.length === 0}
+          title="Copy the lines shown"
+          aria-label="Copy console"
+        >
+          <Copy className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={saveLogs}
+          disabled={visible.length === 0}
+          title="Save the lines shown to a file"
+          aria-label="Save console"
+        >
+          <Save className="h-3.5 w-3.5" />
+        </Button>
         <Button
           variant="ghost"
           size="icon"

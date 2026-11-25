@@ -189,6 +189,7 @@ window.electron = {
       };
     },
   },
+  logs: { copy: ok, save: async () => ({ success: true, cancelled: true }) },
   tizen: {
     listProfiles: async () => ({
       success: true,

@@ -1,6 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { app, clipboard, dialog, nativeImage, shell } from "electron";
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  dialog,
+  nativeImage,
+  shell,
+} from "electron";
 import type { Platform } from "../../shared/ipc";
 import { store } from "../store";
 import {
@@ -34,6 +41,15 @@ function adapterFor(platform: Platform): PlatformAdapter {
   const adapter = adapters[platform];
   if (!adapter) throw new Error(`Unknown platform: ${platform}`);
   return adapter;
+}
+
+/** Local time for file names, e.g. 2026-11-19-14-05-09. */
+function fileStamp(): string {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 19)
+    .replace(/[T:]/g, "-");
 }
 
 /** Stops watching the project for auto-redeploy; one project is watched at a time. */
@@ -126,15 +142,27 @@ export function registerIpcHandlers() {
     clipboard.writeImage(nativeImage.createFromBuffer(png));
     const dir = path.join(app.getPath("pictures"), "CTV Bridge");
     await fs.mkdir(dir, { recursive: true });
-    // Local time, e.g. screenshot-2026-11-19-14-05-09.png
-    const now = new Date();
-    const stamp = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
-      .toISOString()
-      .slice(0, 19)
-      .replace(/[T:]/g, "-");
-    const file = path.join(dir, `screenshot-${stamp}.png`);
+    const file = path.join(dir, `screenshot-${fileStamp()}.png`);
     await fs.writeFile(file, png);
     return { path: file };
+  });
+
+  handle("logs:copy", async (_e, text) => clipboard.writeText(text));
+  handle("logs:save", async (event, text) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const options = {
+      defaultPath: path.join(
+        app.getPath("downloads"),
+        `ctv-bridge-${fileStamp()}.log`
+      ),
+      filters: [{ name: "Log files", extensions: ["log", "txt"] }],
+    };
+    const { canceled, filePath } = window
+      ? await dialog.showSaveDialog(window, options)
+      : await dialog.showSaveDialog(options);
+    if (canceled || !filePath) return { cancelled: true };
+    await fs.writeFile(filePath, text);
+    return { path: filePath };
   });
 
   handle("tizen:list-profiles", async () => ({

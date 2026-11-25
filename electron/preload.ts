@@ -54,6 +54,10 @@ const api: ElectronApi = {
     press: invoke("remote:press"),
     screenshot: invoke("remote:screenshot"),
   },
+  logs: {
+    copy: invoke("logs:copy"),
+    save: invoke("logs:save"),
+  },
   tizen: {
     listProfiles: invoke("tizen:list-profiles"),
     deleteProfile: invoke("tizen:delete-profile"),
