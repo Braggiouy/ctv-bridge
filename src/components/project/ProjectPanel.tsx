@@ -7,12 +7,16 @@ import {
   Loader2,
   Play,
   RefreshCw,
+  RotateCcw,
+  Square,
+  Trash2,
   X,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { STATUS_DOT, type ConnectionStatus } from "@/components/devices/status";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { PathInput } from "@/components/shared/PathInput";
 import {
   Tooltip,
@@ -25,7 +29,7 @@ import {
   recentProjectLabels,
   type Workflow,
 } from "@/lib/workflow";
-import type { DeployMode, Platform } from "@/types";
+import type { AppAction, DeployMode, Platform } from "@/types";
 import { addLog, cn } from "@/utils";
 import { CANCELLED_MESSAGE } from "../../../shared/ipc";
 import { OperationStatus } from "./OperationStatus";
@@ -41,7 +45,28 @@ interface ProjectPanelProps {
   knownDuids: string[];
 }
 
-type Busy = "build" | DeployMode | null;
+type Busy = "build" | DeployMode | AppAction | null;
+
+const APP_ACTIONS: {
+  action: AppAction;
+  label: string;
+  progress: string;
+  icon: typeof RotateCcw;
+}[] = [
+  {
+    action: "restart",
+    label: "Restart",
+    progress: "Restarting",
+    icon: RotateCcw,
+  },
+  { action: "stop", label: "Stop", progress: "Stopping", icon: Square },
+  {
+    action: "uninstall",
+    label: "Uninstall",
+    progress: "Uninstalling",
+    icon: Trash2,
+  },
+];
 type Outcome = {
   success: boolean;
   message: string;
@@ -170,18 +195,75 @@ export const ProjectPanel = ({
       else addLog("error", `Deployment failed: ${message}`);
       if (inspectorUrl) await openInspector(inspectorUrl, auto);
     } finally {
-      running.current = false;
-      setBusy(null);
-      const queued = queuedChanges.current;
-      if (queued.length > 0) {
-        queuedChanges.current = [];
-        // After the re-render, so the redeploy sees the current project and TV.
-        setTimeout(() => onProjectChange.current(queued));
-      }
+      finishRun();
     }
   };
 
+  /** Ends a run, then applies files changed meanwhile if Auto-redeploy is on. */
+  const finishRun = () => {
+    running.current = false;
+    setBusy(null);
+    applyQueuedChanges();
+  };
+
+  const [confirmUninstall, setConfirmUninstall] = useState(false);
+
+  /** Restarts, stops or uninstalls the installed app, without building. */
+  const runAppAction = async (action: AppAction) => {
+    const { label, progress } = APP_ACTIONS.find((a) => a.action === action)!;
+    running.current = true;
+    setBusy(action);
+    setOutcome(null);
+    try {
+      addLog("info", `${progress} the app on ${device!.name || device!.ip}…`);
+      const result = await window.electron.appAction(
+        platform,
+        device!,
+        { projectPath, packagePath },
+        action
+      );
+      const message =
+        result.message ?? (result.success ? "Done" : `${label} failed`);
+      setOutcome({ success: result.success, message, at: new Date() });
+      if (result.success) addLog("step", message);
+      else addLog("error", `${label} failed: ${message}`);
+    } finally {
+      finishRun();
+    }
+  };
+
+  /** Applies files changed during the last run or reload, if Auto-redeploy queued any. */
+  const applyQueuedChanges = () => {
+    const queued = queuedChanges.current;
+    if (queued.length === 0) return;
+    queuedChanges.current = [];
+    // After the re-render, so the redeploy sees the current project and TV.
+    setTimeout(() => onProjectChange.current(queued));
+  };
+
+  /** In Debug, reloads the app with the project's files; redeploys when the TV or change needs it. */
+  const reloadOrRedeploy = async (changed: string[], what: string) => {
+    running.current = true;
+    const result = await window.electron.appConsole.liveReload(
+      projectPath,
+      changed
+    );
+    running.current = false;
+    if (result.success && result.reloaded) {
+      addLog("step", `${what} changed. Reloaded the app live`);
+      applyQueuedChanges();
+      return;
+    }
+    addLog(
+      "info",
+      `${what} changed. ${result.message ?? "Live reload isn't available"}, so redeploying…`
+    );
+    void run("debug", true);
+  };
+
   const canDeploy = !missing && !!device && status?.state !== "checking";
+  // Acting on the installed app needs its ID from the project, not a signing profile.
+  const canActOnApp = !!projectPath && !!device && status?.state !== "checking";
 
   const onProjectChange = useRef<(changed: string[]) => void>(() => {});
   onProjectChange.current = (changed) => {
@@ -197,6 +279,10 @@ export const ProjectPanel = ({
         "warning",
         `${what} changed, but can't redeploy: ${missing ?? (device ? "the TV is still connecting." : "select a TV.")}`
       );
+      return;
+    }
+    if (lastDeployMode.current === "debug" && !info.projectIsFile) {
+      void reloadOrRedeploy(changed, what);
       return;
     }
     addLog("info", `${what} changed. Redeploying…`);
@@ -417,21 +503,51 @@ export const ProjectPanel = ({
             onClick={() => setAutoRedeploy((on) => !on)}
             disabled={!projectPath}
             aria-pressed={autoRedeploy}
-            title={`Redeploy with Run or Debug, whichever you used last, when the ${info.projectIsFile ? "APK" : "project"} changes`}
+            title={`Redeploy with Run or Debug, whichever you used last, when the ${info.projectIsFile ? "APK" : "project"} changes${info.projectIsFile ? "" : ". After Debug, the app is reloaded live where the TV allows it"}`}
           >
             <RefreshCw className="h-4 w-4" />
             Auto-redeploy
           </Button>
         </div>
-        {busy && (
+        {/* Restart, Stop and Uninstall are quick and can't be cancelled. */}
+        {(busy === "build" || busy === "run" || busy === "debug") && (
           <OperationStatus label={`Building ${baseName(projectPath)}…`} />
         )}
         {autoRedeploy && (
           <p className="text-xs text-muted-foreground">
-            Watching {baseName(projectPath)}. Changes redeploy with{" "}
-            {lastDeployMode.current === "debug" ? "Debug" : "Run"}.
+            Watching {baseName(projectPath)}.{" "}
+            {lastDeployMode.current === "debug" && !info.projectIsFile
+              ? "Changes reload the app live where the TV allows it, otherwise redeploy with Debug."
+              : `Changes redeploy with ${lastDeployMode.current === "debug" ? "Debug" : "Run"}.`}
           </p>
         )}
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="mr-1 text-xs text-muted-foreground">
+            Installed app
+          </span>
+          {APP_ACTIONS.map(({ action, label, icon: Icon }) => (
+            <Button
+              key={action}
+              size="sm"
+              variant="ghost"
+              className="h-7"
+              onClick={() =>
+                action === "uninstall"
+                  ? setConfirmUninstall(true)
+                  : runAppAction(action)
+              }
+              disabled={!!busy || !canActOnApp}
+              title={`${label} the app on the TV, without building or installing`}
+            >
+              {busy === action ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Icon className="h-3.5 w-3.5" />
+              )}
+              {label}
+            </Button>
+          ))}
+        </div>
 
         {missing && <p className="text-xs text-muted-foreground">{missing}</p>}
         {outcome ? (
@@ -480,6 +596,18 @@ export const ProjectPanel = ({
           )
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmUninstall}
+        title="Uninstall the app?"
+        description={`The app will be removed from ${device?.name || device?.ip || "the TV"}, with its data. Run installs it again.`}
+        confirmLabel="Uninstall"
+        onConfirm={() => {
+          setConfirmUninstall(false);
+          void runAppAction("uninstall");
+        }}
+        onCancel={() => setConfirmUninstall(false)}
+      />
     </section>
   );
 };

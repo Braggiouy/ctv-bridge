@@ -163,6 +163,7 @@ window.electron = {
   },
   cancel: ok,
   openInspector: ok,
+  appAction: ok,
   projectWatch: {
     start: ok,
     stop: ok,
@@ -174,6 +175,7 @@ window.electron = {
       emit("state", "stopped");
       return { success: true };
     },
+    liveReload: async () => ({ success: true, reloaded: true }),
     onEntries: on("entries"),
     onState: on("state"),
   },
@@ -190,6 +192,7 @@ window.electron = {
       };
     },
   },
+  logs: { copy: ok, save: async () => ({ success: true, cancelled: true }) },
   tizen: {
     listProfiles: async () => ({
       success: true,

@@ -2,6 +2,8 @@
 
 export type Platform = "tizen" | "webos" | "android";
 export type DeployMode = "debug" | "run";
+/** Acts on the installed app without building or installing. */
+export type AppAction = "restart" | "stop" | "uninstall";
 
 /** The message of a build or deploy the user cancelled. */
 export const CANCELLED_MESSAGE = "Cancelled";
@@ -162,6 +164,13 @@ export interface ElectronApi {
   ): Promise<DeployResult>;
   /** Cancels the build or deploy in progress; it then fails with CANCELLED_MESSAGE. */
   cancel(): Promise<Result>;
+  /** Restarts, stops or uninstalls the project's app on the TV. */
+  appAction(
+    platform: Platform,
+    device: Device,
+    target: DeployTarget,
+    action: AppAction
+  ): Promise<Result>;
   /**
    * Opens DevTools for the app in its own window. `background`: only
    * reconnects a DevTools window that is already open, without focusing it.
@@ -178,6 +187,15 @@ export interface ElectronApi {
   /** Console output of the app being debugged, streamed after a debug deploy. */
   appConsole: {
     stop(): Promise<Result>;
+    /**
+     * Reloads the app being debugged with the project's files, without a
+     * reinstall. `reloaded` is false when the TV or the change needs a
+     * redeploy instead, and `message` says why.
+     */
+    liveReload(
+      projectPath: string,
+      changed: string[]
+    ): Promise<Result & { reloaded?: boolean }>;
     onEntries(callback: (entries: AppLogEntry[]) => void): Unsubscribe;
     onState(callback: (state: AppConsoleState) => void): Unsubscribe;
   };
@@ -186,6 +204,14 @@ export interface ElectronApi {
     press(key: RemoteKey): Promise<Result>;
     /** Saves a PNG of the app's screen and copies it to the clipboard. */
     screenshot(): Promise<Result & { path?: string }>;
+  };
+  /** The console's lines, as text. */
+  logs: {
+    copy(text: string): Promise<Result>;
+    /** Asks where to save; `cancelled` if the user closed the dialog. */
+    save(
+      text: string
+    ): Promise<Result & { path?: string; cancelled?: boolean }>;
   };
   tizen: {
     listProfiles(): Promise<Result & { profiles?: TizenProfile[] }>;
@@ -230,12 +256,16 @@ export interface IpcInvokeChannels {
   "package:build": Api["build"];
   "package:deploy": Api["deploy"];
   "package:cancel": Api["cancel"];
+  "app:action": Api["appAction"];
   "inspector:open": Api["openInspector"];
   "project-watch:start": Api["projectWatch"]["start"];
   "project-watch:stop": Api["projectWatch"]["stop"];
   "app-console:stop": Api["appConsole"]["stop"];
+  "app-console:live-reload": Api["appConsole"]["liveReload"];
   "remote:press": Api["remote"]["press"];
   "remote:screenshot": Api["remote"]["screenshot"];
+  "logs:copy": Api["logs"]["copy"];
+  "logs:save": Api["logs"]["save"];
   "tizen:list-profiles": Api["tizen"]["listProfiles"];
   "tizen:delete-profile": Api["tizen"]["deleteProfile"];
   "tizen-cert:login": Api["tizen"]["login"];

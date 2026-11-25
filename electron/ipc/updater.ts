@@ -19,11 +19,11 @@ import type {
   IpcEventChannels,
   UpdateDownloadResult,
 } from "../../shared/ipc";
+import { releaseUrl, REPO_URL } from "../../shared/links";
 import { runCli } from "../utils/cli";
 import { logger } from "../utils/logger";
 import { handle, handleRaw, sendTo } from "./handle";
 
-const REPO_URL = "https://github.com/Braggiouy/ctv-bridge";
 const FIRST_CHECK_DELAY_MS = 5_000;
 const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 const isMac = process.platform === "darwin";
@@ -248,7 +248,7 @@ async function installManually(
   info: UpdateInfo
 ): Promise<UpdateDownloadResult> {
   if (!isMac) {
-    await shell.openExternal(`${REPO_URL}/releases/tag/v${info.version}`);
+    await shell.openExternal(releaseUrl(info.version));
     return { success: true, manual: "release-page" };
   }
   const dmg = await downloadAsset(info, ".dmg", app.getPath("downloads"));

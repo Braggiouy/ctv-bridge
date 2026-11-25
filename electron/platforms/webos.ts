@@ -319,6 +319,28 @@ export const webosAdapter: PlatformAdapter = {
     return { message: "Deployed and launched" };
   },
 
+  async appAction(device, target, action) {
+    const appId = await readAppId(target.projectPath);
+    if (action === "uninstall") {
+      await runAres("install", ["--device", device.name, "--remove", appId]);
+      return `Uninstalled ${appId}`;
+    }
+    const close = runAres("launch", [
+      "--device",
+      device.name,
+      "--close",
+      appId,
+    ]);
+    if (action === "stop") {
+      await close;
+      return `Stopped ${appId}`;
+    }
+    // Closing fails when the app isn't running, which is fine before a launch.
+    await close.catch(() => undefined);
+    await runAres("launch", ["--device", device.name, appId]);
+    return `Restarted ${appId}`;
+  },
+
   async verifySdk() {
     return [
       await checkTool("aresPath", "ares", ares("package"), ["--version"]),
