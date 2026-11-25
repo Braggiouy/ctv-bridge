@@ -191,6 +191,14 @@ export interface ElectronApi {
     /** Saves a PNG of the app's screen and copies it to the clipboard. */
     screenshot(): Promise<Result & { path?: string }>;
   };
+  /** The console's lines, as text. */
+  logs: {
+    copy(text: string): Promise<Result>;
+    /** Asks where to save; `cancelled` if the user closed the dialog. */
+    save(
+      text: string
+    ): Promise<Result & { path?: string; cancelled?: boolean }>;
+  };
   tizen: {
     listProfiles(): Promise<Result & { profiles?: TizenProfile[] }>;
     deleteProfile(name: string): Promise<Result>;
@@ -240,6 +248,8 @@ export interface IpcInvokeChannels {
   "app-console:stop": Api["appConsole"]["stop"];
   "remote:press": Api["remote"]["press"];
   "remote:screenshot": Api["remote"]["screenshot"];
+  "logs:copy": Api["logs"]["copy"];
+  "logs:save": Api["logs"]["save"];
   "tizen:list-profiles": Api["tizen"]["listProfiles"];
   "tizen:delete-profile": Api["tizen"]["deleteProfile"];
   "tizen-cert:login": Api["tizen"]["login"];

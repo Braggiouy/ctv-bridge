@@ -46,3 +46,18 @@ function subscribe(listener: () => void) {
 }
 
 export const useLogs = () => useSyncExternalStore(subscribe, () => entries);
+
+const clockTime = (timestamp: number) =>
+  new Date(timestamp).toTimeString().slice(0, 8);
+
+/** Log entries as plain text, one per line, for copying or saving. */
+export function formatLogs(entries: LogEntry[]): string {
+  return entries
+    .map(({ timestamp, type, source, message }) => {
+      const tag = source === "app" ? `${type} [app]` : type;
+      // Indent continuation lines (stack traces) under the message.
+      const text = message.replace(/\n/g, "\n    ");
+      return `${clockTime(timestamp)} ${tag.padEnd(13)} ${text}\n`;
+    })
+    .join("");
+}
