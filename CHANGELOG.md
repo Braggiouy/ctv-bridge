@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.15.0](https://github.com/Braggiouy/ctv-bridge/compare/v1.14.1...v1.15.0) (2026-11-25)
+
+
+### Features
+
+* **app:** remember the window's size and position ([de93b5b](https://github.com/Braggiouy/ctv-bridge/commit/de93b5b4969249eb9e171988254da73eda5070b8))
+* **app:** show the version in the header, with an About dialog ([6ad809f](https://github.com/Braggiouy/ctv-bridge/commit/6ad809fe0be98b27cdc0753f99da5fd3dc0bf3aa))
+* **console:** copy and save the console's lines ([d57d255](https://github.com/Braggiouy/ctv-bridge/commit/d57d255e10956c2600466b7264a63f3ec5c8e077))
+* **project:** cancel a running build or deploy, with elapsed time ([a22fdb1](https://github.com/Braggiouy/ctv-bridge/commit/a22fdb1cc6bd4d2db19a00a246407e4c174ddd86))
+* **project:** live reload the app on the TV without reinstalling ([5ea14cd](https://github.com/Braggiouy/ctv-bridge/commit/5ea14cd2253d99115853a16daeb5c32294c74738))
+* **project:** restart, stop and uninstall the app without rebuilding ([7c3c7f0](https://github.com/Braggiouy/ctv-bridge/commit/7c3c7f0a0594a1364313860ed0b1a0317c2eec92))
+
 ### [1.14.1](https://github.com/Braggiouy/ctv-bridge/compare/v1.14.0...v1.14.1) (2026-11-24)
 
 
