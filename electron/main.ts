@@ -8,6 +8,7 @@ import { registerTizenCertHandlers } from "./ipc/tizen-certificates";
 import { registerUpdater } from "./ipc/updater";
 import { WINDOW_CONSTANTS } from "./utils/constants";
 import { inheritLoginShellPath } from "./utils/cli";
+import { AUTHOR, REPO_URL } from "../shared/links";
 import "./utils/process-manager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -95,6 +96,7 @@ app.on("activate", () => {
 
 app.whenReady().then(() => {
   if (app.isPackaged) inheritLoginShellPath();
+  app.setAboutPanelOptions({ credits: `Made by ${AUTHOR}`, website: REPO_URL });
   // Passphrases used to be duplicated here behind the macOS Keychain; the webOS
   // CLI already stores them, so drop the obsolete copy.
   fs.rmSync(path.join(app.getPath("userData"), "secure-credentials.json"), {
