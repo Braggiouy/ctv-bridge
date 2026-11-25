@@ -30,6 +30,12 @@ import { webosAdapter } from "../platforms/webos";
 import { androidAdapter } from "../platforms/android";
 import { endDebugSession } from "../platforms/common";
 import { discoverTvs } from "../platforms/discovery";
+import {
+  cancelOperation,
+  CancelledError,
+  currentOperation,
+  runCancellable,
+} from "../utils/operation";
 import { watchProject } from "../project-watcher";
 
 const adapters: Record<Platform, PlatformAdapter> = {
@@ -89,22 +95,26 @@ export function registerIpcHandlers() {
   });
 
   handle("package:build", async (_e, platform, projectPath, profileName) => {
-    const packagePath = await adapterFor(platform).build(
-      projectPath,
-      profileName
+    const packagePath = await runCancellable(() =>
+      adapterFor(platform).build(projectPath, profileName)
     );
     return { packagePath };
   });
   handle("package:deploy", async (event, platform, device, target, mode) => {
     stopAppConsole();
     endDebugSession();
-    const log = replyLog(event, "deploy-log");
-    const outcome = await adapterFor(platform).deploy(
-      device,
-      target,
-      mode,
-      log
-    );
+    const reply = replyLog(event, "deploy-log");
+    // A cancelled deploy may still report a step or two; they'd read as if it carried on.
+    const log = (line: string) => {
+      if (!currentOperation()?.cancelled) reply(line);
+    };
+    const outcome = await runCancellable(() =>
+      adapterFor(platform).deploy(device, target, mode, log)
+    ).catch((error) => {
+      // Drop the port forwards or debug process it got as far as starting.
+      if (error instanceof CancelledError) endDebugSession();
+      throw error;
+    });
     if (outcome.inspectorUrl) {
       await startAppConsole(outcome.inspectorUrl, platform, event.sender).catch(
         (error) => log(`App logs unavailable: ${getErrorMessage(error)}`)
@@ -141,6 +151,10 @@ export function registerIpcHandlers() {
     };
   });
   handle("project-watch:stop", async () => stopProjectWatch());
+
+  handle("package:cancel", async () => {
+    if (!cancelOperation()) throw new Error("Nothing to cancel.");
+  });
 
   handle("inspector:open", async (_e, url, background) =>
     openInspectorForApp(url, background)

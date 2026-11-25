@@ -5,6 +5,9 @@ export type DeployMode = "debug" | "run";
 /** Acts on the installed app without building or installing. */
 export type AppAction = "restart" | "stop" | "uninstall";
 
+/** The message of a build or deploy the user cancelled. */
+export const CANCELLED_MESSAGE = "Cancelled";
+
 export interface Device {
   name: string;
   ip: string;
@@ -159,6 +162,8 @@ export interface ElectronApi {
     target: DeployTarget,
     mode: DeployMode
   ): Promise<DeployResult>;
+  /** Cancels the build or deploy in progress; it then fails with CANCELLED_MESSAGE. */
+  cancel(): Promise<Result>;
   /** Restarts, stops or uninstalls the project's app on the TV. */
   appAction(
     platform: Platform,
@@ -250,6 +255,7 @@ export interface IpcInvokeChannels {
   "sdk:verify": Api["sdk"]["verify"];
   "package:build": Api["build"];
   "package:deploy": Api["deploy"];
+  "package:cancel": Api["cancel"];
   "app:action": Api["appAction"];
   "inspector:open": Api["openInspector"];
   "project-watch:start": Api["projectWatch"]["start"];

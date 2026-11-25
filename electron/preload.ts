@@ -38,6 +38,7 @@ const api: ElectronApi = {
   },
   build: invoke("package:build"),
   deploy: invoke("package:deploy"),
+  cancel: invoke("package:cancel"),
   appAction: invoke("app:action"),
   openInspector: invoke("inspector:open"),
   projectWatch: {
