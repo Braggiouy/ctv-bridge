@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download, Loader2, RotateCw } from "lucide-react";
 import { toast } from "sonner";
+import { releaseUrl } from "../../../shared/links";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -16,9 +17,6 @@ type UpdateState =
 
 // Each version is announced once, not on every periodic check.
 const NOTIFIED_KEY = "ctv-bridge:update-notified";
-
-const releaseUrl = (version: string) =>
-  `https://github.com/Braggiouy/ctv-bridge/releases/tag/v${version}`;
 
 function firstNotice(version: string): boolean {
   try {

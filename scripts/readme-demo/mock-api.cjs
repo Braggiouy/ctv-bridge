@@ -162,6 +162,7 @@ window.electron = {
     };
   },
   openInspector: ok,
+  appAction: ok,
   projectWatch: {
     start: ok,
     stop: ok,
@@ -189,6 +190,7 @@ window.electron = {
       };
     },
   },
+  logs: { copy: ok, save: async () => ({ success: true, cancelled: true }) },
   tizen: {
     listProfiles: async () => ({
       success: true,

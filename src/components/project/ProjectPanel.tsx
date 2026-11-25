@@ -7,12 +7,16 @@ import {
   Loader2,
   Play,
   RefreshCw,
+  RotateCcw,
+  Square,
+  Trash2,
   X,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { STATUS_DOT, type ConnectionStatus } from "@/components/devices/status";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { PathInput } from "@/components/shared/PathInput";
 import {
   Tooltip,
@@ -25,7 +29,7 @@ import {
   recentProjectLabels,
   type Workflow,
 } from "@/lib/workflow";
-import type { DeployMode, Platform } from "@/types";
+import type { AppAction, DeployMode, Platform } from "@/types";
 import { addLog, cn } from "@/utils";
 import { TizenSigning } from "./TizenSigning";
 
@@ -39,7 +43,28 @@ interface ProjectPanelProps {
   knownDuids: string[];
 }
 
-type Busy = "build" | DeployMode | null;
+type Busy = "build" | DeployMode | AppAction | null;
+
+const APP_ACTIONS: {
+  action: AppAction;
+  label: string;
+  progress: string;
+  icon: typeof RotateCcw;
+}[] = [
+  {
+    action: "restart",
+    label: "Restart",
+    progress: "Restarting",
+    icon: RotateCcw,
+  },
+  { action: "stop", label: "Stop", progress: "Stopping", icon: Square },
+  {
+    action: "uninstall",
+    label: "Uninstall",
+    progress: "Uninstalling",
+    icon: Trash2,
+  },
+];
 type Outcome = {
   success: boolean;
   message: string;
@@ -164,18 +189,51 @@ export const ProjectPanel = ({
       else addLog("error", `Deployment failed: ${message}`);
       if (inspectorUrl) await openInspector(inspectorUrl, auto);
     } finally {
-      running.current = false;
-      setBusy(null);
-      const queued = queuedChanges.current;
-      if (queued.length > 0) {
-        queuedChanges.current = [];
-        // After the re-render, so the redeploy sees the current project and TV.
-        setTimeout(() => onProjectChange.current(queued));
-      }
+      finishRun();
+    }
+  };
+
+  /** Ends a run, then redeploys for files changed meanwhile if Auto-redeploy is on. */
+  const finishRun = () => {
+    running.current = false;
+    setBusy(null);
+    const queued = queuedChanges.current;
+    if (queued.length > 0) {
+      queuedChanges.current = [];
+      // After the re-render, so the redeploy sees the current project and TV.
+      setTimeout(() => onProjectChange.current(queued));
+    }
+  };
+
+  const [confirmUninstall, setConfirmUninstall] = useState(false);
+
+  /** Restarts, stops or uninstalls the installed app, without building. */
+  const runAppAction = async (action: AppAction) => {
+    const { label, progress } = APP_ACTIONS.find((a) => a.action === action)!;
+    running.current = true;
+    setBusy(action);
+    setOutcome(null);
+    try {
+      addLog("info", `${progress} the app on ${device!.name || device!.ip}…`);
+      const result = await window.electron.appAction(
+        platform,
+        device!,
+        { projectPath, packagePath },
+        action
+      );
+      const message =
+        result.message ?? (result.success ? "Done" : `${label} failed`);
+      setOutcome({ success: result.success, message, at: new Date() });
+      if (result.success) addLog("step", message);
+      else addLog("error", `${label} failed: ${message}`);
+    } finally {
+      finishRun();
     }
   };
 
   const canDeploy = !missing && !!device && status?.state !== "checking";
+  // Acting on the installed app needs its ID from the project, not a signing profile.
+  const canActOnApp = !!projectPath && !!device && status?.state !== "checking";
 
   const onProjectChange = useRef<(changed: string[]) => void>(() => {});
   onProjectChange.current = (changed) => {
@@ -423,6 +481,33 @@ export const ProjectPanel = ({
             {lastDeployMode.current === "debug" ? "Debug" : "Run"}.
           </p>
         )}
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="mr-1 text-xs text-muted-foreground">
+            Installed app
+          </span>
+          {APP_ACTIONS.map(({ action, label, icon: Icon }) => (
+            <Button
+              key={action}
+              size="sm"
+              variant="ghost"
+              className="h-7"
+              onClick={() =>
+                action === "uninstall"
+                  ? setConfirmUninstall(true)
+                  : runAppAction(action)
+              }
+              disabled={!!busy || !canActOnApp}
+              title={`${label} the app on the TV, without building or installing`}
+            >
+              {busy === action ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Icon className="h-3.5 w-3.5" />
+              )}
+              {label}
+            </Button>
+          ))}
+        </div>
 
         {missing && <p className="text-xs text-muted-foreground">{missing}</p>}
         {outcome ? (
@@ -471,6 +556,18 @@ export const ProjectPanel = ({
           )
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmUninstall}
+        title="Uninstall the app?"
+        description={`The app will be removed from ${device?.name || device?.ip || "the TV"}, with its data. Run installs it again.`}
+        confirmLabel="Uninstall"
+        onConfirm={() => {
+          setConfirmUninstall(false);
+          void runAppAction("uninstall");
+        }}
+        onCancel={() => setConfirmUninstall(false)}
+      />
     </section>
   );
 };
