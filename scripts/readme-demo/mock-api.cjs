@@ -161,6 +161,7 @@ window.electron = {
         "devtools://devtools/bundled/inspector.html?ws=127.0.0.1:41237/devtools/page/1",
     };
   },
+  cancel: ok,
   openInspector: ok,
   projectWatch: {
     start: ok,

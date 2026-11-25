@@ -3,6 +3,9 @@
 export type Platform = "tizen" | "webos" | "android";
 export type DeployMode = "debug" | "run";
 
+/** The message of a build or deploy the user cancelled. */
+export const CANCELLED_MESSAGE = "Cancelled";
+
 export interface Device {
   name: string;
   ip: string;
@@ -157,6 +160,8 @@ export interface ElectronApi {
     target: DeployTarget,
     mode: DeployMode
   ): Promise<DeployResult>;
+  /** Cancels the build or deploy in progress; it then fails with CANCELLED_MESSAGE. */
+  cancel(): Promise<Result>;
   /**
    * Opens DevTools for the app in its own window. `background`: only
    * reconnects a DevTools window that is already open, without focusing it.
@@ -224,6 +229,7 @@ export interface IpcInvokeChannels {
   "sdk:verify": Api["sdk"]["verify"];
   "package:build": Api["build"];
   "package:deploy": Api["deploy"];
+  "package:cancel": Api["cancel"];
   "inspector:open": Api["openInspector"];
   "project-watch:start": Api["projectWatch"]["start"];
   "project-watch:stop": Api["projectWatch"]["stop"];

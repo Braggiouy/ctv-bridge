@@ -6,6 +6,11 @@ import {
   spawn,
 } from "node:child_process";
 import { processManager } from "./process-manager";
+import {
+  CancelledError,
+  currentOperation,
+  trackInOperation,
+} from "./operation";
 
 export { killTree } from "./process-manager";
 
@@ -35,6 +40,9 @@ export function runCli(
   args: string[],
   options: { cwd?: string; timeout?: number } = {}
 ): Promise<CliResult> {
+  // A cancelled build or deploy starts nothing new, so it stops at its next step.
+  if (currentOperation()?.cancelled)
+    return Promise.reject(new CancelledError());
   return new Promise((resolve, reject) => {
     const callback = (
       error: CliError | null,
@@ -50,26 +58,27 @@ export function runCli(
       }
     };
 
-    if (isWindows) {
-      exec(
-        toWindowsCommand(command, args),
-        { ...options, windowsHide: true },
-        callback
-      );
-    } else {
-      execFile(command, args, options, callback);
-    }
+    const child = isWindows
+      ? exec(
+          toWindowsCommand(command, args),
+          { ...options, windowsHide: true },
+          callback
+        )
+      : execFile(command, args, options, callback);
+    trackInOperation(child);
   });
 }
 
 /** Spawns a long-running SDK process that is killed when the app quits. */
 export function spawnCli(command: string, args: string[]): ChildProcess {
+  if (currentOperation()?.cancelled) throw new CancelledError();
   const proc = isWindows
     ? spawn(toWindowsCommand(command, args), { shell: true, windowsHide: true })
     : // Own process group, so killTree also reaches the node process that
       // wrapper scripts like ares-inspect start.
       spawn(command, args, { detached: true });
   processManager.track(proc);
+  trackInOperation(proc);
   return proc;
 }
 

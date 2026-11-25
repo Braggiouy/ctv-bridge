@@ -27,6 +27,8 @@ import {
 } from "@/lib/workflow";
 import type { DeployMode, Platform } from "@/types";
 import { addLog, cn } from "@/utils";
+import { CANCELLED_MESSAGE } from "../../../shared/ipc";
+import { OperationStatus } from "./OperationStatus";
 import { TizenSigning } from "./TizenSigning";
 
 interface ProjectPanelProps {
@@ -109,7 +111,9 @@ export const ProjectPanel = ({
         message: result.message ?? "Build failed",
         at: new Date(),
       });
-      addLog("error", `Build failed: ${result.message}`);
+      if (result.message === CANCELLED_MESSAGE)
+        addLog("info", "Build cancelled");
+      else addLog("error", `Build failed: ${result.message}`);
       return undefined;
     }
     updateWorkflow({
@@ -161,6 +165,8 @@ export const ProjectPanel = ({
         inspectorUrl,
       });
       if (result.success) addLog("step", message);
+      else if (message === CANCELLED_MESSAGE)
+        addLog("info", "Deployment cancelled");
       else addLog("error", `Deployment failed: ${message}`);
       if (inspectorUrl) await openInspector(inspectorUrl, auto);
     } finally {
@@ -417,6 +423,9 @@ export const ProjectPanel = ({
             Auto-redeploy
           </Button>
         </div>
+        {busy && (
+          <OperationStatus label={`Building ${baseName(projectPath)}…`} />
+        )}
         {autoRedeploy && (
           <p className="text-xs text-muted-foreground">
             Watching {baseName(projectPath)}. Changes redeploy with{" "}
