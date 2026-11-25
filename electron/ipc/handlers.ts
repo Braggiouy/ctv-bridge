@@ -14,6 +14,7 @@ import {
   captureAppScreen,
   openInspectorForApp,
   pressRemoteKey,
+  reloadAppLive,
   startAppConsole,
   stopAppConsole,
 } from "../app-console";
@@ -145,6 +146,12 @@ export function registerIpcHandlers() {
     openInspectorForApp(url, background)
   );
   handle("app-console:stop", async () => stopAppConsole());
+  handle("app-console:live-reload", async (_e, projectPath, changed) => {
+    const outcome = await reloadAppLive(projectPath, changed);
+    return outcome.reloaded
+      ? { reloaded: true }
+      : { reloaded: false, message: outcome.reason };
+  });
   handle("remote:press", async (_e, key) => pressRemoteKey(key));
   handle("remote:screenshot", async () => {
     const png = await captureAppScreen();

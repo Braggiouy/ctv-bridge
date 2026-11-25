@@ -48,6 +48,7 @@ const api: ElectronApi = {
   onDeployLog: subscribe("deploy-log"),
   appConsole: {
     stop: invoke("app-console:stop"),
+    liveReload: invoke("app-console:live-reload"),
     onEntries: subscribe("app-console:entries"),
     onState: subscribe("app-console:state"),
   },
