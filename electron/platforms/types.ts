@@ -1,4 +1,5 @@
 import type {
+  AppAction,
   DeployMode,
   DeployTarget,
   Device,
@@ -27,5 +28,11 @@ export interface PlatformAdapter {
     mode: DeployMode,
     log: LogFn
   ): Promise<DeployOutcome>;
+  /** Acts on the installed app; resolves with a message for the log. */
+  appAction(
+    device: Device,
+    target: DeployTarget,
+    action: AppAction
+  ): Promise<string>;
   verifySdk(): Promise<ToolCheck[]>;
 }
