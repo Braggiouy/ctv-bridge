@@ -1,4 +1,5 @@
 export type {
+  AppAction,
   AppConsoleState,
   RemoteKey,
   ColorKey,

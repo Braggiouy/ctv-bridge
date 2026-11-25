@@ -112,6 +112,15 @@ export function registerIpcHandlers() {
     return outcome;
   });
 
+  handle("app:action", async (_e, platform, device, target, action) => {
+    // Restarting, stopping or removing the app ends its debug session.
+    stopAppConsole();
+    endDebugSession();
+    return {
+      message: await adapterFor(platform).appAction(device, target, action),
+    };
+  });
+
   handle("project-watch:start", async (event, target) => {
     stopProjectWatch();
     let stop: () => void;

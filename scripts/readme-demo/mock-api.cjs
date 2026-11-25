@@ -162,6 +162,7 @@ window.electron = {
     };
   },
   openInspector: ok,
+  appAction: ok,
   projectWatch: {
     start: ok,
     stop: ok,

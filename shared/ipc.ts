@@ -2,6 +2,8 @@
 
 export type Platform = "tizen" | "webos" | "android";
 export type DeployMode = "debug" | "run";
+/** Acts on the installed app without building or installing. */
+export type AppAction = "restart" | "stop" | "uninstall";
 
 export interface Device {
   name: string;
@@ -157,6 +159,13 @@ export interface ElectronApi {
     target: DeployTarget,
     mode: DeployMode
   ): Promise<DeployResult>;
+  /** Restarts, stops or uninstalls the project's app on the TV. */
+  appAction(
+    platform: Platform,
+    device: Device,
+    target: DeployTarget,
+    action: AppAction
+  ): Promise<Result>;
   /**
    * Opens DevTools for the app in its own window. `background`: only
    * reconnects a DevTools window that is already open, without focusing it.
@@ -232,6 +241,7 @@ export interface IpcInvokeChannels {
   "sdk:verify": Api["sdk"]["verify"];
   "package:build": Api["build"];
   "package:deploy": Api["deploy"];
+  "app:action": Api["appAction"];
   "inspector:open": Api["openInspector"];
   "project-watch:start": Api["projectWatch"]["start"];
   "project-watch:stop": Api["projectWatch"]["stop"];

@@ -250,6 +250,45 @@ export const tizenAdapter: PlatformAdapter = {
     return { message: "Deployed and launched" };
   },
 
+  async appAction(device, target, action) {
+    const serial = serialOf(device.ip);
+    await connect(device.ip);
+    const appId = await readAppId(target.projectPath);
+
+    if (action === "uninstall") {
+      // Exits 0 even when there's nothing to uninstall.
+      const { stdout, stderr } = await runCli(tizen(), [
+        "uninstall",
+        "-p",
+        appId,
+        "-s",
+        serial,
+      ]);
+      if (/not valid|not installed/i.test(stdout + stderr)) {
+        throw new Error("The app isn't installed on the TV.");
+      }
+      return `Uninstalled ${appId}`;
+    }
+    // Takes the package ID (the part before the dot); does nothing if the app isn't running.
+    await runCli(sdb(), [
+      "-s",
+      serial,
+      "shell",
+      "0",
+      "was_kill",
+      appId.split(".")[0],
+    ]);
+    if (action === "stop") return `Stopped ${appId}`;
+    await runCli(tizen(), ["run", "-p", appId, "-s", serial]).catch((error) => {
+      throw new Error(
+        /not available/i.test(cliOutput(error))
+          ? "The app isn't installed on the TV. Use Run to install it."
+          : describeCliError(error)
+      );
+    });
+    return `Restarted ${appId}`;
+  },
+
   async verifySdk() {
     return Promise.all([
       checkTool("sdbPath", "sdb", sdb(), ["version"]),

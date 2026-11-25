@@ -57,17 +57,24 @@ async function findAapt(): Promise<string | null> {
   return null;
 }
 
-async function launch(serial: string, apkPath: string, log: LogFn) {
+/** The APK's package name and launch activity; null when aapt isn't installed. */
+async function readBadging(apkPath: string) {
   const aapt = await findAapt();
-  if (!aapt) {
+  if (!aapt) return null;
+  const { stdout } = await runCli(aapt, ["dump", "badging", apkPath]);
+  return parseBadging(stdout);
+}
+
+async function launch(serial: string, apkPath: string, log: LogFn) {
+  const badging = await readBadging(apkPath);
+  if (!badging) {
     log(
       "aapt not found, so the app can't be launched automatically. Open it on the TV."
     );
     return null;
   }
 
-  const { stdout } = await runCli(aapt, ["dump", "badging", apkPath]);
-  const { packageName, activity } = parseBadging(stdout);
+  const { packageName, activity } = badging;
   if (!packageName) {
     log("Could not read the package name. Open the app on the TV.");
     return null;
@@ -197,6 +204,35 @@ export const androidAdapter: PlatformAdapter = {
       return startDebugSession(device.ip, packageName, log);
     }
     return { message: "Deployed" };
+  },
+
+  async appAction(device, target, action) {
+    const apkPath = target.packagePath || target.projectPath;
+    await connect(device.ip);
+    const badging = await readBadging(apkPath);
+    if (!badging) {
+      throw new Error(
+        "aapt not found, so the APK's package name can't be read. Install the Android SDK build-tools."
+      );
+    }
+    const { packageName } = badging;
+    if (!packageName) throw new Error("Could not read the APK's package name.");
+
+    if (action === "uninstall") {
+      await runCli(adb(), ["-s", device.ip, "uninstall", packageName]);
+      return `Uninstalled ${packageName}`;
+    }
+    await runCli(adb(), [
+      "-s",
+      device.ip,
+      "shell",
+      "am",
+      "force-stop",
+      packageName,
+    ]);
+    if (action === "stop") return `Stopped ${packageName}`;
+    await launch(device.ip, apkPath, () => undefined);
+    return `Restarted ${packageName}`;
   },
 
   async verifySdk() {
