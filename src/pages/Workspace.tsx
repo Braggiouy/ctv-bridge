@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Github, Settings, Tv2 } from "lucide-react";
+import { Github, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -10,6 +10,7 @@ import { DeviceList } from "@/components/devices/DeviceList";
 import type { ConnectionStatus } from "@/components/devices/status";
 import { ProjectPanel } from "@/components/project/ProjectPanel";
 import { SetupDialog, SetupForm } from "@/components/setup/Setup";
+import { AppTitle } from "@/components/shared/About";
 import { Console } from "@/components/shared/Console";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { UpdateButton } from "@/components/shared/UpdateButton";
@@ -24,6 +25,7 @@ import {
 } from "@/lib/workflow";
 import type { Device, Platform } from "@/types";
 import { addLog, cn } from "@/utils";
+import { REPO_URL } from "../../shared/links";
 
 const HeaderIcon = ({
   label,
@@ -128,12 +130,7 @@ const Workspace = () => {
   return (
     <div className="grid h-screen grid-rows-[auto_1fr_clamp(7rem,24vh,12rem)] bg-background">
       <header className="flex items-center gap-4 border-b px-4 py-2">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-            <Tv2 className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <span className="font-semibold">CTV Bridge</span>
-        </div>
+        <AppTitle />
 
         <div
           role="tablist"
@@ -172,7 +169,7 @@ const Workspace = () => {
           </HeaderIcon>
           <HeaderIcon label="View on GitHub">
             <a
-              href="https://github.com/Braggiouy/ctv-bridge"
+              href={REPO_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-accent"

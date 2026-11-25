@@ -2,6 +2,8 @@
 
 export type Platform = "tizen" | "webos" | "android";
 export type DeployMode = "debug" | "run";
+/** Acts on the installed app without building or installing. */
+export type AppAction = "restart" | "stop" | "uninstall";
 
 export interface Device {
   name: string;
@@ -157,6 +159,13 @@ export interface ElectronApi {
     target: DeployTarget,
     mode: DeployMode
   ): Promise<DeployResult>;
+  /** Restarts, stops or uninstalls the project's app on the TV. */
+  appAction(
+    platform: Platform,
+    device: Device,
+    target: DeployTarget,
+    action: AppAction
+  ): Promise<Result>;
   /**
    * Opens DevTools for the app in its own window. `background`: only
    * reconnects a DevTools window that is already open, without focusing it.
@@ -190,6 +199,14 @@ export interface ElectronApi {
     press(key: RemoteKey): Promise<Result>;
     /** Saves a PNG of the app's screen and copies it to the clipboard. */
     screenshot(): Promise<Result & { path?: string }>;
+  };
+  /** The console's lines, as text. */
+  logs: {
+    copy(text: string): Promise<Result>;
+    /** Asks where to save; `cancelled` if the user closed the dialog. */
+    save(
+      text: string
+    ): Promise<Result & { path?: string; cancelled?: boolean }>;
   };
   tizen: {
     listProfiles(): Promise<Result & { profiles?: TizenProfile[] }>;
@@ -233,6 +250,7 @@ export interface IpcInvokeChannels {
   "sdk:verify": Api["sdk"]["verify"];
   "package:build": Api["build"];
   "package:deploy": Api["deploy"];
+  "app:action": Api["appAction"];
   "inspector:open": Api["openInspector"];
   "project-watch:start": Api["projectWatch"]["start"];
   "project-watch:stop": Api["projectWatch"]["stop"];
@@ -240,6 +258,8 @@ export interface IpcInvokeChannels {
   "app-console:live-reload": Api["appConsole"]["liveReload"];
   "remote:press": Api["remote"]["press"];
   "remote:screenshot": Api["remote"]["screenshot"];
+  "logs:copy": Api["logs"]["copy"];
+  "logs:save": Api["logs"]["save"];
   "tizen:list-profiles": Api["tizen"]["listProfiles"];
   "tizen:delete-profile": Api["tizen"]["deleteProfile"];
   "tizen-cert:login": Api["tizen"]["login"];

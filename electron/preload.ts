@@ -38,6 +38,7 @@ const api: ElectronApi = {
   },
   build: invoke("package:build"),
   deploy: invoke("package:deploy"),
+  appAction: invoke("app:action"),
   openInspector: invoke("inspector:open"),
   projectWatch: {
     start: invoke("project-watch:start"),
@@ -54,6 +55,10 @@ const api: ElectronApi = {
   remote: {
     press: invoke("remote:press"),
     screenshot: invoke("remote:screenshot"),
+  },
+  logs: {
+    copy: invoke("logs:copy"),
+    save: invoke("logs:save"),
   },
   tizen: {
     listProfiles: invoke("tizen:list-profiles"),
